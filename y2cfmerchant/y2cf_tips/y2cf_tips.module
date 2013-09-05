@@ -1,0 +1,909 @@
+<?php
+global $connection_one;
+global $connection_two;
+$connection_one = 'tips';
+$connection_two = 'anothertips';
+
+
+
+global $poi_places;
+global $place_tips;
+global $tag_msisdn;
+global $tips_keywords;
+
+$poi_places = 'poi_places';
+$place_tips = 'place_tips';
+$tag_msisdn = 'tag_msisdn';
+$tips_keywords = 'tips_keywords';
+//db_set_active('default');
+function y2cf_tips_perm() {
+	return array('Administer Tips group', 'Administer Tips places', 'Administer Tips group delete','Administer Tips place delete', 'Administer Tips By Group', 'Administer Actual Tips delete', 'Administer Tips Keywords', 'Administer Keyword delete', 'Administer Tagged Msisdn', 'Administer Msisdn delete');
+
+}
+function goto_anotherpageby_superfish() {
+	global $base_url;
+	$place_id = arg(3);
+	if(empty($place_id)) {
+		$url = $base_url.'/y2cf/tips/groups';
+		$strings = '<ul class="sf-menu"><li class="current">'.l('Go to home',$url).'</li></ul>';
+	}else{
+		$url = $base_url.'/y2cf/tips/places/'.$place_id;
+		$strings = '<ul class="sf-menu"><li class="current">'.l('Go to place',$url).'</li></ul>';
+	}
+
+	return $strings;
+}
+function y2cf_tips_form_alter(&$form, $form_state, $form_id) {
+	global $base_url;
+	global $user;
+
+	if($form_id=='tipsmanagement_node_form') {
+		$form['path']['#access'] = FALSE;
+		$form['menu']['#access'] = FALSE;
+		$form['author']['#access'] = FALSE;
+		$form['options']['#access'] = FALSE;
+		$form['comment_settings']['#access'] = FALSE;
+		$form['revision_information']['#access'] = FALSE;
+		//$form['title']['#access'] = FALSE;
+		unset($form['buttons']['preview']);
+		$group_id = arg(3);
+		$url = $base_url.'/y2cf/tipsbygroup/'.$group_id;
+		$strings = '<ul class="sf-menu"><li class="current">'.l('Go to tips',$url).'</li></ul>';
+
+		$form['tips_manager'] = array(
+			'#type' => 'item',
+			'#weight' => -31,
+			'#description' => $strings.'<br /><br />Instruction to fill up the form'
+			);
+	}
+
+	if($form_id=='tips_taggedmsisdn_node_form') {
+		$form['path']['#access'] = FALSE;
+		$form['menu']['#access'] = FALSE;
+		$form['author']['#access'] = FALSE;
+		$form['options']['#access'] = FALSE;
+		$form['comment_settings']['#access'] = FALSE;
+		$form['revision_information']['#access'] = FALSE;
+		$form['title']['#access'] = FALSE;
+		//unset($form['buttons']['preview']);
+
+		$url = $base_url.'/y2cf/tagged_msisdn/';
+		$strings = '<ul class="sf-menu"><li class="current">'.l('Go to Msisdn',$url).'</li></ul>';
+
+		$form['msisdn_manager'] = array(
+			'#type' => 'item',
+			'#weight' => -31,
+			'#description' => $strings.'<br /><br />'
+			);
+	}
+
+	if($form_id=='tips_manage_keywords_node_form') {
+		$form['path']['#access'] = FALSE;
+		$form['menu']['#access'] = FALSE;
+		$form['author']['#access'] = FALSE;
+		$form['options']['#access'] = FALSE;
+		$form['comment_settings']['#access'] = FALSE;
+		$form['revision_information']['#access'] = FALSE;
+		$form['title']['#access'] = FALSE;
+		//unset($form['buttons']['preview']);
+
+		$url = $base_url.'/y2cf/keywordstips/';
+		$strings = '<ul class="sf-menu"><li class="current">'.l('Go to Keywords',$url).'</li></ul>';
+
+		$form['keyword_manager'] = array(
+			'#type' => 'item',
+			'#weight' => -31,
+			'#description' => $strings.'<br /><br />'
+			);
+	}
+
+
+
+	if($form_id=='y2cf_tips_addplaces_node_form') {
+		$form['path']['#access'] = FALSE;
+		$form['menu']['#access'] = FALSE;
+		$form['author']['#access'] = FALSE;
+		$form['options']['#access'] = FALSE;
+		$form['comment_settings']['#access'] = FALSE;
+		$form['revision_information']['#access'] = FALSE;
+		//$form['title']['#access'] = FALSE;
+		unset($form['buttons']['preview']);
+
+
+		$form['tipsplace'] = array(
+			'#type' => 'item',
+			'#weight' => -19,
+			'#description' => goto_anotherpageby_superfish().'<br />Instruction to fill out the ADD Group:
+		<br />* - Enter a UID if you have any otherwise software automatically generates.<br />* - Enter distance in the format 0.01 etc....<br />* - Latitude and Longitude should be numeric or floating value'
+		);
+	}
+
+
+
+
+
+}
+function y2cf_tips_menu() {
+
+	$items = array();
+
+	$items['y2cf/tips/groups'] = array(
+    'title' => 'Tips',
+    'page callback' => 'y2cf_tips_management',
+	'access arguments' => array('Administer Tips group'),
+    'description' => 'Administer Tips group.',
+    'weight' => -4,
+	'type' => MENU_LOCAL_TASK,
+
+	);
+
+	$items['y2cf/tips/places'] = array(
+    'title' => 'Tips',
+    'page callback' => 'y2cf_tips_management',
+	'access arguments' => array('Administer Tips places'),
+    'description' => 'Administer Tips places.',
+    'weight' => -4,
+	'type' => MENU_LOCAL_TASK,
+
+	);
+
+	$items['y2cftipsdelete/delete/groups'] = array(
+    'title' => 'Delete',
+    'page callback' => 'y2cf_tips_delete',
+	'access arguments' => array('Administer Tips group delete'),
+    'description' => 'Administer Tips group delete.',
+    'weight' => -4,
+	'type' => MENU_LOCAL_TASK,
+
+	);
+
+	$items['y2cftipsdelete/delete/places'] = array(
+    'title' => 'Delete',
+    'page callback' => 'y2cf_tips_delete',
+	'access arguments' => array('Administer Tips place delete'),
+    'description' => 'Administer Tips place delete.',
+    'weight' => -4,
+	'type' => MENU_LOCAL_TASK,
+
+	);
+
+	$items['y2cf/tipsbygroup/%'] = array(
+    'title' => 'Tips',
+    'page callback' => 'y2cf_tips_bygroup',
+	'access arguments' => array('Administer Tips By Group'),
+    'description' => 'Administer Tips By Group.',
+    'weight' => -4,
+	'type' => MENU_LOCAL_TASK,
+	'file' => 'grouptips.inc'
+
+	);
+
+	$items['y2cf/keywordstips'] = array(
+    'title' => 'Keywords',
+    'page callback' => 'y2cf_tips_keywords',
+	'access arguments' => array('Administer Tips Keywords'),
+    'description' => 'Administer Tips Keywords.',
+    'weight' => -4,
+	'type' => MENU_LOCAL_TASK,
+	'file' => 'keywordstips.inc'
+
+	);
+
+	$items['y2cf/keyworddelete'] = array(
+    'title' => 'Delete',
+    'page callback' => 'y2cf_tips_keyword_delete',
+	'access arguments' => array('Administer Keyword delete'),
+    'description' => 'Administer Keyword delete.',
+    'weight' => -4,
+	'type' => MENU_LOCAL_TASK,
+
+	);
+
+	$items['y2cf/tagmsisdndelete'] = array(
+    'title' => 'Delete',
+    'page callback' => 'y2cf_tips_msisdn_delete',
+	'access arguments' => array('Administer Msisdn delete'),
+    'description' => 'Administer Msisdn delete.',
+    'weight' => -4,
+	'type' => MENU_LOCAL_TASK,
+
+	);
+
+	$items['y2cf/tipsdelete'] = array(
+    'title' => 'Delete',
+    'page callback' => 'y2cf_actual_tips_delete',
+	'access arguments' => array('Administer Actual Tips delete'),
+    'description' => 'Administer Actual Tips delete.',
+    'weight' => -4,
+	'type' => MENU_LOCAL_TASK,
+
+	);
+
+	$items['y2cf/tagged_msisdn'] = array(
+		'title' => 'Tagged Msisdn',
+		'page callback' => 'y2cf_tagged_msisdn',
+		'access arguments' => array('Administer Tagged Msisdn'),
+		'description' => 'Administer Tagged Msisdn.',
+		'weight' => -4,
+		'type' => MENU_LOCAL_TASK,
+		'file' => 'taggedmsisdn.inc'
+		);
+
+		return $items;
+}
+
+function y2cf_tips_keyword_delete() {
+	global $tips_keywords;
+	global $base_url;
+	$nid = arg(2);
+	global $connection_one;
+	global $connection_two;
+
+
+
+	if(arg(1)=='keyworddelete') {
+		node_delete($nid);
+		db_set_active($connection_one);
+		//$sql_kw = "UPDATE {$tips_keywords} SET `is_delete` = '1' WHERE `nid` ='".$nid."' LIMIT 1";
+		$sql_kw = "DELETE FROM {$tips_keywords}  WHERE `nid` ='".$nid."' LIMIT 1";
+		db_query($sql_kw);
+		db_set_active($connection_two);
+		db_query($sql_kw);
+	}
+
+	drupal_goto($base_url.'/y2cf/keywordstips/');
+}
+
+function y2cf_tips_msisdn_delete() {
+	global $tag_msisdn;
+	global $base_url;
+	$nid = arg(2);
+	$node_msg = arg(1);
+	global $connection_one;
+	global $connection_two;
+
+
+
+	if($node_msg == 'tagmsisdndelete') {
+		node_delete($nid);
+		db_set_active($connection_one);
+
+		$sql_kw = "DELETE FROM {$tag_msisdn} WHERE `nid` = '".$nid."' LIMIT 1";
+		db_query($sql_kw);
+		db_set_active($connection_two);
+		db_query($sql_kw);
+	}
+
+	drupal_goto($base_url.'/y2cf/tagged_msisdn');
+}
+
+
+
+
+function y2cf_actual_tips_delete() {
+	global $place_tips;
+	global $base_url;
+	$nid = arg(2);
+
+	global $connection_one;
+	global $connection_two;
+
+	if(arg(1)=='tipsdelete') {
+		db_set_active($connection_one);
+		node_delete($nid);
+		//$sql_tips = "UPDATE {$place_tips} SET `is_delete` = '1' WHERE `place_tips`.`nid` ='".$nid."' LIMIT 1";
+		$sql_tips = "DELETE FROM {$place_tips}  WHERE `place_tips`.`nid` ='".$nid."' LIMIT 1";
+		db_query($sql_tips);
+		db_set_active($connection_two);
+		db_query($sql_tips);
+	}
+	db_set_active($connection_one);
+	$parameter = db_result(db_query("SELECT place_id FROM {$place_tips} where nid='".$nid."' "));
+	drupal_goto($base_url.'/y2cf/tipsbygroup/'.$parameter);
+}
+
+function y2cf_tips_delete() {
+	//DELETE process  .. delete group id and corresponding all tips id and places id  nid4 = arg(4)....id
+	/*
+	 $group_id = arg(4);
+	 $rs_places_id = db_query("SELECT id FROM {$poi_places} where pid = '".$group_id."' ");
+	 $rs_tips_id = db_query("SELECT id FROM {$place_tips} where place_id = '".$group_id."' ");
+	 while($rs = db_fetch_array($rs_places_id)) {
+	 db_query("DELETE from {$poi_places} where id='".$rs['id']."' ");
+	 }
+	 while($rstips = db_fetch_array($rs_tips_id)) {
+	 db_query("DELETE from {$place_tips} where id='".$rstips['id']."' ");
+	 }
+
+	 */
+
+
+	global $poi_places;
+
+	global $base_url;
+	$nid = arg(3);
+	if(arg(1)=='delete') {
+		global $connection_one;
+		global $connection_two;
+		node_delete($nid);
+		//$sql_tip_tip = "UPDATE {$poi_places} SET `is_delete` = '1' WHERE `poi_places`.`nid` ='".$nid."' LIMIT 1";
+		$sql_tip_tip = "DELETE FROM {$poi_places}  WHERE `poi_places`.`nid` ='".$nid."' LIMIT 1";
+		db_set_active($connection_one);
+		db_query($sql_tip_tip);
+		db_set_active($connection_two);
+		db_query($sql_tip_tip);
+
+
+	}
+
+
+	$param = arg(2);
+	db_set_active($connection_one);
+	$parameter = db_result(db_query("SELECT pid FROM {$poi_places} where nid='".$nid."' "));
+
+	if($param == 'groups') {
+		drupal_goto($base_url.'/y2cf/tips/groups');
+	}elseif($param == 'places') {
+		drupal_goto($base_url.'/y2cf/tips/places/'.$parameter);
+	}
+
+
+
+}
+
+
+function superfish_menudisplay() {
+	global $base_url;
+	$url = $base_url.'/node/add/y2cf-tips-addplaces';
+	$strings = '<ul class="sf-menu">
+			<li class="current">
+				'.l('ADD Group',$url).'
+
+			</li>
+			<li>
+				<a href="#">Tagged Msisdn</a>
+			</li>
+
+
+		</ul>';
+	return $strings;
+
+}
+
+
+function y2cf_tips_management(){
+	//db_set_active('tips');
+	unset($_SESSION['uid']);
+	unset($_SESSION['name']);
+	unset($_SESSION['city']);
+	unset($_SESSION['phone']);
+
+	global $base_url;
+	global $user;
+	global $poi_places;
+
+	$per_page = set_per_page_counts();
+
+	//Validate group and places
+
+	$param = arg(2);
+	$numparam = arg(3);
+	if($param == 'groups') {
+		$pid = 0;
+		$add_group = $base_url.'/node/add/y2cf-tips-addplaces';
+		$add_group_url = l('ADD Group',$add_group);
+		$edit_destination_url = 'y2cf/tips/groups';
+		$act_delete_url = $base_url.'/y2cftipsdelete/delete/groups/';
+		$act_places_url = $base_url.'/y2cf/tips/places/';
+		$places = '| Places';
+		$act_tips_url = $base_url.'/y2cf/tipsbygroup';
+		$tips = '| TIPS';
+		$gotohome_url = '';
+		$gthome = '';
+	}elseif($param == 'places') {
+		$pid = $numparam;
+		$add_group = $base_url.'/node/add/y2cf-tips-addplaces/'.$numparam;
+		$add_group_url = l('Add Place',$add_group);
+
+		$hometips_url = $base_url.'/y2cf/tips/groups';
+		//$gotohome_url = l('Go to home',$hometips_url);
+		$gthome = '<li><a href="'.$hometips_url.'">Go to home</a></li>';
+
+		$edit_destination_url = 'y2cf/tips/places/'.$numparam;
+		$act_delete_url = $base_url.'/y2cftipsdelete/delete/places/';
+		$act_places_url = '';
+		$places = '';
+		$act_tips_url = '';
+		$tips = '';
+	}
+
+
+
+
+	$tagged_msisdn = $base_url.'/y2cf/tagged_msisdn';
+	$keywords_url = $base_url.'/y2cf/keywordstips';
+	$add_keywords_url = $base_url.'/node/add/tips-manage-keywords';
+	$add_msisdn_url = $base_url.'/node/add/tips-taggedmsisdn';
+	$output .= '<ul class="sf-menu">
+			<li>'.$add_group_url.'</li>
+
+			<li><a href="'.$tagged_msisdn.'">Tagged Msisdn</a>
+				<ul>
+					<li><a href="'.$add_msisdn_url.'">ADD Tagged Msisdn</a></li>
+				</ul>
+			</li>
+			<li><a href="'.$keywords_url.'">Keywords</a>
+				<ul>
+					<li><a href="'.$add_keywords_url.'">Add Keywords</a></li>
+				</ul>
+			</li>
+			<li>'.$gthome.'</li>
+				</ul><br />';
+
+
+
+	$rs_rid  = get_user_role_id($user->uid);
+
+
+	//$repeat_visit = $base_url.'/node/add/repeat_visit';
+
+
+
+	$total_cn = get_all_dsr_count_according_to_filters();
+
+
+	$header = array(
+	array('data' => 'S.No','field' => 'id','sort' => 'desc'),
+	array('data' => 'UID','field' => 'uid'),
+	array('data' => 'Name','field' => 'name'),
+	array('data' => 'Latitude','field' => 'lat'),
+	array('data' => 'Longitude','field' => 'lon'),
+	array('data' => 'City','field' => 'city'),
+	array('data' => 'Address','field' => 'address'),
+	array('data' => 'Category','field' => 'category'),
+	array('data' => 'Priority','field' => 'priority'),
+	array('data' => 'Distance','field' => 'distance'),
+	array('data' => 'Mobile No','field' => 'phone'),
+	array('data' => 'Actions'),
+
+	);
+
+	if(isset($_POST['Search_val'])){
+		$_SESSION['uid'] = $_POST['uid'];
+		$_SESSION['name'] = $_POST['name'];
+		$_SESSION['city'] = $_POST['city'];
+		$_SESSION['phone'] = $_POST['phone'];
+	}
+
+	if(isset($_POST['Search_reset']) && $_POST['Search_reset']=="View All"){
+		unset($_SESSION['uid']);
+		unset($_SESSION['name']);
+		unset($_SESSION['city']);
+		unset($_SESSION['phone']);
+	}
+
+	$uid = isset($_SESSION['uid'])?$_SESSION['uid']:"";
+	$name = isset($_SESSION['name'])?$_SESSION['name']:"";
+	$city = isset($_SESSION['city'])?$_SESSION['city']:"";
+	$phone = isset($_SESSION['phone'])?$_SESSION['phone']:"";
+
+	$data = array();
+	$data[-1] = array(
+	  'sn'=> "<form name='form2' method='post' action=''>",
+	  'uid'=> "<input type='text' name='uid' size='10' class='ul_search10 form-text' value='".$uid."'>",
+	  'name'=> "<input type='text' name='name' size='10' class='ul_search10 form-text' value='".$name."'>",
+	  'latitude'=> "",
+	  'longitude'=> "",
+	  'city'=> "<input type='text' name='city' size='10' class='ul_search10 form-text' value='".$city."'>",
+	  'address'=> "",
+	  'category'=> "",
+	  'priority'=> "",
+	  'distance'=> "",
+	  'phone'=> "<input type='text' name='phone' size='10' class='ul_search10 form-text' value='".$phone."'>",
+	  'operations' =>"<input type='submit' name='Search_val' value='Filter' class='form-submit'>
+	  <input type='submit' name='Search_reset' value='View All' class='form-submit'></form>",
+	);
+
+
+
+	db_set_active('tips');
+
+	//$sql_merchants .= "SELECT poi.* FROM {$poi_places} as poi where pid='".$pid."' and is_delete=0 ";
+	$sql_merchants .= "SELECT poi.* FROM {$poi_places} as poi where pid='".$pid."'  ";
+	//$sql_merchants .= "SELECT * FROM {node} as n inner join {} where 1=1";
+	if(isset($_SESSION['uid']) && $_SESSION['uid']!= "" ) {
+		$sql_merchants .= " and poi.uid LIKE '".trim($_SESSION['uid'])."%' ";
+	}
+	if(isset($_SESSION['name']) && $_SESSION['name']!= "" ) {
+		$sql_merchants .= " and poi.name LIKE '".trim($_SESSION['name'])."%' ";
+	}
+	if(isset($_SESSION['city']) && $_SESSION['city']!= "" ) {
+		$sql_merchants .= " and poi.city LIKE '".trim($_SESSION['city'])."%' ";
+	}
+	if(isset($_SESSION['phone']) && $_SESSION['phone']!= "" ) {
+		$sql_merchants .= " and poi.phone LIKE '".trim($_SESSION['phone'])."%' ";
+	}
+
+	// Total Count
+
+	//$sql_tipscount .= "SELECT count(id) as tipscount FROM {$poi_places} as poi where pid='".$pid."' and is_delete=0  ";
+
+	$sql_tipscount .= "SELECT count(id) as tipscount FROM {$poi_places} as poi where pid='".$pid."'   ";
+	if(isset($_SESSION['uid']) && $_SESSION['uid']!= "" ) {
+		$sql_tipscount .= " and poi.uid LIKE '".trim($_SESSION['uid'])."%' ";
+	}
+	if(isset($_SESSION['name']) && $_SESSION['name']!= "" ) {
+		$sql_tipscount .= " and poi.name LIKE '".trim($_SESSION['name'])."%' ";
+	}
+	if(isset($_SESSION['city']) && $_SESSION['city']!= "" ) {
+		$sql_tipscount .= " and poi.city LIKE '".trim($_SESSION['city'])."%' ";
+	}
+	if(isset($_SESSION['phone']) && $_SESSION['phone']!= "" ) {
+		$sql_tipscount .= " and poi.phone LIKE '".trim($_SESSION['phone'])."%' ";
+	}
+
+	$rs_tips = db_fetch_array(db_query($sql_tipscount));
+
+
+
+	$res_merchants = pager_query($sql_merchants . tablesort_sql($header), $limit = $per_page);
+	$serial_number = get_list_serial_number();
+
+	$offer_count_arr = array();
+	while ($row = db_fetch_array($res_merchants)) {
+
+		$act_edit_url = $base_url.'/node/'.$row['nid'].'/edit?destination='.$edit_destination_url;
+		$edit_url = l('Edit', $act_edit_url);
+
+		//$act_delete_url = $base_url.'/y2cftipsdelete/delete/groups/'.$row['nid'];
+		$delete_url = l('Delete', $act_delete_url.$row['nid'].'/'.$row['id']);
+
+		$act_tips_url = $base_url.'/y2cf/tipsbygroup/'.$row['id'];
+		$tips_url = l($tips, $act_tips_url);
+
+		//$act_places_url = $base_url.'/y2cf/tips/places/'.$row['id'];
+		$places_url = l($places, $act_places_url.$row['id']);
+
+		//Catagory
+		$categ = $row['catagory'];
+		if($categ == 1) {
+			$category = 'Shopping';
+		}elseif($categ == 2){
+			$category = 'Food';
+		}elseif($categ == 3){
+			$category = 'Others';
+		}else{
+			$category = '--';
+		}
+
+		//Priority
+		$priori = $row['priority'];
+		if($priori == 1) {
+			$priority = 'A';
+		}elseif($priori == 2){
+			$priority = 'B';
+		}elseif($priori == 3){
+			$priority = 'C';
+		}elseif($priori == 4){
+			$priority = 'D';
+		}elseif($priori == 5){
+			$priority = 'Other';
+		}
+
+		$offer_count_arr[] = $row;
+		$data[] = array(
+		$serial_number++,
+			'<span class="qtip-link">
+            <div class="qtip-tooltip">'.$row['uid'].'</div>
+            '.substr($row['uid'], 0, 15).'
+          </span>',
+
+		$row['name'],
+		$row['lat'],
+		$row['lon'],
+		$row['city'],
+
+			'<span class="qtip-link">
+            <div class="qtip-tooltip">'.$row['address'].'</div>
+            '.substr($row['address'], 0, 15).'
+          </span>',
+		$category,
+		$priority,
+		$row['distance'],
+		$row['phone'],
+		$edit_url.' | '.$delete_url.'  '.$tips_url.' '.$places_url,
+		);
+	}
+	db_set_active('default');
+	$output .= theme('table', $header, $data);
+	$output .= theme('pager');
+	$output .= get_custom_pager_request($rs_tips['tipscount']);
+
+	return $output;
+}
+
+
+
+
+
+function y2cf_tips_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
+
+
+
+
+	global $base_url;
+	global $user;
+
+	global $poi_places;
+	global $place_tips;
+	global $tips_keywords;
+	global $tag_msisdn;
+	global $connection_one;
+	global $connection_two;
+
+	//drupal_goto($base_url.'/y2cf/tips/places/'.$parameter);
+	$numparam = arg(3);
+
+
+	if(!empty($numparam) && is_numeric($numparam)) {
+		$pid = $numparam;
+		$redirect_url = $base_url.'/y2cf/tips/places/'.$numparam;
+	}else{
+		$pid = 0;
+		$redirect_url = $base_url.'/y2cf/tips/groups';
+	}
+
+
+	if ($node->type == 'y2cf_tips_addplaces' && $op=='insert') {
+		$siteuid = $node->field_tips_uid[0][value];
+		if(empty($siteuid)) {
+			$uid = 'y2cf-'.genRandomString();
+		}else{
+			$uid = $siteuid;
+		}
+
+		$name =  $node->title;
+		$city = $node->field_tips_city[0]['value'];
+		$lat = $node->field_tips_latitude[0]['value'];
+		$lon = $node->field_tips_longitude[0]['value'];
+		$address = $node->field_tips_address[0]['value'];
+		$cat = $node->field_tips_category[0]['value'];
+		$prio = $node->field_tips_priority[0]['value'];
+		$dist = $node->field_tips_distance[0]['value'];
+		$phone = '91'.$node->field_tips_phone[0]['number'];
+		$created = date("Y-m-d H:i:s",$node->created);
+		$modified = date("Y-m-d H:i:s",$node->changed);
+		$nid = $node->nid;
+
+		$sql_tips_places = "INSERT INTO {$poi_places} (`pid` ,`name` ,`uid` ,`city` ,`lat` ,`lon` ,`address` ,`catagory` ,`priority` ,`distance` , `phone` ,`created_dttm` ,`modified_dttm`, `nid` ) VALUES ('".$pid."', '".$name."', '".$uid."', '".$city."', '".$lat."', '".$lon."', '".$address."', '".$cat."', '".$prio."', '".$dist."',  '".$phone."' , '".$created."', '".$modified."', '".$nid."')";
+
+		db_set_active($connection_one);
+		db_query($sql_tips_places);
+		db_set_active($connection_two);
+		db_query($sql_tips_places);
+
+		drupal_goto($redirect_url);
+
+	}
+
+	if ($node->type == 'y2cf_tips_addplaces' && $op=='update') {
+
+		$name =  $node->title;
+		$city = $node->field_tips_city[0]['value'];
+		$lat = $node->field_tips_latitude[0]['value'];
+		$lon = $node->field_tips_longitude[0]['value'];
+		$address = $node->field_tips_address[0]['value'];
+		$cat = $node->field_tips_category[0]['value'];
+		$prio = $node->field_tips_priority[0]['value'];
+		$dist = $node->field_tips_distance[0]['value'];
+		$phone = '91'.$node->field_tips_phone[0]['number'];
+		$created = date("Y-m-d H:i:s",$node->created);
+		$modified = date("Y-m-d H:i:s",$node->changed);
+		$nid = arg(1);
+
+		$sql_tips_add_place_upd = "UPDATE {$poi_places} SET `name` = '".$name."',`city` = '".$city."',`lat` = '".$lat."',`lon` = '".$lon."',`address` = '".$address."',`catagory` = '".$cat."',`priority` = '".$prio."',`distance` = '".$dist."',
+`phone` = '".$phone."',`modified_dttm` = '".$modified."' WHERE `poi_places`.`nid` = '".$nid."' LIMIT 1 ";
+
+		db_set_active($connection_one);
+		db_query($sql_tips_add_place_upd);
+
+		db_set_active($connection_two);
+		db_query($sql_tips_add_place_upd);
+
+	}
+
+	if ($node->type == 'tipsmanagement' && $op=='insert') {
+		$place_id = arg(3);
+		//$uid = db_result(db_query("SELECT uid FROM {$poi_places} as poi where id = '".$place_id."' and is_delete=0 "));
+		$uid = db_result(db_query("SELECT uid FROM {$poi_places} as poi where id = '".$place_id."'  "));
+		$offer_name =  $node->title;
+		$from_date = date("Y-m-d", $node->field_tipsmanager_fromdate[0]['value']);
+		$to_date = date("Y-m-d", $node->field_tipsmanager_fromdate[0]['value2']);
+		$from_time = date("H:i:s", $node->field_tipsmanager_fromtime[0]['value']);
+		$to_time = date("H:i:s", $node->field_tipsmanager_fromtime[0]['value2']);
+		$coupon_req = $node->field_tipsmanager_coupon_req[0]['value'];
+		$sun = $node->field_tipsmanager_days[0]['value'];
+		$mon = $node->field_tipsmanager_days[1]['value'];
+		$tue = $node->field_tipsmanager_days[2]['value'];
+		$wed = $node->field_tipsmanager_days[3]['value'];
+		$thu = $node->field_tipsmanager_days[4]['value'];
+		$fri = $node->field_tipsmanager_days[5]['value'];
+		$sat = $node->field_tipsmanager_days[6]['value'];
+		$category = $node->field_tipsmanager_category[0]['value'];
+		$seq_id = $node->field_tipsmanager_seqid[0]['value'];
+		$message = $node->field_tipsmanager_message[0]['value'];
+		$smssend = $node->field_tipsmanager_merchantsms[0]['value'];
+		$created = date("Y-m-d H:i:s",$node->created);
+		$modified = date("Y-m-d H:i:s",$node->changed);
+		$nid = $node->nid;
+
+		$sql_tips_mng = "INSERT INTO {$place_tips} (`place_id` ,`uid` ,`from_date` ,`to_date` ,`from_time` ,`to_time` ,`mon` ,`tue` ,`wed` ,`thu` ,`fri` ,`sat` ,`sun` ,`message` ,`coupon_req` ,`offer_name` ,`seq_id` ,`catagory` ,`created_dttm` ,`modified_dttm` ,`merchant_sms`, `nid`) VALUES ('".$place_id."', '".$uid."', '".$from_date."', '".$to_date."', '".$from_time."' , '".$to_time."' , '".$mon."', '".$tue."', '".$wed."', '".$thu."', '".$fri."' , '".$sat."' , '".$sun."' , '".$message."', '".$coupon_req."', '".$offer_name."', '".$seq_id."' , '".$category."','".$created."' , '".$modified."', '".$smssend."', '".$nid."')";
+
+		db_set_active($connection_one);
+		db_query($sql_tips_mng);
+		db_set_active($connection_two);
+		db_query($sql_tips_mng);
+
+
+		drupal_goto($base_url."/y2cf/tipsbygroup/".$place_id);
+	}
+
+
+	if ($node->type == 'tipsmanagement' && $op=='update') {
+
+
+		$tips_id = arg(1);
+		//$place_id = db_result(db_query("SELECT place_id FROM {$place_tips} as poi where nid = '".$tips_id."' and is_delete=0 "));
+		$place_id = db_result(db_query("SELECT place_id FROM {$place_tips} as poi where nid = '".$tips_id."'  "));
+		$offer_name =  $node->title;
+		$from_date = date("Y-m-d", $node->field_tipsmanager_fromdate[0]['value']);
+		$to_date = date("Y-m-d", $node->field_tipsmanager_fromdate[0]['value2']);
+		$from_time = date("H:i:s", $node->field_tipsmanager_fromtime[0]['value']);
+		$to_time = date("H:i:s", $node->field_tipsmanager_fromtime[0]['value2']);
+		$coupon_req = $node->field_tipsmanager_coupon_req[0]['value'];
+		$sun = $node->field_tipsmanager_days[0]['value'];
+		$mon = $node->field_tipsmanager_days[1]['value'];
+		$tue = $node->field_tipsmanager_days[2]['value'];
+		$wed = $node->field_tipsmanager_days[3]['value'];
+		$thu = $node->field_tipsmanager_days[4]['value'];
+		$fri = $node->field_tipsmanager_days[5]['value'];
+		$sat = $node->field_tipsmanager_days[6]['value'];
+		$category = $node->field_tipsmanager_category[0]['value'];
+		$seq_id = $node->field_tipsmanager_seqid[0]['value'];
+		$message = $node->field_tipsmanager_message[0]['value'];
+		$smssend = $node->field_tipsmanager_merchantsms[0]['value'];
+		$created = date("Y-m-d H:i:s",$node->created);
+		$modified = date("Y-m-d H:i:s",$node->changed);
+		$nid = $node->nid;
+
+		$sql_tips_mng_update = "UPDATE {$place_tips} SET `from_date` = '".$from_date."',`to_date` = '".$to_date."',`from_time` = '".$from_time."',`to_time` = '".$to_time."',`message` = '".$message."',`coupon_req` = '".$coupon_req."',`offer_name` = '".$offer_name."',`seq_id` = '".$seq_id."',`catagory` = '".$category."',`merchant_sms` = '".$smssend."', `mon` = '".$mon."', `tue` = '".$tue."', `wed` = '".$wed."', `thu` = '".$thu."', `fri` = '".$fri."' , `sat` = '".$sat."' , `sun` = '".$sun."' WHERE `place_tips`.`nid` = '".$tips_id."' LIMIT 1";
+
+		db_set_active($connection_one);
+		db_query($sql_tips_mng_update);
+		db_set_active($connection_two);
+		db_query($sql_tips_mng_update);
+
+		drupal_goto($base_url."/y2cf/tipsbygroup/".$place_id);
+
+	}
+
+
+	if ($node->type == 'tips_taggedmsisdn' && $op=='insert') {
+		$name = $node->field_tips_tag_name[0]['value'];
+		$msisdn = $node->field_tips_tag_msisdn[0]['number'];
+		$lat = $node->field_tips_tag_lat[0]['value'];
+		$lon = $node->field_tips_tag_longitude[0]['value'];
+		$no_of_days = $node->field_tips_tag_nodays[0]['value'];
+
+		$created = date("Y-m-d H:i:s", $node->created);
+		$nid = $node->nid;
+
+		$sql_msisdn = "INSERT INTO {$tag_msisdn} (`name` ,`msisdn` ,`lat` ,`lon` ,`created_dttm` ,`no_of_days`, `nid`)
+		VALUES ('".$name."', '".$msisdn."', '".$lat."', '".$lon."','".$created."' , '".$no_of_days."','".$nid."')";
+		db_set_active($connection_one);
+		db_query($sql_msisdn);
+
+		db_set_active($connection_two);
+		db_query($sql_msisdn);
+		drupal_goto($base_url."/y2cf/tagged_msisdn");
+	}
+
+
+	if ($node->type == 'tips_taggedmsisdn' && $op=='update') {
+		$name = $node->field_tips_tag_name[0]['value'];
+		$msisdn = $node->field_tips_tag_msisdn[0]['number'];
+		$lat = $node->field_tips_tag_lat[0]['value'];
+		$lon = $node->field_tips_tag_longitude[0]['value'];
+		$no_of_days = $node->field_tips_tag_nodays[0]['value'];
+
+		$created = date("Y-m-d H:i:s", $node->created);
+		$nid = arg(1);
+
+		$sql_msi_edit = "UPDATE {$tag_msisdn} SET `name` = '".$name."',`msisdn` = '".$msisdn."',`lat` = '".$lat."',`lon` = '".$lon."',
+`no_of_days` = '".$no_of_days."' WHERE `nid` = '".$nid."' LIMIT 1";
+
+
+
+		db_set_active($connection_one);
+		db_query($sql_msi_edit);
+
+		db_set_active($connection_two);
+		db_query($sql_msi_edit);
+		drupal_goto($base_url."/y2cf/tagged_msisdn");
+	}
+
+	if ($node->type == 'tips_manage_keywords' && $op=='insert') {
+		$operators = $node->field_tips_kw_operators[0]['value'];
+		$keywords = $node->field_tips_kw_keyword[0]['value'];
+		$is_offer = $node->field_tips_kw_isoffer[0]['value'];
+		$offer_name =  $node->field_tips_kw_offer_name[0]['value'];
+		$sms1 = $node->field_tips_kw_sms1[0]['value'];
+		$sms2 = $node->field_tips_kw_sms2[0]['value'];
+		$sms3 = $node->field_tips_kw_sms3[0]['value'];
+		$sms4 = $node->field_tips_kw_sms4[0]['value'];
+		$sms5 = $node->field_tips_kw_sms6[0]['value'];
+		$sms6 = $node->field_tips_kw_sms66[0]['value'];
+		$created = $node->created;
+		$modified = $node->changed;
+		$nid = $node->nid;
+
+		$sql_keywords = "INSERT INTO {$tips_keywords} (`operator_name` ,`keyword` ,`is_offer` ,`offer_name` ,`sms1` ,`sms2` ,`sms3` ,`sms4` ,`sms5` ,`sms6` ,`created` ,`modified`, `nid`)
+		VALUES ('".$operators."', '".$keywords."', '".$is_offer."', '".$offer_name."', '".$sms1."', '".$sms2."', '".$sms3."', '".$sms4."', '".$sms5."', '".$sms6."', '".$created."', '".$modified."', '".$nid."')";
+
+
+		db_set_active($connection_one);
+		db_query($sql_keywords);
+
+		db_set_active($connection_two);
+		db_query($sql_keywords);
+
+		drupal_goto($base_url."/y2cf/keywordstips/");
+
+
+	}
+
+	if ($node->type == 'tips_manage_keywords' && $op=='update') {
+		$nid = arg(1);
+		$operators = $node->field_tips_kw_operators[0]['value'];
+		$keywords = $node->field_tips_kw_keyword[0]['value'];
+		$is_offer = $node->field_tips_kw_isoffer[0]['value'];
+		$offer_name =  $node->field_tips_kw_offer_name[0]['value'];
+		$sms1 = $node->field_tips_kw_sms1[0]['value'];
+		$sms2 = $node->field_tips_kw_sms2[0]['value'];
+		$sms3 = $node->field_tips_kw_sms3[0]['value'];
+		$sms4 = $node->field_tips_kw_sms4[0]['value'];
+		$sms5 = $node->field_tips_kw_sms6[0]['value'];
+		$sms6 = $node->field_tips_kw_sms66[0]['value'];
+		$created = $node->created;
+		$modified = $node->changed;
+
+		$sql_keywors_update = "UPDATE {$tips_keywords} SET `operator_name` = '".$operators."',`keyword` = '".$keywords."',`is_offer` = '".$is_offer."',`offer_name` = '".$offer_name."',`sms1` = '".$sms1."',`sms2` = '".$sms2."',`sms3` = '".$sms3."',`sms4` = '".$sms4."',`sms5` = '".$sms5."',`sms6` = '".$sms6."',`modified` = '".$modified."' WHERE `nid` = '".$nid."' LIMIT 1 ";
+		db_set_active($connection_one);
+
+		db_query($sql_keywors_update);
+		db_set_active($connection_two);
+		db_query($sql_keywors_update);
+
+		drupal_goto($base_url."/y2cf/keywordstips/");
+	}
+
+
+	//another database
+
+
+
+
+}
+
+
+function genRandomString() {
+	$length = 10;
+	$characters = "123456789abcdefghijklmnpqrstuvwxyz";
+	$string = "";
+
+	for ($p = 0; $p < $length; $p++) {
+		$string .= $characters[mt_rand(0, strlen($characters))];
+	}
+
+	return $string;
+}

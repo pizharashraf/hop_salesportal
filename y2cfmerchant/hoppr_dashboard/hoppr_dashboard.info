@@ -1,0 +1,5 @@
+name = Hoppr Dashboard
+description = All Helper function
+core = 6.x
+
+package = Y2CF

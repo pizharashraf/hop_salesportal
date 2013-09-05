@@ -1,0 +1,5 @@
+name = Hoppr creative design status bulk csv  upload
+description = Hoppr creative design status bulk csv bulk upload
+core = 6.x
+
+package = Y2CF

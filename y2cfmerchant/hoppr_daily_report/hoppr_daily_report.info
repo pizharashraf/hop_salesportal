@@ -1,0 +1,5 @@
+name = Hoppr daily report
+description = Hoppr daily report 
+core = 6.x
+
+package = Y2CF

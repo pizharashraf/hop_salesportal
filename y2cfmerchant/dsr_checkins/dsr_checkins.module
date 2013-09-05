@@ -1,0 +1,68 @@
+<?php
+function dsr_checkins_perm() {
+  return array('Administer DSR Checkins');
+}
+
+function dsr_checkins_menu() {
+  $items = array();
+
+  $items['y2cf/dsrcheckins'] = array(
+    'title' => 'DSR Report',
+    'page callback' => 'y2cf_dsr_checkins',
+	'access arguments' => array('Administer DSR Checkins'),
+    'description' => 'Manage DSR Checkins.',
+    'weight' => -4,
+	'type' => MENU_LOCAL_TASK,
+
+  );
+	return $items;
+}
+
+function y2cf_dsr_checkins(){
+	global $user;
+	$output = 'Checkins Report';
+
+	$total_cn = get_all_checkins_counts_for_particular_city();
+	$output .= '<br>Total Checkins count: '.$total_cn;
+
+	$header = array(
+				array('data' => 'S.No', 'field' => 'id'),
+				array('data' => 'City', 'field' => 'city'),
+				array('data' => 'Place', 'field' => 'place'),
+				array('data' => 'Checkin Count', 'field' => 'checkin_count', 'sort' => 'desc'),
+				array('data' => 'Date', 'field' => 'checkin_date'), 
+				 
+			);
+
+	$sql_offer = "Select * from aaaa_hoppr_checkins where city = 'DNCR' ";
+	$res_offer = pager_query($sql_offer . tablesort_sql($header), $limit = 50);
+	$serial_number = get_list_serial_number();
+   while ($row = db_fetch_array($res_offer)) {
+
+	   $data[] = array(
+					  $serial_number++,
+					  $row['city'],
+					  $row['place'],
+					  $row['checkin_count'],
+					  date("Y-m-d H:i:s", $row['checkin_date']),
+					);
+   }
+
+  
+  $output .= theme('table', $header, $data);
+  $output .= theme('pager');
+  $output .= get_custom_pager_request($total_cn);
+
+  return $output;
+
+}
+
+function dsr_checkins_cron() {
+/*
+db_query("INSERT INTO `aaaa_hoppr_checkins` (`city` ,`place` ,`checkin_count` ,`checkin_date`) VALUES ('DNCR', 'khanpur', '56', '5678956789') ");
+print '<script>alert("Hoppr");</script>';
+print '<script type="text/javascript">
+window.location.href="http://localhost/salesportalofferfivemarch/y2cf/dsrcheckins/";
+</script>';
+*/
+}

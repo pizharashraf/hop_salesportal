@@ -1,0 +1,169 @@
+<?php
+global $base_url;
+global $imgsrc;
+global $crossimgsrc;
+global $notmandatoryimgsrc;
+
+$imgsrc = $base_url.'/sites/all/themes/y2cfprod/images/OK.png';
+$crossimgsrc = $base_url.'/sites/all/themes/y2cfprod/images/delete.png';
+$notmandatoryimgsrc = $base_url.'/sites/all/themes/y2cfprod/images/alerts.png';
+
+
+
+function hoppr_posdelivery_perm() {
+	return array('Administer revalidation csv Upload');
+}
+
+function hoppr_posdelivery_menu() {
+	$items = array();
+	$items['hoppr/revalidation'] = array(
+    'title' => 'Re-validation CSV Upload',
+    'page callback' => 'hoppr_revalidationformerchant',
+	'access arguments' => array('Administer revalidation csv Upload'),
+    'description' => 'Administer revalidation csv Upload.',
+    'weight' => -4,
+	'type' => MENU_LOCAL_TASK,
+
+	);
+	return $items;
+}
+function hoppr_posdelivery_form_alter(&$form, $form_state, $form_id) {
+	global $base_url;
+	global $imgsrc;
+	global $crossimgsrc;
+	global $notmandatoryimgsrc;
+	global $user;
+	if($form_id=='posdelivery_node_form') {
+		$form['path']['#access'] = FALSE;
+		$form['menu']['#access'] = FALSE;
+		$form['author']['#access'] = FALSE;
+		$form['options']['#access'] = FALSE;
+		$form['comment_settings']['#access'] = FALSE;
+		$form['revision_information']['#access'] = FALSE;
+		$form['title']['#access'] = FALSE;
+		
+		$form['hoppr_posdf'] = array(
+				'#type' => 'item',
+				'#weight' => -19,
+				'#description' => '<div>POS CSV file format.<span style="color:red;">(Please don&rsquo;t change a single spelling of header row in csv file) </span>
+				<table border="1">
+					<tr style="color:red;">
+						<td>outlet_code</td>
+						<td>pos_delivery_date</td>
+						<td>pos_meterial_sent</td>
+						<td>pos_overall_status</td>
+						<td>pos_reason_for_not_delivered</td>
+					</tr>
+					<tr>
+						<td>22691</td>
+						<td>1/7/2013</td>
+						<td>Sticker,Tent Card</td>
+						<td>Delivered</td>
+						<td></td>
+					</tr>
+				<table>
+				</div>'
+		);
+		$form['myform_posdfas'] = array(
+				'#type' => 'item',
+				'#weight' => -19,
+				'#description' => '<div><span style="color:red;">Fields Mark with </span>(<span style="color:#FFAE00;">*</span>) <span style="color:red;"> is mandatory!</span></div>'
+		);
+		unset($form['buttons']['preview']);
+	}
+}
+function hoppr_posdelivery_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
+	global $base_url;
+	global $user;
+//Merchants offers
+	if ($node->type == 'posdelivery' && $op=='insert') {
+    	if (!ini_get('safe_mode')) {
+	   		set_time_limit(0);
+		}
+		ini_set('display_errors', 1);
+    	$path_module = drupal_get_path('module', 'y2cf_offer_csvupload');
+		require_once($path_module."/DataSource.php");
+		require_once($path_module."/fileread.php");
+    	$last_csv_upload_nid  = db_fetch_array(db_query("select max(nid) as nid from {node} where type='posdelivery' and uid='".$user->uid."'"));
+    	$csv_file_name = db_fetch_array(db_query("select ff.filepath from {content_type_posdelivery} ctcu inner join {files} ff on ctcu.field_hop_posdelivery_fid = ff.fid where nid ='".$last_csv_upload_nid['nid']."' and uid='".$user->uid."' "));
+		$path= $base_url.'/'.$csv_file_name['filepath'];
+
+    	$csv = new File_CSV_DataSource;
+		$csv->load($csv_file_name['filepath']);
+		$data_array = $csv->connect();
+    	$merchant_errors = array();
+    	$rs_rid  = get_user_role_id($user->uid);
+    	//print_r($data_array);die;
+    if($rs_rid == 'posbrand') {
+    	foreach($data_array as $key => $offer_value) {
+			
+				//outlet_code   pos_delivery_date  pos_meterial_sent  pos_overall_status  pos_reason_for_not_delivered  
+				$merchant_code = $offer_value['outlet_code'];
+				$mer_vid = db_result(db_query("select vid from {node} where nid='".$merchant_code."' "));
+				$pos_merchant_name = db_result(db_query("select title from {node} where vid='".$mer_vid."' "));
+				$delivery_date = trim($offer_value['pos_delivery_date']);
+				if(!empty($delivery_date)) {
+					$pos_del_date = explode("/", $delivery_date);
+					if($pos_del_date[0] > 12 || $pos_del_date[0] < 1) {
+						form_set_error('field_upload_csv', 'POS:Error in date format');
+						drupal_goto($base_url.'/node/add/csv-upload');
+					}
+					//Error for day
+					if($pos_del_date[1] > 31 || $pos_del_date[1] < 1) {
+						form_set_error('field_upload_csv', 'POS:Error in date format');
+						drupal_goto($base_url.'/node/add/csv-upload');
+					}
+				}
+				$dt_m = $pos_del_date[1];
+				$day_of_month = $dt_m - 1;
+				$pos_final_del_date = $pos_del_date[2].'-'.get_format_number($pos_del_date[0]).'-'.get_format_number($day_of_month).'T18:30:00';
+				
+				$pos_overallstatus = trim($offer_value['pos_overall_status']);
+				$pos_reason_for_not_del = trim($offer_value['pos_reason_for_not_delivered']);
+				$meterial_sent = $offer_value['pos_meterial_sent'];
+				$val_awc = explode(",", $meterial_sent);
+				
+				$sql_pos_sts = "UPDATE {content_type_merchant_outlet} set field_hop_pos_del_dt_mo_value='".$pos_final_del_date."',field_hop_pos_oa_status_mo_value='".$pos_overallstatus."',field_hop_pos_nt_del_mo_value='".$pos_reason_for_not_del."' where vid='".$mer_vid."' ";
+				db_query($sql_pos_sts);
+				
+				// Meterial sent 
+				$ac_wc_hop = db_result(db_query("select vid from {content_field_hoppr_metral_sent_mo} where vid = '".$mer_vid."' "));
+				if(!empty($ac_wc_hop)) {
+					db_query("delete from {content_field_hoppr_metral_sent_mo} where vid = '".$mer_vid."' ");
+					if(count($val_awc) > 1) {
+						$i=0;
+						foreach($val_awc as $hopawc_hop) {
+							db_query("INSERT into {content_field_hoppr_metral_sent_mo} (vid, nid, delta, field_hoppr_metral_sent_mo_value) values('".$mer_vid."', '".$merchant_code."', '".$i++."', '".$hopawc_hop."') ");
+						}
+					}else{
+						db_query("INSERT into {content_field_hoppr_metral_sent_mo} (vid, nid, delta, field_hoppr_metral_sent_mo_value) values('".$mer_vid."', '".$merchant_code."', '".$i++."', '".$meterial_sent."') ");
+					}
+					 
+				}else{
+					$i=0;
+					$all_count_awc = count($hopawc_hop);
+					if($all_count_awc > 1) {
+						foreach($hopawc_hop as $hopawc_hop) {
+							db_query("INSERT into {content_field_hoppr_metral_sent_mo} (vid, nid, delta, field_hoppr_metral_sent_mo_value) values('".$mer_vid."', '".$merchant_code."', '".$i++."', '".$hopawc_hop."') ");
+						}
+					}else{
+						 
+						db_query("INSERT into {content_field_hoppr_metral_sent_mo} (vid, nid, delta, field_hoppr_metral_sent_mo_value) values('".$mer_vid."', '".$merchant_code."', '0', '".$meterial_sent."') ");
+					}
+				}
+				
+				
+				
+				
+				
+			
+				drupal_set_message("POS updated for the merchant &nbsp;&nbsp; -> &nbsp;&nbsp;".$pos_merchant_name);
+			
+			
+			}
+			drupal_flush_all_caches();
+		//Delete the file from the system
+  		unlink($path);
+	}
+}
+}

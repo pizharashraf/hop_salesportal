@@ -1,0 +1,605 @@
+<?php
+function overall_daily_report_perm() {
+	return array('Administer overall daily report', 'Administer docs report','Administer keyword report','Administer offer upload report','Administer offer testing report', 'Administer OE Dashboard');
+}
+
+function overall_daily_report_menu() {
+	$items = array();
+
+	$items['hoppr/hoppr_overall_daily_report'] = array(
+    'title' => 'Hoppr overall report',
+    'page callback' => 'hoppr_overall_daily_report',
+	'access arguments' => array('Administer overall daily report'),
+    'description' => 'Administer overall daily report.',
+    'weight' => -4,
+	'type' => MENU_LOCAL_TASK,
+  );
+
+	$items['hoppr/hoppr_docs_report'] = array(
+    'title' => 'Hoppr overall report',
+    'page callback' => 'hoppr_docs_report',
+  'access arguments' => array('Administer docs report'),
+    'description' => 'Administer docs report.',
+    'weight' => -4,
+  'type' => MENU_LOCAL_TASK,
+  );
+
+  $items['hoppr/hoppr_keyword_report'] = array(
+    'title' => 'Hoppr keyword report',
+    'page callback' => 'hoppr_keyword_report',
+  'access arguments' => array('Administer keyword report'),
+    'description' => 'Administer keyword report.',
+    'weight' => -4,
+  'type' => MENU_LOCAL_TASK,
+  );
+
+  $items['hoppr/hoppr_offerupload_report'] = array(
+    'title' => 'Hoppr offer upload report',
+    'page callback' => 'hoppr_offerupload_report',
+  'access arguments' => array('Administer offer upload report'),
+    'description' => 'Administer offer upload report.',
+    'weight' => -4,
+  'type' => MENU_LOCAL_TASK,
+  );
+
+  $items['hoppr/hoppr_offertesting_report'] = array(
+    'title' => 'Hoppr offer testing report',
+    'page callback' => 'hoppr_offertesting_report',
+  'access arguments' => array('Administer offer testing report'),
+    'description' => 'Administer offer testing report.',
+    'weight' => -4,
+  'type' => MENU_LOCAL_TASK,
+  );
+  
+  $items['hoppr/oedashboard'] = array(
+  		'title' => 'Hoppr OE Dashboard',
+  		'page callback' => 'hoppr_oedashboard',
+  		'access arguments' => array('Administer OE Dashboard'),
+  		'description' => 'Administer OE Dashboard.',
+  		'weight' => -4,
+  		'type' => MENU_LOCAL_TASK,
+  );
+
+	return $items;
+}
+function hoppr_oedashboard() {
+	$oe_db_output = "OE Dashboard";
+	$spw_headeroe_1 = array(
+			array('data' => 'City Name'),
+			array('data' => 'Actions'),
+	);
+	$spw_headeroe_2 = array();
+	
+	for($i=0;$i<10;$i++) {
+		$spw_headeroe_2[] = array('data' => 'mydate'.$i);
+	}
+	$spw_headeroe = array_merge($spw_headeroe_1, $spw_headeroe_2);
+	$data_spwoe = array();
+	//$sql_offeroe = "select count(distinct nr.nid) as total_outlet,nr.uid,u.name as opsexe, DATE( FROM_UNIXTIME(nr.timestamp)) as created_date from {node_revisions} nr inner join {users} u on nr.uid=u.uid inner join {users_roles} ur on u.uid=ur.uid inner join {role} r on ur.rid=r.rid where r.name='y2cfoperations'  ";
+	$sql_offeroe = "select distinct field_hop_signup_city_value from {content_type_offer_detail} where field_hop_signup_city_value != 'NULL' ";
+	$res_offer = pager_query($sql_offeroe . tablesort_sql($spw_headeroe), $limit = 3000);
+	while ($row = db_fetch_array($res_offer)) {
+		$data_spwoe[] = array(
+				get_only_term_name($row['field_hop_signup_city_value']),
+				'Recieved<br />Accepted<br />Rejected',
+				'sss',
+		);
+	}
+	$oe_db_output = "";
+	$oe_db_output .= theme('table', $spw_headeroe, $data_spwoe);
+	$oe_db_output .= theme('pager');
+	return $oe_db_output;
+}
+function hoppr_overall_daily_report(){
+	global $user;
+	global $base_url;
+	$merchant_id = arg(2);
+	$rs_rid  = get_user_role_id($user->uid);
+  $per_page = set_per_page_counts();
+  $header = array(
+		array('data' => 'S.No'),
+		array('data' => 'Contract date'),
+		array('data' => 'Outlet varified'),
+		array('data' => 'OE'),
+		);
+
+	if(isset($_GET['Search_val'])){
+		$entry_date = isset($_GET['entry_date'])?$_GET['entry_date']:"";
+		$exit_date = isset($_GET['exit_date'])?$_GET['exit_date']:"";
+
+	}
+	if(isset($_GET['Search_reset']) && $_GET['Search_reset']=="View All"){
+		$outlet_id = arg(2);
+		drupal_goto($base_url."/hoppr/hoppr_overall_daily_report");
+	}
+	$data = array();
+	$data[-1] = array(
+				'sn'=> "<form name='pqr_daily_report' method='get' action=''>",
+				'entry_date'=> "From <input size='10' id='assign-from' type='text' name='entry_date' readonly='readonly' class='ul_search10 form-text' value='".$entry_date."'>
+		<script type='text/javascript'>
+		jQuery(function() {
+		jQuery('#assign-from').datepicker({
+		changeMonth: true,
+		changeYear: true,
+		yearRange: '1950:2020',
+	});
+	});
+	</script>
+	To&nbsp;&nbsp;&nbsp;&nbsp; <input size='10' id='assign-from_exit' type='text' name='exit_date' readonly='readonly' class='ul_search10 form-text' value='".$exit_date."'>
+		<script type='text/javascript'>
+		jQuery(function() {
+		jQuery('#assign-from_exit').datepicker({
+		changeMonth: true,
+		changeYear: true,
+		yearRange: '1950:2020',
+	});
+	});
+	</script>",
+
+	't_count' =>"",
+  'operations' =>"<input type='submit' name='Search_val' value='Filter' class='form-submit'>
+					<input type='submit' name='Search_reset' value='View All' class='form-submit'></form>",
+	);
+
+//for salesperson count
+    $sql_offer = "select count(distinct nr.nid) as total_outlet,nr.uid,u.name as opsexe, DATE( FROM_UNIXTIME(nr.timestamp)) as created_date from {node_revisions} nr inner join {users} u on nr.uid=u.uid inner join {users_roles} ur on u.uid=ur.uid inner join {role} r on ur.rid=r.rid where r.name='y2cfoperations'  ";
+    if (isset($_GET['entry_date']) && $_GET['entry_date']!="") {
+    $curdate_1 = explode("/", $_GET['entry_date']);
+    $entry_date = mktime(0,0,1,$curdate_1[0],$curdate_1[1],$curdate_1[2]);
+    $sql_offer .= " and nr.timestamp >= '".$entry_date."' ";
+  }
+    if (isset($_GET['exit_date']) && $_GET['exit_date']!="") {
+    $curdate_1 = explode("/", $_GET['exit_date']);
+    $entry_date = mktime(23,59,0,$curdate_1[0],$curdate_1[1],$curdate_1[2]);
+    $sql_offer .= " and nr.timestamp <= '".$entry_date."' ";
+  }
+  $sql_offer .=" group by nr.uid,DATE( FROM_UNIXTIME(nr.timestamp))";
+  //$sql_offer .=" group by DATE( FROM_UNIXTIME(nr.timestamp))";
+  $sql_offer .=" order by DATE( FROM_UNIXTIME(nr.timestamp)) desc";
+  $res_offer = pager_query($sql_offer . tablesort_sql($header), $limit = 3000);
+  $serial_numberoe = get_list_serial_number();
+  while ($row = db_fetch_array($res_offer)) {
+   $data[] = array(
+    $serial_numberoe++,
+    $row['created_date'],
+    $row['total_outlet'],
+    $row['opsexe'],
+  );
+  }
+
+
+  $output .= theme('table', $header, $data);
+  $output .= theme('pager');
+
+
+//Salesperson date wise
+  $spw_headersd = array(
+    array('data' => 'S.No'),
+    array('data' => 'Contract date'),
+    array('data' => 'offers'),
+    );
+
+  if(isset($_GET['Search_val'])){
+    $entry_date = isset($_GET['entry_datespsd'])?$_GET['entry_datespsd']:"";
+    $exit_date = isset($_GET['exit_datespsd'])?$_GET['exit_datespsd']:"";
+
+  }
+  if(isset($_GET['Search_reset']) && $_GET['Search_reset']=="View All"){
+    $outlet_id = arg(2);
+    drupal_goto($base_url."/hoppr/hoppr_overall_daily_report");
+  }
+  $data_spwsd = array();
+  $data_spwsd[-1] = array(
+        'sn'=> "<form name='abc_ssp_daily_reportsd' method='get' action=''>",
+        'entry_date'=> "From <input size='10' id='assign-fromspsd' type='text' name='entry_datespsd' readonly='readonly' class='ul_search10 form-text' value='".$entry_date."'>
+    <script type='text/javascript'>
+    jQuery(function() {
+    jQuery('#assign-fromspsd').datepicker({
+    changeMonth: true,
+    changeYear: true,
+    yearRange: '1950:2020',
+  });
+  });
+  </script>
+  To&nbsp;&nbsp;&nbsp;&nbsp; <input size='10' id='assign-from_exitspsd' type='text' name='exit_datespsd' readonly='readonly' class='ul_search10 form-text' value='".$exit_date."'>
+    <script type='text/javascript'>
+    jQuery(function() {
+    jQuery('#assign-from_exitspsd').datepicker({
+    changeMonth: true,
+    changeYear: true,
+    yearRange: '1950:2020',
+  });
+  });
+  </script>",
+  'operations' =>"<input type='submit' name='Search_val' value='Filter' class='form-submit'>
+          <input type='submit' name='Search_reset' value='View All' class='form-submit'></form>",
+  );
+
+  $sp_sql_offersd = "select count(n.nid) as sp_total_outlet,n.uid,u.name as sp_salesperson,DATE( FROM_UNIXTIME(n.created)) as sp_created_date,n.type from {node} n inner join {users} u on n.uid=u.uid where n.type='merchant_outlet'  ";
+if (isset($_GET['entry_datespsd']) && $_GET['entry_datespsd']!="") {
+    $curdate_1 = explode("/", $_GET['entry_datespsd']);
+    $entry_date = mktime(0,0,1,$curdate_1[0],$curdate_1[1],$curdate_1[2]);
+    $sp_sql_offersd .= " and n.created >= '".$entry_date."' ";
+  }
+  if (isset($_GET['exit_datespsd']) && $_GET['exit_datespsd']!="") {
+    $curdate_1 = explode("/", $_GET['exit_datespsd']);
+    $entry_date = mktime(23,59,0,$curdate_1[0],$curdate_1[1],$curdate_1[2]);
+    $sp_sql_offersd .= " and n.created <= '".$entry_date."' ";
+  }
+  $sp_sql_offersd .=" group by DATE( FROM_UNIXTIME(n.created))";
+  $sp_sql_offersd .=" order by DATE( FROM_UNIXTIME(n.created)) desc";
+  $spw_res_offersd = pager_query($sp_sql_offersd . tablesort_sql($spw_headersd), $limit = 3000);
+  $serial_number_1243sd = get_list_serial_number();
+  while ($row = db_fetch_array($spw_res_offersd)) {
+    $data_spwsd[] = array(
+    $serial_number_1243sd++,
+    $row['sp_created_date'],
+    $row['sp_total_outlet'],
+    '',
+
+  );
+}
+  $sp_new_output = "";
+  $sp_new_output .= theme('table', $spw_headersd, $data_spwsd);
+  $sp_new_output .= theme('pager');
+
+//salesperson person wise
+  $spw_header = array(
+    array('data' => 'S.No'),
+    array('data' => 'Contract date'),
+    array('data' => 'Salesperson'),
+    array('data' => 'Offers'),
+    );
+
+  if(isset($_GET['Search_val'])){
+    $entry_date = isset($_GET['entry_datesp'])?$_GET['entry_datesp']:"";
+    $exit_date = isset($_GET['exit_datesp'])?$_GET['exit_datesp']:"";
+
+  }
+  if(isset($_GET['Search_reset']) && $_GET['Search_reset']=="View All"){
+    $outlet_id = arg(2);
+    drupal_goto($base_url."/hoppr/hoppr_overall_daily_report");
+  }
+  $data_spw = array();
+  $data_spw[-1] = array(
+        'sn'=> "<form name='abc_ssp_daily_report' method='get' action=''>",
+        'entry_date'=> "From <input size='10' id='assign-fromsp' type='text' name='entry_datesp' readonly='readonly' class='ul_search10 form-text' value='".$entry_date."'>
+    <script type='text/javascript'>
+    jQuery(function() {
+    jQuery('#assign-fromsp').datepicker({
+    changeMonth: true,
+    changeYear: true,
+    yearRange: '1950:2020',
+  });
+  });
+  </script>
+  To&nbsp;&nbsp;&nbsp;&nbsp; <input size='10' id='assign-from_exitsp' type='text' name='exit_datesp' readonly='readonly' class='ul_search10 form-text' value='".$exit_date."'>
+    <script type='text/javascript'>
+    jQuery(function() {
+    jQuery('#assign-from_exitsp').datepicker({
+    changeMonth: true,
+    changeYear: true,
+    yearRange: '1950:2020',
+  });
+  });
+  </script>",
+
+  't_count' =>"",
+  'operations' =>"<input type='submit' name='Search_val' value='Filter' class='form-submit'>
+          <input type='submit' name='Search_reset' value='View All' class='form-submit'></form>",
+  );
+  $spw_sql_offer = "select count(n.nid) as total_outlet,n.uid,u.name as salesperson,DATE( FROM_UNIXTIME(n.created)) as created_date,n.type from {node} n inner join {users} u on n.uid=u.uid where n.type='merchant_outlet'  ";
+  if (isset($_GET['entry_datesp']) && $_GET['entry_datesp']!="") {
+    $curdate_1 = explode("/", $_GET['entry_datesp']);
+    $entry_date = mktime(0,0,1,$curdate_1[0],$curdate_1[1],$curdate_1[2]);
+    $spw_sql_offer .= " and n.created >= '".$entry_date."' ";
+  }
+  if (isset($_GET['exit_datesp']) && $_GET['exit_datesp']!="") {
+    $curdate_1 = explode("/", $_GET['exit_datesp']);
+    $entry_date = mktime(23,59,0,$curdate_1[0],$curdate_1[1],$curdate_1[2]);
+    $spw_sql_offer .= " and n.created <= '".$entry_date."' ";
+  }
+  $spw_sql_offer .=" group by n.uid,DATE( FROM_UNIXTIME(n.created))";
+  $spw_sql_offer .=" order by n.nid desc";
+  $spw_res_offer = pager_query($spw_sql_offer . tablesort_sql($spw_header), $limit = 3000);
+  $serial_number_1243 = get_list_serial_number();
+
+  while ($row = db_fetch_array($spw_res_offer)) {
+    $data_spw[] = array(
+    $serial_number_1243++,
+    $row['created_date'],
+    $row['salesperson'],
+    $row['total_outlet'],
+    '',
+  );
+}
+  $spwise_output = "";
+  $spwise_output .= theme('table', $spw_header, $data_spw);
+  $spwise_output .= theme('pager');
+
+//OE
+  $spw_headeroe = array(
+    array('data' => 'S.No'),
+    array('data' => 'Ops date'),
+    array('data' => 'ops done'),
+    );
+
+  if(isset($_GET['Search_val'])){
+    $entry_dateoe = isset($_GET['entry_datespoe'])?$_GET['entry_datespoe']:"";
+    $exit_dateoe = isset($_GET['exit_datespoe'])?$_GET['exit_datespoe']:"";
+
+  }
+  if(isset($_GET['Search_reset']) && $_GET['Search_reset']=="View All"){
+    $outlet_id = arg(2);
+    drupal_goto($base_url."/hoppr/hoppr_overall_daily_report");
+  }
+  $data_spwoe = array();
+  $data_spwoe[-1] = array(
+        'sn'=> "<form name='abc_ssp_daily_reportoe' method='get' action=''>",
+        'entry_date'=> "From <input size='10' id='assign-fromspoe' type='text' name='entry_datespoe' readonly='readonly' class='ul_search10 form-text' value='".$entry_dateoe."'>
+    <script type='text/javascript'>
+    jQuery(function() {
+    jQuery('#assign-fromspoe').datepicker({
+    changeMonth: true,
+    changeYear: true,
+    yearRange: '1950:2020',
+  });
+  });
+  </script>
+  To&nbsp;&nbsp;&nbsp;&nbsp; <input size='10' id='assign-from_exitspoe' type='text' name='exit_datespoe' readonly='readonly' class='ul_search10 form-text' value='".$exit_dateoe."'>
+    <script type='text/javascript'>
+    jQuery(function() {
+    jQuery('#assign-from_exitspoe').datepicker({
+    changeMonth: true,
+    changeYear: true,
+    yearRange: '1950:2020',
+  });
+  });
+  </script>",
+  'operations' =>"<input type='submit' name='Search_val' value='Filter' class='form-submit'>
+          <input type='submit' name='Search_reset' value='View All' class='form-submit'></form>",
+  );
+
+  $sql_offeroe = "select count(distinct nr.nid) as total_outlet,nr.uid,u.name as opsexe, DATE( FROM_UNIXTIME(nr.timestamp)) as created_date from {node_revisions} nr inner join {users} u on nr.uid=u.uid inner join {users_roles} ur on u.uid=ur.uid inner join {role} r on ur.rid=r.rid where r.name='y2cfoperations'  ";
+
+  if (isset($_GET['entry_datespoe']) && $_GET['entry_datespoe']!="") {
+    $curdate_1 = explode("/", $_GET['entry_datespoe']);
+    $entry_date = mktime(0,0,1,$curdate_1[0],$curdate_1[1],$curdate_1[2]);
+    $sql_offeroe .= " and nr.timestamp >= '".$entry_date."' ";
+  }
+  if (isset($_GET['exit_datespoe']) && $_GET['exit_datespoe']!="") {
+    $curdate_1 = explode("/", $_GET['exit_datespoe']);
+    $entry_date = mktime(23,59,0,$curdate_1[0],$curdate_1[1],$curdate_1[2]);
+    $sql_offeroe .= " and nr.timestamp <= '".$entry_date."' ";
+  }
+  $sql_offeroe .=" group by DATE( FROM_UNIXTIME(nr.timestamp))";
+  $sql_offeroe .=" order by DATE( FROM_UNIXTIME(nr.timestamp)) desc";
+
+
+
+  $serial_numberoe = get_list_serial_number();
+  $res_offer = pager_query($sql_offeroe . tablesort_sql($spw_headeroe), $limit = 3000);
+
+    while ($row = db_fetch_array($res_offer)) {
+    $data_spwoe[] = array(
+    $serial_numberoe++,
+    $row['created_date'],
+    $row['total_outlet'],
+    '',
+  );
+}
+  $new_output = "";
+  $new_output .= theme('table', $spw_headeroe, $data_spwoe);
+  $new_output .= theme('pager');
+
+  $com_output='<table width="100%" border="1px" cellspacing="0" style="border-collapse:collapse">
+  <tr>
+    <th colspan="11" bgcolor="#FDE9D9" scope="col">Reports &nbsp;&nbsp;&nbsp;&nbsp; '.l('Documentation report', $base_url.'/hoppr/hoppr_docs_report').' &nbsp;&nbsp;&nbsp;&nbsp; '.l('Keyword report', $base_url.'/hoppr/hoppr_keyword_report').' &nbsp;&nbsp;&nbsp;&nbsp; '.l('offer upload report', $base_url.'/hoppr/hoppr_offerupload_report').' &nbsp;&nbsp;&nbsp;&nbsp; '.l('offer testing report', $base_url.'/hoppr/hoppr_offertesting_report').'</th>
+  </tr>
+  <tr bgcolor="#FDE9D9">
+    <td valign="top" width="25%">Salesperson wise report'.$spwise_output.'</td>
+    <td valign="top" width="25%">Sales date wise report'.$sp_new_output.'</td>
+    <td valign="top" width="25%">OE wise report'.$output.'</td>
+    <td valign="top" width="25%">OE-date wise report'.$new_output.'</td>
+  </tr>
+</table>';
+  return $com_output;
+}
+
+function hoppr_docs_report() {
+	global $base_url;
+	$new_output = "Docs report";
+	//OE
+  $spw_headeroe = array(
+    array('data' => 'S.No'),
+    array('data' => 'date'),
+    array('data' => 'documents varified'),
+    );
+
+  if(isset($_GET['Search_val'])){
+    $entry_dateoe = isset($_GET['entry_datespoe'])?$_GET['entry_datespoe']:"";
+    $exit_dateoe = isset($_GET['exit_datespoe'])?$_GET['exit_datespoe']:"";
+
+  }
+  if(isset($_GET['Search_reset']) && $_GET['Search_reset']=="View All"){
+    $outlet_id = arg(2);
+    drupal_goto($base_url."/hoppr/hoppr_overall_daily_report");
+  }
+  $data_spwoe = array();
+  $data_spwoe[-1] = array(
+        'sn'=> "<form name='abc_ssp_daily_reportoe' method='get' action=''>",
+        'entry_date'=> "From <input size='10' id='assign-fromspoe' type='text' name='entry_datespoe' readonly='readonly' class='ul_search10 form-text' value='".$entry_dateoe."'>
+    <script type='text/javascript'>
+    jQuery(function() {
+    jQuery('#assign-fromspoe').datepicker({
+    changeMonth: true,
+    changeYear: true,
+    yearRange: '1950:2020',
+  });
+  });
+  </script>
+  To&nbsp;&nbsp;&nbsp;&nbsp; <input size='10' id='assign-from_exitspoe' type='text' name='exit_datespoe' readonly='readonly' class='ul_search10 form-text' value='".$exit_dateoe."'>
+    <script type='text/javascript'>
+    jQuery(function() {
+    jQuery('#assign-from_exitspoe').datepicker({
+    changeMonth: true,
+    changeYear: true,
+    yearRange: '1950:2020',
+  });
+  });
+  </script>",
+  'operations' =>"<input type='submit' name='Search_val' value='Filter' class='form-submit'>
+          <input type='submit' name='Search_reset' value='View All' class='form-submit'></form>",
+  );
+
+  //$sql_offeroe = "select count(distinct nr.nid) as total_outlet,nr.uid,u.name as opsexe, DATE( FROM_UNIXTIME(nr.timestamp)) as created_date from {node_revisions} nr inner join {users} u on nr.uid=u.uid inner join {users_roles} ur on u.uid=ur.uid inner join {role} r on ur.rid=r.rid where r.name='y2cfoperations'  ";
+
+  $sql_offeroe = "select count(distinct nr.nid) as total_outlet,nr.uid,u.name as opsexe, DATE( FROM_UNIXTIME(nr.timestamp)) as created_date from {node_revisions} nr inner join {users} u on nr.uid=u.uid inner join {users_roles} ur on u.uid=ur.uid inner join {role} r on ur.rid=r.rid where r.name='operationmngr'  ";
+
+  if (isset($_GET['entry_datespoe']) && $_GET['entry_datespoe']!="") {
+    $curdate_1 = explode("/", $_GET['entry_datespoe']);
+    $entry_date = mktime(0,0,1,$curdate_1[0],$curdate_1[1],$curdate_1[2]);
+    $sql_offeroe .= " and nr.timestamp >= '".$entry_date."' ";
+  }
+  if (isset($_GET['exit_datespoe']) && $_GET['exit_datespoe']!="") {
+    $curdate_1 = explode("/", $_GET['exit_datespoe']);
+    $entry_date = mktime(23,59,0,$curdate_1[0],$curdate_1[1],$curdate_1[2]);
+    $sql_offeroe .= " and nr.timestamp <= '".$entry_date."' ";
+  }
+  $sql_offeroe .=" group by DATE( FROM_UNIXTIME(nr.timestamp))";
+  $sql_offeroe .=" order by DATE( FROM_UNIXTIME(nr.timestamp)) desc";
+
+
+
+  $serial_numberoe = get_list_serial_number();
+  $res_offer = pager_query($sql_offeroe . tablesort_sql($spw_headeroe), $limit = 3000);
+
+    while ($row = db_fetch_array($res_offer)) {
+    $data_spwoe[] = array(
+    $serial_numberoe++,
+    $row['created_date'],
+    $row['total_outlet'],
+    '',
+  );
+}
+  $new_output = "";
+  $new_output .= theme('table', $spw_headeroe, $data_spwoe);
+  $new_output .= theme('pager');
+
+  $com_output = '<table width="100%" border="1px" cellspacing="0" style="border-collapse:collapse">
+  <tr>
+    <th colspan="11" bgcolor="#FDE9D9" scope="col">Reports &nbsp;&nbsp;&nbsp;&nbsp; '.l('Documentation report', $base_url.'/hoppr/hoppr_docs_report').' &nbsp;&nbsp;&nbsp;&nbsp; '.l('Keyword report', $base_url.'/hoppr/hoppr_keyword_report').' &nbsp;&nbsp;&nbsp;&nbsp; '.l('offer upload report', $base_url.'/hoppr/hoppr_offerupload_report').' &nbsp;&nbsp;&nbsp;&nbsp; '.l('offer testing report', $base_url.'/hoppr/hoppr_offertesting_report').'</th>
+  </tr>
+  <tr bgcolor="#FDE9D9">
+    <td valign="top" width="75%">Documentation report'.$new_output.'</td>
+    <td valign="top" width="25%"><div id="my_chart"></div></td>
+  </tr>
+</table>';
+
+
+
+  return $com_output;
+}
+function hoppr_keyword_report() {
+  global $base_url;
+	$new_output = "Docs report";
+	//OE
+  $spw_headeroe = array(
+    array('data' => 'S.No'),
+    array('data' => 'date'),
+    array('data' => 'Keywords/Script'),
+    );
+
+  if(isset($_GET['Search_val'])){
+    $entry_dateoe = isset($_GET['entry_datespoe'])?$_GET['entry_datespoe']:"";
+    $exit_dateoe = isset($_GET['exit_datespoe'])?$_GET['exit_datespoe']:"";
+
+  }
+  if(isset($_GET['Search_reset']) && $_GET['Search_reset']=="View All"){
+    $outlet_id = arg(2);
+    drupal_goto($base_url."/hoppr/hoppr_overall_daily_report");
+  }
+  $data_spwoe = array();
+  $data_spwoe[-1] = array(
+        'sn'=> "<form name='abc_ssp_daily_reportoe' method='get' action=''>",
+        'entry_date'=> "From <input size='10' id='assign-fromspoe' type='text' name='entry_datespoe' readonly='readonly' class='ul_search10 form-text' value='".$entry_dateoe."'>
+    <script type='text/javascript'>
+    jQuery(function() {
+    jQuery('#assign-fromspoe').datepicker({
+    changeMonth: true,
+    changeYear: true,
+    yearRange: '1950:2020',
+  });
+  });
+  </script>
+  To&nbsp;&nbsp;&nbsp;&nbsp; <input size='10' id='assign-from_exitspoe' type='text' name='exit_datespoe' readonly='readonly' class='ul_search10 form-text' value='".$exit_dateoe."'>
+    <script type='text/javascript'>
+    jQuery(function() {
+    jQuery('#assign-from_exitspoe').datepicker({
+    changeMonth: true,
+    changeYear: true,
+    yearRange: '1950:2020',
+  });
+  });
+  </script>",
+  'operations' =>"<input type='submit' name='Search_val' value='Filter' class='form-submit'>
+          <input type='submit' name='Search_reset' value='View All' class='form-submit'></form>",
+  );
+
+  //$sql_offeroe = "select count(distinct nr.nid) as total_outlet,nr.uid,u.name as opsexe, DATE( FROM_UNIXTIME(nr.timestamp)) as created_date from {node_revisions} nr inner join {users} u on nr.uid=u.uid inner join {users_roles} ur on u.uid=ur.uid inner join {role} r on ur.rid=r.rid where r.name='y2cfoperations'  ";
+
+  $sql_offeroe = "select count(distinct nr.nid) as total_outlet,nr.uid,u.name as opsexe, DATE( FROM_UNIXTIME(nr.timestamp)) as created_date from {node_revisions} nr inner join {users} u on nr.uid=u.uid inner join {users_roles} ur on u.uid=ur.uid inner join {role} r on ur.rid=r.rid where r.name='y2cfproducts'  ";
+
+  if (isset($_GET['entry_datespoe']) && $_GET['entry_datespoe']!="") {
+    $curdate_1 = explode("/", $_GET['entry_datespoe']);
+    $entry_date = mktime(0,0,1,$curdate_1[0],$curdate_1[1],$curdate_1[2]);
+    $sql_offeroe .= " and nr.timestamp >= '".$entry_date."' ";
+  }
+  if (isset($_GET['exit_datespoe']) && $_GET['exit_datespoe']!="") {
+    $curdate_1 = explode("/", $_GET['exit_datespoe']);
+    $entry_date = mktime(23,59,0,$curdate_1[0],$curdate_1[1],$curdate_1[2]);
+    $sql_offeroe .= " and nr.timestamp <= '".$entry_date."' ";
+  }
+  $sql_offeroe .=" group by DATE( FROM_UNIXTIME(nr.timestamp))";
+  $sql_offeroe .=" order by DATE( FROM_UNIXTIME(nr.timestamp)) desc";
+
+
+
+  $serial_numberoe = get_list_serial_number();
+  $res_offer = pager_query($sql_offeroe . tablesort_sql($spw_headeroe), $limit = 3000);
+
+    while ($row = db_fetch_array($res_offer)) {
+    $data_spwoe[] = array(
+    $serial_numberoe++,
+    $row['created_date'],
+    $row['total_outlet'],
+    '',
+  );
+}
+  $new_output = "";
+  $new_output .= theme('table', $spw_headeroe, $data_spwoe);
+  $new_output .= theme('pager');
+
+  $com_output = '<table width="100%" border="1px" cellspacing="0" style="border-collapse:collapse">
+  <tr>
+    <th colspan="11" bgcolor="#FDE9D9" scope="col">Reports &nbsp;&nbsp;&nbsp;&nbsp; '.l('Documentation report', $base_url.'/hoppr/hoppr_docs_report').' &nbsp;&nbsp;&nbsp;&nbsp; '.l('Keyword report', $base_url.'/hoppr/hoppr_keyword_report').' &nbsp;&nbsp;&nbsp;&nbsp; '.l('offer upload report', $base_url.'/hoppr/hoppr_offerupload_report').' &nbsp;&nbsp;&nbsp;&nbsp; '.l('offer testing report', $base_url.'/hoppr/hoppr_offertesting_report').'</th>
+  </tr>
+  <tr bgcolor="#FDE9D9">
+    <td valign="top" width="75%">Keyword/Script report'.$new_output.'</td>
+    <td valign="top" width="25%"><div id="my_chart"></div></td>
+  </tr>
+</table>';
+
+
+
+  return $com_output;
+}
+function hoppr_offerupload_report() {
+  $output = "Docs report";
+  return $output;
+}
+function hoppr_offertesting_report() {
+  $output = "Docs report";
+  return $output;
+}
+

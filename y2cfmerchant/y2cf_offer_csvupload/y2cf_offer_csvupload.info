@@ -1,0 +1,5 @@
+name = CSV merchant offer upload
+description = Hopper CSV merchant offer upload
+core = 6.x
+
+package = Y2CF

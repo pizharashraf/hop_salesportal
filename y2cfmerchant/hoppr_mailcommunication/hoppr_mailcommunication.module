@@ -1,0 +1,600 @@
+<?php
+function get_signup_mercahnt_detail($merchant_id) {
+	$mer_out_vid = db_result(db_query("Select vid from {node} where nid='".$merchant_id."' "));
+	$merchant_detail = db_fetch_array(db_query("select field_hopper_checkin1_value,field_offer_description_value,field_merchant_offer_price_value,field_mer_offer_price_value,field_offer_discount_value,field_mer_marketing_fee_value,field_hop_cost_ser_inclu_value,field_hop_dur_each_ser_value,field_merchant_email_id_email,field_mer_alt_email_id_email,field_offer_coupon_validity_value,field_hop_sp_valid_from_value,field_hop_sp_valid_from_value2,field_merchant_title_value,field_merchant_f_name_value,field_merchant_last_name_value,field_hop_ops_glendat_value FROM {content_type_offer_detail} where vid='".$mer_out_vid."' "));
+	return $merchant_detail;
+}
+function get_sign_up_mail_template_for_preview($monid, $merchant_outlet_id, $logo_img,$signatory_name,$sp,$fb,$gplu,$twitter) {
+	global $base_url;
+	$edit_offer_url = $base_url.'/node/'.$monid.'/edit?destination=y2cf/merchantsoperation#edit-field-merchant-f-name-0-value';
+	$edit_mer_outlet_id = $base_url.'/node/'.$merchant_outlet_id.'/edit?destination=y2cf/merchantsoperation';
+	$sign_up_mail_body = '<div id="container" style="position:relative; margin-left:auto; margin-right:auto; width:700px; border:solid 6px #002060; padding:35px"><img src="'.$logo_img.'" width="186" height="88" alt="hoppr" style=" float:right; display:block" /><br /><br /><br><br />
+	<span >
+	<font style="color:#D9096E; font-size: 20px"id="text" face="Arial"><strong>
+	dear <a href="'.$edit_offer_url.'" target="_blank">'.$signatory_name.'</a>,</strong></font><br />
+
+	<p>congratulations! <br /><br />
+	you have just signed up for world&rsquo;s only device agnostic, location based check-in service.</span>
+	<p>thousands of hoppr users check in at different places every day. at over 8000 such places, they are delighted to discover specials. your place(s) is now one of them!</p>
+	<p>one of our hoppr helpers will get in touch with you shortly to confirm your sign up and will take
+	you through the steps involved before taking your special live on hoppr.</p>
+
+	<p>get in touch with us anytime for any help or feedback, just drop us an email at <a href="mailto:connect@hoppr.com"><u>connect@hoppr.com</u></a></p>
+	<span ><font style="font-size:15px" color="#000000">
+	</font> </span>
+	<img src="'.$sp.'" width="100%"  /><br />
+	
+	<br/>
+	<hr style="height:3px; color:#F03; background-color:#F06; border:0px;" />
+	<table cellspacing="0" cellpadding="0" style="margin:0px;border:solid 1px #fff;width:100%" >
+	<tr><td style="padding:6px 0px 0px 0px;margin:0px" colspan="3">
+	<font style="font-size:19px" color="#002060" face="Arial"><b>team hoppr</b></font><font style="font-size:19px" color="#D9096E" face="Arial"><b> </b></font>
+	</td></tr>
+	<tr style="border:0px">
+	<td valign="middle" style="padding:0px;margin:0px">
+	visit us at: <a href="http://www.hoppr.com">www.hoppr.com</a> </td>
+
+	<td valign="middle" style="padding:0px;margin:0px">
+	<a href="http://www.facebook.com/hoppinghoppr"><img src="'.$fb.'" width="30" height="30" alt="facebook" /></a>
+	</td>
+	<td valign="middle">
+	<a href="http://www.facebook.com/hoppinghoppr">facebook.com/hoppinghoppr</a></td>
+
+	<td valign="middle" style="padding:0px;margin:0px">
+	<a href="https://twitter.com/#!/hoppinghoppr"><img src="'.$twitter.'" width="30" height="30" alt="twitter"/></a>
+	</td>
+	<td valign="middle">
+	<a href="https://twitter.com/#!/hoppinghoppr"> twitter.com/hoppinghoppr</a>
+	</td>
+	</tr>
+	</table>
+	</div>';
+	return $sign_up_mail_body;
+}
+
+
+function get_sign_up_mail_template($logo_img,$signatory_name,$sp,$fb,$gplu,$twitter) {
+	$sign_up_mail_body = '<div id="container" style="position:relative; margin-left:auto; margin-right:auto; width:700px; border:solid 6px #002060; padding:35px"><img src="'.$logo_img.'" width="186" height="88" alt="hoppr" style=" float:right; display:block" /><br /><br /><br><br />
+	<span >
+	<font style="color:#D9096E; font-size: 20px"id="text" face="Arial"><strong>
+	dear '.$signatory_name.',</strong></font><br />
+		
+	<p>congratulations! <br /><br />
+	you have just signed up for world&rsquo;s only device agnostic, location based check-in service.</span>
+	<p>thousands of hoppr users check in at different places every day. at over 8000 such places, they are delighted to discover specials. your place(s) is now one of them!</p>
+	<p>one of our hoppr helpers will get in touch with you shortly to confirm your sign up and will take
+	you through the steps involved before taking your special live on hoppr.</p>
+	
+	<p>get in touch with us anytime for any help or feedback, just drop us an email at <a href="mailto:connect@hoppr.com"><u>connect@hoppr.com</u></a></p>
+	<span ><font style="font-size:15px" color="#000000">
+	</font> </span>
+	<img src="'.$sp.'" width="100%"  /><br />
+	<br />
+	<font style="font-size:15px" color="#000000" face="Calibri"></font>
+	<hr style="height:3px; color:#F03; background-color:#F06; border:0px;" />
+	<table cellspacing="0" cellpadding="0" style="margin:0px;border:solid 1px #fff;width:100%" >
+	<tr><td style="padding:6px 0px 0px 0px;margin:0px" colspan="3">
+	<font style="font-size:19px" color="#002060" face="Arial"><b>team hoppr</b></font><font style="font-size:19px" color="#D9096E" face="Arial"><b> </b></font>
+	</td></tr>
+	<tr style="border:0px">
+	<td valign="middle" style="padding:0px;margin:0px">
+		visit us at: <a href="http://www.hoppr.com">www.hoppr.com</a> </td>
+		
+	<td valign="middle" style="padding:0px;margin:0px">
+		<a href="http://www.facebook.com/hoppinghoppr"><img src="'.$fb.'" width="30" height="30" alt="facebook" /></a>
+	</td>
+	<td valign="middle">
+		<a href="http://www.facebook.com/hoppinghoppr">facebook.com/hoppinghoppr</a></td>
+		
+	<td valign="middle" style="padding:0px;margin:0px">
+		<a href="https://twitter.com/#!/hoppinghoppr"><img src="'.$twitter.'" width="30" height="30" alt="twitter"/></a>
+	</td>
+	<td valign="middle">
+		<a href="https://twitter.com/#!/hoppinghoppr"> twitter.com/hoppinghoppr</a>
+	</td>
+	</tr>
+	</table>
+	</div>';
+	return $sign_up_mail_body;
+}
+//GO LIVE MAIL SENT MAIL Preview
+function get_merchant_offer_code($merchant_outlet_nid) {
+	$outlet_vid = db_result(db_query("select vid from {node} where nid='".$merchant_outlet_nid."' "));
+	$merchant_nid = db_result(db_query("select field_hopper_merchant_olt_nid from {content_type_merchant_outlet} where vid='".$outlet_vid."' "));
+	return $merchant_nid;
+}
+function get_mail_template_for_go_live_for_preview($merchant_outlet_nid) {
+	global $base_url;
+	$path_theme = $base_url.'/'.path_to_theme();
+	$mer_out_name = db_result(db_query("select title from {node} where nid='".$merchant_outlet_nid."' "));
+	
+	$merchant_nid = get_merchant_offer_code($merchant_outlet_nid);
+	
+	$outlet_vid = db_result(db_query("select vid from {node} where nid='".$merchant_outlet_nid."' "));
+	//$merchant_nid = db_result(db_query("select field_hopper_merchant_olt_nid from {content_type_merchant_outlet} where vid='".$outlet_vid."' "));
+	
+	$merchant_var_off_desc = db_result(db_query("select field_pro_script_value from {content_type_merchant_outlet} where vid='".$outlet_vid."' "));
+
+	
+
+
+
+	$merchant_vid = db_result(db_query("select vid from {node} where nid='".$merchant_nid."' "));
+
+	$merchant_detail = db_fetch_array(db_query("select field_hopper_checkin1_value,field_offer_description_value,field_merchant_offer_price_value,field_mer_offer_price_value,field_offer_discount_value,field_mer_marketing_fee_value,field_hop_cost_ser_inclu_value,field_hop_dur_each_ser_value,field_merchant_email_id_email,field_mer_alt_email_id_email,field_offer_coupon_validity_value,field_hop_sp_valid_from_value,field_hop_sp_valid_from_value2,field_merchant_title_value,field_merchant_f_name_value,field_merchant_last_name_value,field_hop_ops_glendat_value FROM content_type_offer_detail where vid='".$merchant_vid."' "));
+
+	if(!empty($merchant_detail['field_merchant_last_name_value'])) {
+		$outlet_cp_name = $merchant_detail['field_merchant_title_value'].' '.$merchant_detail['field_merchant_f_name_value'].' '.$merchant_detail['field_merchant_last_name_value'].',';
+	}else{
+		$outlet_cp_name = $merchant_detail['field_merchant_title_value'].' '.$merchant_detail['field_merchant_f_name_value'].',';
+	}
+
+
+	/*
+	 if(!empty($merchant_detail['field_hopper_checkin1_value'])) {
+	$offer_description = strtolower($merchant_detail['field_hopper_checkin1_value']);
+	} else {
+	$offer_description = strtolower($merchant_detail['field_offer_description_value']);
+	}
+	*/
+	//$offer_description = strtolower($merchant_detail['field_pro_script_value']);
+
+	$offer_validity = $merchant_detail['field_offer_coupon_validity_value'].' days';
+	$ofr_val_dt_rng = ' ('.displat_date_in_excel_format($merchant_detail['field_hop_sp_valid_from_value']).' To '.displat_date_in_excel_format($merchant_detail['field_hop_sp_valid_from_value2']). ')';
+	$ofr_val = $offer_validity;
+
+	$outlet_detail = db_fetch_array(db_query("SELECT field_mo_oprational_timings_value,field_hop_ops_frm_hrs_value,field_hop_ops_ot_mm_frm_value,field_hop_ops_to_hrs_value,field_hop_ops_ot_mm_to_value,field_mo_holidays_value,field_hop_outlet_nvon_value,field_mo_hop_contact_person_value,field_mo_app_mon_num_number,field_hop_alt_enq_app_num_number,field_hop_ops_frm_hrs_op2_value,field_hop_ops_ot_mm_frm_op2_value,field_hop_ops_to_hrs_op2_value,field_hop_ops_ot_mm_to_op2_value,field_hop_ops_glendat_mo_value,field_sales_hop_ops_glendat_mo_value,field_pro_script_value FROM {content_type_merchant_outlet} where vid='".$outlet_vid."' "));
+
+
+	if(!empty($merchant_detail['field_hop_ops_glendat_value'])) {
+		$hop_gl_dt = $merchant_detail['field_hop_ops_glendat_value'];
+	}elseif(!empty($outlet_detail['field_hop_ops_glendat_mo_value'])) {
+		$hop_gl_dt = $outlet_detail['field_hop_ops_glendat_mo_value'];
+	}elseif(!empty($outlet_detail['field_sales_hop_ops_glendat_mo_value'])) {
+		$hop_gl_dt = $outlet_detail['field_sales_hop_ops_glendat_mo_value'];
+	}
+	$hop_gl_del_date = $hop_gl_dt;
+
+
+	if(!empty($outlet_detail['field_mo_oprational_timings_value'])) {
+		$ops_timing = $outlet_detail['field_mo_oprational_timings_value'];
+	} else {
+		if(!empty($outlet_detail['field_hop_ops_ot_mm_frm_value'])) {
+			$frm_min = $outlet_detail['field_hop_ops_ot_mm_frm_value'];
+		}else{
+			$frm_min = '00';
+		}
+		if(!empty($outlet_detail['field_hop_ops_ot_mm_to_value'])) {
+			$to_min = $outlet_detail['field_hop_ops_ot_mm_to_value'];
+		}else{
+			$to_min = '00';
+		}
+		$ops_main_timing = $outlet_detail['field_hop_ops_frm_hrs_value'].":".$frm_min." hrs To ". $outlet_detail['field_hop_ops_to_hrs_value'].":".$to_min." hrs";
+		$ops_spec_timing = $outlet_detail['field_hop_ops_frm_hrs_op2_value'].":".$outlet_detail['field_hop_ops_ot_mm_frm_op2_value']." To ". $outlet_detail['field_hop_ops_to_hrs_op2_value'].":".$outlet_detail['field_hop_ops_ot_mm_to_op2_value'];
+		if(!empty($outlet_detail['field_hop_ops_frm_hrs_op2_value'])) {
+			$ops_timing = $ops_main_timing." Offer Specific Timings, if any ".$ops_spec_timing;
+		}else {
+			$ops_timing = $ops_main_timing;
+		}
+
+	}
+
+	if(!empty($outlet_detail['field_mo_holidays_value'])) {
+		$weekly_off = $outlet_detail['field_mo_holidays_value'];
+	} else {
+		$weekly_off = get_outlet_weekly_off($merchant_outlet_nid);
+	}
+	if(!empty($outlet_detail['field_hop_outlet_nvon_value'])) {
+		$closed_on = 'closed on '.$outlet_detail['field_hop_outlet_nvon_value'];
+	}else {
+		$closed_on = '';
+	}
+
+	if($weekly_off=='Monday' || $weekly_off=='Tuesday' || $weekly_off=='Wednesday' || $weekly_off=='Thursday' || $weekly_off=='Friday' || $weekly_off=='Saturday' || $weekly_off=='Sunday') {
+		$offset = "Off";
+	}else{
+		$offset = "";
+	}
+	$ops_day_timing = strtolower($weekly_off).' '. $offset .' ,'.$ops_timing;
+
+
+
+
+
+	$logo_img = $path_theme.'/images/hoppr-logo.png';
+	$smshop = $path_theme.'/images/smshop.png';
+	$fb = $path_theme.'/images/fb.png';
+	$gplu = $path_theme.'/images/gplu.png';
+	$twitter = $path_theme.'/images/tw.png';
+	$all_telco = $path_theme.'/images/all-telco.png';
+	$sp =  $path_theme.'/images/banner1.png';
+	if(!empty($outlet_detail['field_hop_alt_enq_app_num_number'])) {
+		$outlet_alt_no = $outlet_detail['field_hop_alt_enq_app_num_number'];
+	}else{
+		$outlet_alt_no = '';
+	}
+
+	$edit_offer_url_sig_name = $base_url.'/node/'.$merchant_nid.'/edit?destination=y2cf/merchantsoperation#edit-field-merchant-title-value';
+	$edit_offer_url_validity = $base_url.'/node/'.$merchant_nid.'/edit?destination=y2cf/merchantsoperation#edit-field-hop-no-part-cities-0-value';
+	$edit_offer_url_sigmobile_no = $base_url.'/node/'.$merchant_nid.'/edit?destination=y2cf/merchantsoperation#edit-field-hop-sig-designation-0-value';
+	$edit_mer_outlet_id = $base_url.'/node/'.$merchant_outlet_nid.'/edit?destination=y2cf/merchantsoperation#edit-field-hop-ops-pro-kwds-mo-0-value';
+	
+	
+	$mail_body = '<div id="container" style="position:relative; margin-left:auto; margin-right:auto; width:700px; border:solid 6px #002060; padding:35px"><img src="'.$logo_img.'" width="186" height="88" alt="hoppr" style=" float:right; display:block" /><br /><br /><br><br />
+	<span >
+	<font style="color:#D9096E; font-size: 20px"id="text" face="Arial"><strong>
+	dear <a href="'.$edit_offer_url_sig_name.'" target="_blank">'.strtolower($outlet_cp_name).'</a></strong></font><br />
+	<font style="font-size:15px" color="#000000" face="Calibri">
+	<p>welcome to happy times at hoppr.<br /><br />
+	we are delighted to have you on board world&rsquo;s only device agnostic, location based check-in service. enjoy the journey!
+
+	</p><p>details of your hoppr special are mentioned below:<p></font> </span>
+
+	<table style="position:relative;width:100%;border-top:3px #D9096E solid;border-bottom:3px #D9096E solid;" cellpadding="3" cellspacing="0" id="Table1">
+	<tr style="border-bottom:1px #F0D0F0 solid">
+	<td  align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;border-right:3px #F0D0F0 solid;width:40%;height:30px;">
+	<strong>description of your &lsquo;special&rsquo;:</strong></td>
+	<td  align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;height:30px;width:60%">
+	<a href="'.$edit_mer_outlet_id.'" target="_blank">'.strtolower($merchant_var_off_desc).'</a></td>
+	</tr>
+	<tr>
+	<td align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;border-right:3px #F0D0F0 solid;width:40%;height:30px;"><strong>validity period of your &lsquo;special&rsquo;:
+	</strong></td>
+	<td align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;height:35px;width:60%"><a href="'.$edit_offer_url_validity.'" target="_blank">'.$ofr_val.'</a>
+	</td>
+	</tr>
+
+	<tr>
+	<td align="left" valign="middle" style="border-bottom:0px #F0D0F0 solid;border-right:3px #F0D0F0 solid;width:40%;height:30px;"><strong>appointment/enquiry number:
+	</strong></td>
+	<td align="left" valign="middle" style="border-bottom:0px #F0D0F0 solid;height:30px;width:60%"><a href="'.$edit_offer_url_sigmobile_no.'" target="_blank">'.$outlet_detail['field_mo_app_mon_num_number'].'</a>
+	</td>
+	</tr>
+	</table>
+	<br />
+	<font style="font-size:15px" color="#000000" face="Calibri">
+	get in touch with us anytime for any help or feedback, drop us an email at <a href="mailto:connect@hoppr.com"><u>connect@hoppr.com</u></a>
+	</font>
+	<span ><font style="font-size:15px" color="#000000">
+	<p></font> </span>
+	<br>
+	<img src="'.$sp.'" width="100%"  /><br />
+	
+	<font style="font-size:15px" color="#000000" face="Calibri"></font>
+	<hr style="height:3px; color:#F03; background-color:#F06; border:0px;" />
+	<table cellspacing="0" cellpadding="0" style="margin:0px;border:solid 1px #fff;width:100%" >
+	<tr><td style="padding:5px 0px 0px 0px;margin:0px" colspan="3">
+	<font style="font-size:19px" color="#002060" face="Arial"><b>team hoppr</b></font><font style="font-size:19px" color="#D9096E" face="Arial"><b> </b></font>
+	</td></tr>
+	<tr style="border:0px">
+	<td valign="middle" style="padding:0px;margin:0px">
+	visit us at: <a href="http://www.hoppr.com">www.hoppr.com</a> </td>
+
+	<td valign="middle" style="padding:0px;margin:0px">
+	<a href="http://www.facebook.com/hoppinghoppr"><img src="'.$fb.'" width="30" height="30" alt="facebook" /></a>
+	</td>
+	<td valign="middle">
+	<a href="http://www.facebook.com/hoppinghoppr">facebook.com/hoppinghoppr</a></td>
+
+	<td valign="middle" style="padding:0px;margin:0px">
+	<a href="https://twitter.com/#!/hoppinghoppr"><img src="'.$twitter.'" width="30" height="30" alt="twitter"/></a>
+	</td>
+	<td valign="middle">
+	<a href="https://twitter.com/#!/hoppinghoppr"> twitter.com/hoppinghoppr</a>
+	</td>
+	</tr>
+	</table>
+	</div>';
+	return $mail_body;
+}
+
+
+function get_mail_template_for_go_live($merchant_outlet_nid) {
+	global $base_url;
+	$path_theme = $base_url.'/'.path_to_theme();
+	$mer_out_name = db_result(db_query("select title from {node} where nid='".$merchant_outlet_nid."' "));
+	$outlet_vid = db_result(db_query("select vid from {node} where nid='".$merchant_outlet_nid."' "));
+	
+	$merchant_var_off_desc = db_result(db_query("select field_pro_script_value from {content_type_merchant_outlet} where vid='".$outlet_vid."' "));
+	
+	$merchant_nid = db_result(db_query("select field_hopper_merchant_olt_nid from {content_type_merchant_outlet} where vid='".$outlet_vid."' "));
+	
+	
+	
+	$merchant_vid = db_result(db_query("select vid from {node} where nid='".$merchant_nid."' "));
+
+	$merchant_detail = db_fetch_array(db_query("select field_hopper_checkin1_value,field_offer_description_value,field_merchant_offer_price_value,field_mer_offer_price_value,field_offer_discount_value,field_mer_marketing_fee_value,field_hop_cost_ser_inclu_value,field_hop_dur_each_ser_value,field_merchant_email_id_email,field_mer_alt_email_id_email,field_offer_coupon_validity_value,field_hop_sp_valid_from_value,field_hop_sp_valid_from_value2,field_merchant_title_value,field_merchant_f_name_value,field_merchant_last_name_value,field_hop_ops_glendat_value FROM content_type_offer_detail where vid='".$merchant_vid."' "));
+
+	if(!empty($merchant_detail['field_merchant_last_name_value'])) {
+		$outlet_cp_name = $merchant_detail['field_merchant_title_value'].' '.$merchant_detail['field_merchant_f_name_value'].' '.$merchant_detail['field_merchant_last_name_value'].',';
+	}else{
+		$outlet_cp_name = $merchant_detail['field_merchant_title_value'].' '.$merchant_detail['field_merchant_f_name_value'].',';
+	}
+	
+	
+	/*
+	if(!empty($merchant_detail['field_hopper_checkin1_value'])) {
+		$offer_description = strtolower($merchant_detail['field_hopper_checkin1_value']);
+	} else {
+		$offer_description = strtolower($merchant_detail['field_offer_description_value']);
+	}
+	*/
+	//$offer_description = strtolower($merchant_detail['field_pro_script_value']);
+	
+	$offer_validity = $merchant_detail['field_offer_coupon_validity_value'].' days';
+	$ofr_val_dt_rng = ' ('.displat_date_in_excel_format($merchant_detail['field_hop_sp_valid_from_value']).' To '.displat_date_in_excel_format($merchant_detail['field_hop_sp_valid_from_value2']). ')';
+	$ofr_val = $offer_validity;
+
+	$outlet_detail = db_fetch_array(db_query("SELECT field_mo_oprational_timings_value,field_hop_ops_frm_hrs_value,field_hop_ops_ot_mm_frm_value,field_hop_ops_to_hrs_value,field_hop_ops_ot_mm_to_value,field_mo_holidays_value,field_hop_outlet_nvon_value,field_mo_hop_contact_person_value,field_mo_app_mon_num_number,field_hop_alt_enq_app_num_number,field_hop_ops_frm_hrs_op2_value,field_hop_ops_ot_mm_frm_op2_value,field_hop_ops_to_hrs_op2_value,field_hop_ops_ot_mm_to_op2_value,field_hop_ops_glendat_mo_value,field_sales_hop_ops_glendat_mo_value,field_pro_script_value FROM {content_type_merchant_outlet} where vid='".$outlet_vid."' "));
+
+
+	if(!empty($merchant_detail['field_hop_ops_glendat_value'])) {
+		$hop_gl_dt = $merchant_detail['field_hop_ops_glendat_value'];
+	}elseif(!empty($outlet_detail['field_hop_ops_glendat_mo_value'])) {
+		$hop_gl_dt = $outlet_detail['field_hop_ops_glendat_mo_value'];
+	}elseif(!empty($outlet_detail['field_sales_hop_ops_glendat_mo_value'])) {
+		$hop_gl_dt = $outlet_detail['field_sales_hop_ops_glendat_mo_value'];
+	}
+	$hop_gl_del_date = $hop_gl_dt;
+
+
+	if(!empty($outlet_detail['field_mo_oprational_timings_value'])) {
+		$ops_timing = $outlet_detail['field_mo_oprational_timings_value'];
+	} else {
+		if(!empty($outlet_detail['field_hop_ops_ot_mm_frm_value'])) {
+			$frm_min = $outlet_detail['field_hop_ops_ot_mm_frm_value'];
+		}else{
+			$frm_min = '00';
+		}
+		if(!empty($outlet_detail['field_hop_ops_ot_mm_to_value'])) {
+			$to_min = $outlet_detail['field_hop_ops_ot_mm_to_value'];
+		}else{
+			$to_min = '00';
+		}
+		$ops_main_timing = $outlet_detail['field_hop_ops_frm_hrs_value'].":".$frm_min." hrs To ". $outlet_detail['field_hop_ops_to_hrs_value'].":".$to_min." hrs";
+		$ops_spec_timing = $outlet_detail['field_hop_ops_frm_hrs_op2_value'].":".$outlet_detail['field_hop_ops_ot_mm_frm_op2_value']." To ". $outlet_detail['field_hop_ops_to_hrs_op2_value'].":".$outlet_detail['field_hop_ops_ot_mm_to_op2_value'];
+		if(!empty($outlet_detail['field_hop_ops_frm_hrs_op2_value'])) {
+			$ops_timing = $ops_main_timing." Offer Specific Timings, if any ".$ops_spec_timing;
+		}else {
+			$ops_timing = $ops_main_timing;
+		}
+
+	}
+
+	if(!empty($outlet_detail['field_mo_holidays_value'])) {
+		$weekly_off = $outlet_detail['field_mo_holidays_value'];
+	} else {
+		$weekly_off = get_outlet_weekly_off($merchant_outlet_nid);
+	}
+	if(!empty($outlet_detail['field_hop_outlet_nvon_value'])) {
+		$closed_on = 'closed on '.$outlet_detail['field_hop_outlet_nvon_value'];
+	}else {
+		$closed_on = '';
+	}
+
+	if($weekly_off=='Monday' || $weekly_off=='Tuesday' || $weekly_off=='Wednesday' || $weekly_off=='Thursday' || $weekly_off=='Friday' || $weekly_off=='Saturday' || $weekly_off=='Sunday') {
+		$offset = "Off";
+	}else{
+		$offset = "";
+	}
+	$ops_day_timing = strtolower($weekly_off).' '. $offset .' ,'.$ops_timing;
+
+
+
+
+
+	$logo_img = $path_theme.'/images/hoppr-logo.png';
+	$smshop = $path_theme.'/images/smshop.png';
+	$fb = $path_theme.'/images/fb.png';
+	$gplu = $path_theme.'/images/gplu.png';
+	$twitter = $path_theme.'/images/tw.png';
+	$all_telco = $path_theme.'/images/all-telco.png';
+	$sp =  $path_theme.'/images/banner1.png';
+	if(!empty($outlet_detail['field_hop_alt_enq_app_num_number'])) {
+		$outlet_alt_no = $outlet_detail['field_hop_alt_enq_app_num_number'];
+	}else{
+		$outlet_alt_no = '';
+	}
+
+	$mail_body = '<div id="container" style="position:relative; margin-left:auto; margin-right:auto; width:700px; border:solid 6px #002060; padding:35px"><img src="'.$logo_img.'" width="186" height="88" alt="hoppr" style=" float:right; display:block" /><br /><br /><br><br />
+	<span >
+	<font style="color:#D9096E; font-size: 20px"id="text" face="Arial"><strong>
+	dear '.strtolower($outlet_cp_name).'</strong></font><br />
+	<font style="font-size:15px" color="#000000" face="Calibri">
+	<p>welcome to happy times at hoppr.<br /><br />
+	we are delighted to have you on board world&rsquo;s only device agnostic, location based check-in service. enjoy the journey!
+
+	</p><p>details of your hoppr special are mentioned below:<p></font> </span>
+
+	<table style="position:relative;width:100%;border-top:3px #D9096E solid;border-bottom:3px #D9096E solid;" cellpadding="3" cellspacing="0" id="Table1">
+	<tr style="border-bottom:1px #F0D0F0 solid">
+	<td  align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;border-right:3px #F0D0F0 solid;width:40%;height:30px;">
+	<strong>description of your &lsquo;special&rsquo;:</strong></td>
+	<td  align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;height:30px;width:60%">
+	'.strtolower($merchant_var_off_desc).'</td>
+	</tr>
+	<tr>
+	<td align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;border-right:3px #F0D0F0 solid;width:40%;height:30px;"><strong>validity period of your &lsquo;special&rsquo;:
+	</strong></td>
+	<td align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;height:35px;width:60%">'.$ofr_val.'
+	</td>
+	</tr>
+	
+	<tr>
+	<td align="left" valign="middle" style="border-bottom:0px #F0D0F0 solid;border-right:3px #F0D0F0 solid;width:40%;height:30px;"><strong>appointment/enquiry number:
+	</strong></td>
+	<td align="left" valign="middle" style="border-bottom:0px #F0D0F0 solid;height:30px;width:60%">'.$outlet_detail['field_mo_app_mon_num_number'].'
+	</td>
+	</tr>
+	</table>
+	<br />
+	<font style="font-size:15px" color="#000000" face="Calibri">
+	get in touch with us anytime for any help or feedback, drop us an email at <a href="mailto:connect@hoppr.com"><u>connect@hoppr.com</u></a>
+	</font>
+	<span ><font style="font-size:15px" color="#000000">
+	<p></font> </span>
+	<br>
+	<img src="'.$sp.'" width="100%"  /><br />
+	<br />
+	<font style="font-size:15px" color="#000000" face="Calibri"></font>
+	<hr style="height:3px; color:#F03; background-color:#F06; border:0px;" />
+	<table cellspacing="0" cellpadding="0" style="margin:0px;border:solid 1px #fff;width:100%" >
+	<tr><td style="padding:5px 0px 0px 0px;margin:0px" colspan="3">
+	<font style="font-size:19px" color="#002060" face="Arial"><b>team hoppr</b></font><font style="font-size:19px" color="#D9096E" face="Arial"><b> </b></font>
+	</td></tr>
+	<tr style="border:0px">
+	<td valign="middle" style="padding:0px;margin:0px">
+		visit us at: <a href="http://www.hoppr.com">www.hoppr.com</a> </td>
+		
+	<td valign="middle" style="padding:0px;margin:0px">
+		<a href="http://www.facebook.com/hoppinghoppr"><img src="'.$fb.'" width="30" height="30" alt="facebook" /></a>
+	</td>
+	<td valign="middle">
+		<a href="http://www.facebook.com/hoppinghoppr">facebook.com/hoppinghoppr</a></td>
+		
+	<td valign="middle" style="padding:0px;margin:0px">
+		<a href="https://twitter.com/#!/hoppinghoppr"><img src="'.$twitter.'" width="30" height="30" alt="twitter"/></a>
+	</td>
+	<td valign="middle">
+		<a href="https://twitter.com/#!/hoppinghoppr"> twitter.com/hoppinghoppr</a>
+	</td>
+	</tr>
+	</table>
+	</div>';
+	return $mail_body;
+}
+
+function hoppr_mailcommunication_form_alter(&$form, $form_state, $form_id) {
+	//SIGN UP MAIL COMMUNICATIONS
+	global $base_url;
+	$path_theme = $base_url.'/'.path_to_theme();
+	$logo_img = $path_theme.'/images/hoppr-logo.png';
+	$sp =  $path_theme.'/images/banner1.png';
+	$fb = $path_theme.'/images/fb.png';
+	$gplu = $path_theme.'/images/gplu.png';
+	$twitter = $path_theme.'/images/tw.png';
+	
+	if ($form_id == 'hoppr_sign_up_mail_node_form') {
+		$form['title']['#access'] = FALSE;
+		$form['path']['#access'] = FALSE;
+		$form['menu']['#access'] = FALSE;
+		$form['author']['#access'] = FALSE;
+		$form['options']['#access'] = FALSE;
+		$form['comment_settings']['#access'] = FALSE;
+		$form['revision_information']['#access'] = FALSE;
+		$form['buttons']['preview']['#weight'] = 19;
+		$form['buttons']['preview']['#value'] = t('preview sign up mail');
+		$form['buttons']['submit']['#weight'] = 20;
+		$form['buttons']['submit']['#value'] = t('Send sign up mail');
+		$form['buttons']['submit']['#attributes'] = array('src' => $base_url.'/sites/default/files/submit.jpeg');
+		
+		//SIGN UP MAIL COMM PREVIEW
+		if (isset($form_state['node_preview'])) {
+			$merchant_name = $form_state['values']['field_hoppr_sign_up_mer_out_id'][0]['value'];
+			$nid_exp = explode("\r\n" , $merchant_name);
+			$nid_exp = array_unique($nid_exp);
+			for($i=0;$i<count($nid_exp);$i++) {
+				$merchant_outlet_id = $nid_exp[$i];
+				$monid = db_result(db_query("Select distinct field_hopper_merchant_olt_nid as monid from {content_type_merchant_outlet} where nid='".$merchant_outlet_id."' "));
+				$mer_out_detail = get_signup_mercahnt_detail($monid);
+				$signatory_name  = strtolower($mer_out_detail['field_merchant_title_value'])." ".strtolower($mer_out_detail['field_merchant_f_name_value'])." ".strtolower($mer_out_detail['field_merchant_last_name_value']);
+				$merchant_id = get_merchant_offer_code($merchant_outlet_id);
+				$signatory_emailid  = get_signup_mercahnt_detail($merchant_id);
+				
+				$sign_up_mail_body  = get_sign_up_mail_template_for_preview($monid, $merchant_outlet_id, $logo_img,$signatory_name,$sp,$fb,$gplu,$twitter);
+				$form['signup_preview'.$i] = array(
+					'#type' => 'item',
+					'#weight' => -20,
+					'#description' => 'Email- '.$signatory_emailid['field_merchant_email_id_email']. ' Merchant outlet code: '.$merchant_outlet_id.$sign_up_mail_body
+				);
+			}//Loop end		
+		}//preview end
+	}//sign up node end
+	
+//GO LIVE MAIL COMMUNICATION
+	if ($form_id == 'merchant_mail_comm_node_form') {
+		$form['title']['#access'] = FALSE;
+		$form['path']['#access'] = FALSE;
+		$form['menu']['#access'] = FALSE;
+		$form['author']['#access'] = FALSE;
+		$form['options']['#access'] = FALSE;
+		$form['comment_settings']['#access'] = FALSE;
+		$form['revision_information']['#access'] = FALSE;
+		$form['buttons']['preview']['#weight'] = 19;
+		$form['buttons']['preview']['#value'] = t('preview Go Live mail');
+		$form['buttons']['submit']['#weight'] = 20;
+		$form['buttons']['submit']['#value'] = t('Send Go Live mail');
+		
+//GO LIVE MAIL MAIL COMM PREVIEW
+		if (isset($form_state['node_preview'])) {
+			$merchant_name = $form_state['values']['field_hoppr_gl_mail_comm_mo_cd'][0]['value'];
+			$nid_exp = explode("\r\n" , $merchant_name);
+			for($i=0;$i<count($nid_exp);$i++) {
+				if(!empty($nid_exp[$i])) {
+					$merchant_nid = get_merchant_offer_code($nid_exp[$i]);
+					$golive_mail_sent_msg = get_mail_template_for_go_live_for_preview($nid_exp[$i]);
+					$form['golive_preview'.$i] = array(
+						'#type' => 'item',
+						'#weight' => -20,
+						'#description' => 'Outlet code- '.$nid_exp[$i] . $golive_mail_sent_msg
+					);
+				}
+			}//For loop end
+		}
+	}
+}
+
+function hoppr_mailcommunication_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
+	global $base_url;
+	global $user;
+	$rs_rid  = get_user_role_id($user->uid);
+	$edit_url = $base_url.'/y2cf/merchantsoffers';
+	global $base_url;
+	$path_theme = $base_url.'/'.path_to_theme();
+	$logo_img = $path_theme.'/images/hoppr-logo.png';
+	$sp =  $path_theme.'/images/banner1.png';
+	$fb = $path_theme.'/images/fb.png';
+	$gplu = $path_theme.'/images/gplu.png';
+	$twitter = $path_theme.'/images/tw.png';
+	
+	$sender = 'connect@hoppr.com';
+	$plaintext = FALSE;
+	$headers = array();
+	//SIGN UP MAIL COMMUNICATION
+	if ($node->type == 'hoppr_sign_up_mail' && $op=='insert') {
+		$merchant_name = $node->field_hoppr_sign_up_mer_out_id[0]['value'];
+		$mer_exp = explode("\r\n" , $merchant_name);
+		$subject = "welcome to hoppr!";
+		for($i=0;$i<count($mer_exp);$i++) {
+			$monid = db_result(db_query("Select distinct field_hopper_merchant_olt_nid as monid from {content_type_merchant_outlet} where nid='".$mer_exp[$i]."' "));
+			$mer_out_detail = get_signup_mercahnt_detail($monid);
+			$signatory_name  = strtolower($mer_out_detail['field_merchant_title_value'])." ".strtolower($mer_out_detail['field_merchant_f_name_value'])." ".strtolower($mer_out_detail['field_merchant_last_name_value']);
+			$merchant_id = get_merchant_offer_code($mer_exp[$i]);
+			$sign_eml  = get_signup_mercahnt_detail($merchant_id);
+			$signatory_emailid = $sign_eml['field_merchant_email_id_email'];
+			
+			$sign_up_mail_body  = get_sign_up_mail_template($logo_img,$signatory_name,$sp,$fb,$gplu,$twitter);
+			mimemail($sender, $signatory_emailid, $subject, $sign_up_mail_body, $plaintext = NULL, $headers=array('name'=>'portal'), $text = NULL, $attachments = array(), $mailkey = '');
+			drupal_set_message("Go Live mail send successfully to ". $signatory_emailid);
+		}//Loop end
+		drupal_set_message("Sign up mail send successfully");
+		drupal_goto($base_url.'/node/add/hoppr-sign-up-mail');
+	}// sign up mail End
+	//GO LIVE MAIL COMMUNICATION
+	if ($node->type == 'merchant_mail_comm' && $op=='insert') {
+		$merchant_name = $node->field_hoppr_gl_mail_comm_mo_cd[0]['value'];
+		$mer_exp = explode("\r\n" , $merchant_name);
+		for($i=0;$i<count($mer_exp);$i++) {
+			$golive_mail_sent_msg = get_mail_template_for_go_live($mer_exp[$i]);
+			$subject = "congratulations! your special is live on hoppr";
+			$merchant_id = get_merchant_offer_code($mer_exp[$i]);
+			$merchant_cpml  = get_signup_mercahnt_detail($merchant_id);
+			$merchant_cp_email = $merchant_cpml['field_merchant_email_id_email']; 
+			mimemail($sender, $merchant_cp_email, $subject, $golive_mail_sent_msg, $plaintext = NULL, $headers=array('name'=>'portal'), $text = NULL, $attachments = array(), $mailkey = '');
+			drupal_set_message("Go Live mail send successfully to ". $merchant_cp_email);
+		}//For loop end
+		
+		drupal_goto($base_url.'/node/add/hoppr-sign-up-mail');
+	}//GO live End
+}//function end
+

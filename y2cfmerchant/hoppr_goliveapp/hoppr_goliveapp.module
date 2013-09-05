@@ -1,0 +1,129 @@
+<?php
+global $base_url;
+global $imgsrc;
+global $crossimgsrc;
+global $notmandatoryimgsrc;
+
+$imgsrc = $base_url.'/sites/all/themes/y2cfprod/images/OK.png';
+$crossimgsrc = $base_url.'/sites/all/themes/y2cfprod/images/delete.png';
+$notmandatoryimgsrc = $base_url.'/sites/all/themes/y2cfprod/images/alerts.png';
+
+//field_hop_ops_goliv_label_mo_value   ---  Done
+
+function hoppr_goliveapp_perm() {
+	return array('Administer go live csv Upload');
+}
+
+function hoppr_goliveapp_menu() {
+	$items = array();
+	$items['hoppr/goliveapp'] = array(
+    'title' => 'Go-live CSV Upload',
+    'page callback' => 'hoppr_merchantoutletgoliveapp',
+	'access arguments' => array('Administer go live csv Upload'),
+    'description' => 'Administer go live csv Upload.',
+    'weight' => -4,
+	'type' => MENU_LOCAL_TASK,
+
+	);
+	return $items;
+}
+function hoppr_goliveapp_form_alter(&$form, $form_state, $form_id) {
+	global $base_url;
+	global $imgsrc;
+	global $crossimgsrc;
+	global $notmandatoryimgsrc;
+	global $user;
+	if($form_id=='hoppr_golivedone_node_form') {
+		$form['path']['#access'] = FALSE;
+		$form['menu']['#access'] = FALSE;
+		$form['author']['#access'] = FALSE;
+		$form['options']['#access'] = FALSE;
+		$form['comment_settings']['#access'] = FALSE;
+		$form['revision_information']['#access'] = FALSE;
+		$form['title']['#access'] = FALSE;
+		
+		$form['hoppr_glapp'] = array(
+				'#type' => 'item',
+				'#weight' => -19,
+				'#description' => '<div>Go LIVE CSV file format.<span style="color:red;">(Please don&rsquo;t change a single spelling of header row in csv file) </span>
+				<table border="1">
+				<tr style="color:red;">
+					<td>outlet_code</td>
+					<td>golive_doneby</td>
+					<td>golive_date</td>
+					<td>golive_status</td>
+					<td>golive_remarks</td>
+				</tr>
+				<tr>
+					<td>22691</td>
+					<td>71</td>
+					<td>12/30/2012</td>
+					<td>Done</td>
+					<td></td>
+				</tr>
+				<tr>
+					<td>29409</td>
+					<td>109</td>
+					<td>12/30/2012</td>
+					<td>Not Done</td>
+					<td>No response</td>
+				</tr>
+				<table>
+				</div>'
+		);
+		$form['myform_glapp'] = array(
+				'#type' => 'item',
+				'#weight' => -19,
+				'#description' => '<div><span style="color:red;">Fields Mark with </span>(<span style="color:#FFAE00;">*</span>) <span style="color:red;"> is mandatory!</span></div>'
+		);
+		unset($form['buttons']['preview']);
+	}
+}
+function hoppr_goliveapp_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
+	global $base_url;
+	global $user;
+//Merchants offers
+	if ($node->type == 'hoppr_golivedone' && $op=='insert') {
+    	if (!ini_get('safe_mode')) {
+	   		set_time_limit(0);
+		}
+		ini_set('display_errors', 1);
+    	$path_module = drupal_get_path('module', 'y2cf_offer_csvupload');
+		require_once($path_module."/DataSource.php");
+		require_once($path_module."/fileread.php");
+    	$last_csv_upload_nid  = db_fetch_array(db_query("select max(nid) as nid from {node} where type='hoppr_golivedone' and uid='".$user->uid."'"));
+    	$csv_file_name = db_fetch_array(db_query("select ff.filepath from {content_type_hoppr_golivedone} ctcu inner join {files} ff on ctcu.field_hopprgl_golivedone_fid = ff.fid where nid ='".$last_csv_upload_nid['nid']."' and uid='".$user->uid."' "));
+		$path= $base_url.'/'.$csv_file_name['filepath'];
+
+    	$csv = new File_CSV_DataSource;
+		$csv->load($csv_file_name['filepath']);
+		$data_array = $csv->connect();
+    	$merchant_errors = array();
+    	
+    	//print_r($data_array);die;
+    	
+		foreach($data_array as $key => $offer_value) {
+      		$merchant_code = $offer_value['outlet_code'];
+			$mer_vid = db_result(db_query("select vid from {node} where nid='".$merchant_code."' "));
+			
+      		
+			$golive_done_by = $offer_value['golive_doneby'];//field_hop_gldoneby_uid
+			$golive_date = $offer_value['golive_date'];//m/d/Y
+			$golive_status = $offer_value['golive_status'];//field_hop_ops_glivsts_mo
+			$golive_remarks = $offer_value['golive_remarks'];//field_hop_gl_remrks
+			
+			$rs_rid  = get_user_role_id($user->uid);
+//product ops for script entry
+			if($rs_rid == 'y2cfmanager' || $rs_rid == 'operationhead' || $user->uid==1) {
+				$sql_golive_sts = "UPDATE {content_type_merchant_outlet} set field_hop_ops_glivsts_mo_value='".$golive_status."',field_hop_gl_remrks_value='".$golive_remarks."',field_hop_ops_glendat_mo_value='".$golive_date."',field_hop_gldoneby_uid='".$golive_done_by."' where vid='".$mer_vid."' ";
+			    db_query($sql_golive_sts);
+			    $gl_merchant_name = db_result(db_query("select title from {node} where vid='".$mer_vid."' "));
+				drupal_set_message("Go Live done updated for the merchant outlet &nbsp;&nbsp; -> &nbsp;&nbsp;".$gl_merchant_name);
+			}
+		}
+  		drupal_flush_all_caches();
+		//Delete the file from the system
+  		unlink($path);
+	}
+}
+

@@ -1,0 +1,5 @@
+name = Hoppr merchant outlet delete
+description = Hoppr merchant outlet delete operation
+core = 6.x
+
+package = Y2CF

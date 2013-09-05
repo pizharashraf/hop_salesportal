@@ -1,0 +1,228 @@
+<?php
+function y2cf_merchantoutlets_perm() {
+	return array('Administer Merchant outlets');
+}
+function get_merchant_outlet_query($merchant_id) {
+	global $user;
+	$sql_offer = "SELECT nn.*, nn.uid as sales,ctmout.*, nr.*, nr.uid as executive, nr.title as outlet_name, nr.timestamp as ops_changed_date FROM {node} nn inner join {node_revisions} nr on nn.vid = nr.vid inner join {content_type_merchant_outlet} ctmout  ON ctmout.vid = nr.vid ";
+	$sql_offer .= get_all_offer_filter_condition($merchant_id);
+	return $sql_offer;
+}
+function get_merchant_outlet_count_query($merchant_id) {
+	$sql_count_offer = "SELECT count(nn.nid) as total_mer_outlet FROM {node} nn inner join {node_revisions} nr on nn.vid=nr.vid  inner join {content_type_merchant_outlet} ctmout ON ctmout.vid = nn.vid  ";
+	$sql_count_offer .= get_all_offer_filter_condition($merchant_id);
+	$dsr_mer_outlet = db_fetch_array(db_query($sql_count_offer));
+	$dsr_outlet_count = $dsr_mer_outlet['total_mer_outlet'];
+	return $dsr_outlet_count;
+}
+function get_all_offer_filter_condition($merchant_id) {
+	global $user;
+	$rs_rid  = get_user_role_id($user->uid);
+	if (isset($_GET['outlet']) && $_GET['outlet']!= "" ) {
+		$sql_offer .= " and nn.title LIKE '".trim($_GET['outlet'])."%' ";
+	}
+	if (isset($_GET['hfa']) && $_GET['hfa']!="") {
+		$sql_offer .= " inner join {term_data} td on ctmout.field_hopper_city_hfa_value = td.tid and td.name LIKE '".trim($_GET['hfa'])."%' ";
+	}
+	if (isset($_GET['city']) && $_GET['city']!="") {
+		$sql_offer .= " inner join {term_data} td on ctmout.field_hopper_city_hfa_value = td.tid inner join {term_hierarchy} th on td.tid=th.tid  and th.parent = '".$_GET['city']."' ";
+	}
+	if (isset($_GET['state']) && $_GET['state']!="") {
+		$sql_offer .= " inner join {term_data} td on ctmout.field_mo_hopper_state_value = td.tid and td.name LIKE '".$_GET['state']."%' ";
+	}
+	if (isset($_GET['entry_date']) && $_GET['entry_date']!="") {
+		$curdate_1 = explode("/", $_GET['entry_date']);
+		$entry_date = mktime(0,0,1,$curdate_1[0],$curdate_1[1],$curdate_1[2]);
+		$sql_offer .= " and nn.created >= '".$entry_date."' ";
+
+	}
+	if (isset($_GET['exit_date']) && $_GET['exit_date']!="") {
+		$curdate_1 = explode("/", $_GET['exit_date']);
+		$entry_date = mktime(23,59,0,$curdate_1[0],$curdate_1[1],$curdate_1[2]);
+		$sql_offer .= " and nn.created <= '".$entry_date."' ";
+	}
+	if ($rs_rid == 'salesperson') {
+		$sql_offer .= " and nn.uid='".$user->uid."' ";
+	}
+	if ($rs_rid == 'salesmanager') {
+		$u_arr = get_all_salesman_of_rm($user->uid);
+		$new_array = array();
+		foreach ($u_arr as $result_num => $sub_array) {
+			$new_array[$result_num] = $sub_array['uid'];
+		}
+		$users_uid = implode(",", $new_array);
+		$sql_offer .= " and (nn.uid in (".$users_uid.") OR  nn.uid='".$user->uid."') ";
+	}
+	if ($rs_rid == 'reporting manager') {
+		$u_arr = get_all_salesman_of_rm($user->uid);
+		$new_array = array();
+		foreach ($u_arr as $result_num => $sub_array) {
+			$new_array[$result_num] = $sub_array['uid'];
+		}
+		$users_uid = implode(",", $new_array);
+		$all_sm_of_smngr = get_all_salesman_of_all_salesmanager($user->uid);
+		if (!empty($all_sm_of_smngr)){
+			$sql_offer .= " and (nn.uid in (".$users_uid.") OR nn.uid in (".$all_sm_of_smngr.") OR nn.uid='".$user->uid."') ";
+		}
+		else {
+			$sql_offer .= " and (nn.uid in (".$users_uid.") OR  nn.uid='".$user->uid."') ";
+		}
+	}
+	$sql_offer .= " and ctmout.field_hopper_merchant_olt_nid = '".$merchant_id."' ";
+	return $sql_offer;
+}
+function y2cf_merchantoutlets_menu() {
+	$items = array();
+	$items['y2cf/merchantsoutlet/%'] = array(
+    'title' => 'Merchants outlets',
+    'page callback' => 'y2cf_merchants_outlets',
+	'access arguments' => array('Administer Merchant outlets'),
+    'description' => 'Manage Merchant outlets.',
+    'weight' => -4,
+	'type' => MENU_LOCAL_TASK,
+
+	);
+
+	$items['actmeroutod/%'] = array(
+    'title' => 'Sales Actual outlet',
+    'page callback' => 'y2cf_sales_actual_merchant_outlet',
+  'access arguments' => array('Sales Actual outlet'),
+    'description' => 'Sales Actual outlet.',
+    'weight' => -2,
+  'type' => MENU_LOCAL_TASK,
+
+  );
+	return $items;
+}
+function y2cf_sales_actual_merchant_outlet() {
+  $output = '';
+  $output .= theme('sales_meroutlet', 'sales merchant outlet');
+  return $output;
+}
+function y2cf_merchantoutlets_theme() {
+  $path = drupal_get_path('module', 'y2cf_merchantoutlets');
+  return array(
+    'sales_meroutlet' => array(
+    'arguments' => array('hello' => NULL),
+    'template' => 'sales_meroutlet',
+    'path' => $path,
+  ),
+   );
+
+}
+
+
+function y2cf_merchants_outlets(){
+	global $user;
+	global $base_url;
+	$merchant_id = arg(2);
+	$rs_rid  = get_user_role_id($user->uid);
+	$per_page = set_per_page_counts();
+	$header = array(
+		array('data' => 'S.No', 'field' => 'nid'),
+		array('data' => 'Merchant'),
+		array('data' => 'RM'),
+		array('data' => 'Executive'),
+		array('data' => 'Outlet Name', 'field' => 'nn.title'),
+		array('data' => 'HFA', 'field' => 'field_hopper_city_hfa_value'),
+		array('data' => 'City', 'field' => 'field_hopper_city_hfa_value'),
+		array('data' => 'State', 'field' => 'field_mo_hopper_state_value'),
+		array('data' => 'Outlet Created on', 'field' => 'timestamp', 'sort' => 'desc'),
+	);
+  if (isset($_GET['Search_val'])) {
+		$outlet = isset($_GET['outlet']) ? $_GET['outlet'] : "";
+		$hfa = isset($_GET['hfa']) ? $_GET['hfa'] : "";
+		$city = isset($_GET['city']) ? $_GET['city'] : "";
+		$state = isset($_GET['state']) ? $_GET['state'] : "";
+		$entry_date = isset($_GET['entry_date']) ? $_GET['entry_date'] : "";
+		$exit_date = isset($_GET['exit_date']) ? $_GET['exit_date'] : "";
+  }
+  if (isset($_GET['Search_reset']) && $_GET['Search_reset']=="View All") {
+		$outlet_id = arg(2);
+		drupal_goto($base_url."/y2cf/merchantsoutlet/".$outlet_id);
+  }
+  $data = array();
+  $data[-1] = array(
+				'sn'=> "<form name='merchant_outlet' method='get' action=''>",
+				'merchant'=> "",
+				'rm'=> "",
+				'sales'=> "",
+        'outlet'=> "<input type='text' name='outlet' size='10' class='ul_search10 form-text' value='".$outlet."'>",
+				'hfa'=> "<input type='text' name='hfa' size='10' class='ul_search10 form-text' value='".$hfa."'>",
+				'city'=> "<SELECT name='city' style='width:60px;'  >".y2cf_list_city_for_filteration()."</SELECT>",
+				'state'=> "<input type='text' name='state' size='10' class='ul_search10 form-text' value='".$state."'>",
+				'entry_date'=> "From <input size='10' id='assign-from' type='text' name='entry_date' readonly='readonly' class='ul_search10 form-text' value='".$entry_date."'>
+		<script type='text/javascript'>
+		jQuery(function() {
+		jQuery('#assign-from').datepicker({
+		changeMonth: true,
+		changeYear: true,
+		yearRange: '1950:2020',
+	});
+	});
+	</script>
+	<br /><br />To&nbsp;&nbsp;&nbsp;&nbsp; <input size='10' id='assign-from_exit' type='text' name='exit_date' readonly='readonly' class='ul_search10 form-text' value='".$exit_date."'>
+		<script type='text/javascript'>
+		jQuery(function() {
+		jQuery('#assign-from_exit').datepicker({
+		changeMonth: true,
+		changeYear: true,
+		yearRange: '1950:2020',
+	});
+	});
+	</script>",
+
+				'operations' =>"<input type='submit' name='Search_val' value='Filter' class='form-submit'>
+					<input type='submit' name='Search_reset' value='View All' class='form-submit'></form>",
+	);
+  $sql_offer = get_merchant_outlet_query($merchant_id);
+  $res_offer = pager_query($sql_offer . tablesort_sql($header), $limit = $per_page);
+	$serial_number = get_list_serial_number();
+	while ($row = db_fetch_array($res_offer)) {
+  /*  $node_creator = db_result(db_query("SELECT uid from {node} where nid='".$row['nid']."' "));
+    $count_vids = db_result(db_query("SELECT count(vid) from {node_revisions} nr where nid='".$row['nid']."' and uid != '".$node_creator."' "));
+    
+    
+    if ($count_vids > 1 ) {
+			$ed_url = '<span style="color:red;">Ops Start</span>';
+		}
+		else {
+			$edit_url = $base_url.'/node/'.$row['nid'].'/edit?destination=y2cf/merchantsoutlet/'.$merchant_id;
+			$ed_url = l('Edit', $edit_url);
+		}
+*/
+		$edit_url = $base_url.'/node/'.$row['nid'].'/edit?destination=y2cf/merchantsoutlet/'.$merchant_id;
+		$ed_url = l('Edit', $edit_url);
+		
+		//if outlet is permanently blocked   field_hop_ops_all_remrk_mo_value
+		if($row['field_hop_ops_all_remrk_mo_value']=='Blocked') {
+			$final_ed_url='';
+		}else{
+			$final_ed_url = $ed_url;
+		}
+		
+    $salesperson_name = db_result(db_query("SELECT name FROM {users} WHERE uid = %d", $row['executive']));
+		$rm_id = db_result(db_query("SELECT rm_id FROM {users} WHERE uid = %d", $row['executive']));
+		$rm_name = db_result(db_query("SELECT name FROM {users} WHERE uid = %d", $rm_id));
+    $sp_role  = get_user_role_id($row['executive']);
+    $data[] = array(
+		$serial_number++,
+		get_merchant_name_by_nid($row['field_hopper_merchant_olt_nid']),
+		$rm_name,
+		$salesperson_name,
+		$row['outlet_name'],
+		get_only_term_name($row['field_hopper_city_hfa_value']),
+		get_only_term_name(get_parent_tid_by_tid($row['field_hopper_city_hfa_value'])),
+		get_only_term_name($row['field_mo_hopper_state_value']),
+		date("Y-m-d H:i:s", $row['timestamp']),
+		l('Detail', $base_url.'/node/'.$row['nid']).'&nbsp;&nbsp;&nbsp;'.$final_ed_url ,
+		);
+	}
+  $total_mer_outlets = get_merchant_outlet_count_query($merchant_id);
+	$add_mer_outlet = $base_url.'/node/add/merchant-outlet/'.$merchant_id;
+	$output .= l('Add Outlet', $add_mer_outlet);
+	$output .= theme('table', $header, $data);
+	$output .= theme('pager');
+  $output .= get_custom_pager_request($total_mer_outlets);
+	return $output;
+}

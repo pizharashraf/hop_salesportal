@@ -1,0 +1,46 @@
+<?php
+function hoppr_outletdeloperation_form_alter(&$form, $form_state, $form_id) {
+	global $base_url;
+	if ($form_id == 'outlet_del_process_node_form') {
+		$form['title']['#access'] = FALSE;
+		$form['path']['#access'] = FALSE;
+		$form['menu']['#access'] = FALSE;
+		$form['author']['#access'] = FALSE;
+		$form['options']['#access'] = FALSE;
+		$form['comment_settings']['#access'] = FALSE;
+		$form['revision_information']['#access'] = FALSE;
+		$form['buttons']['preview']['#weight'] = 19;
+		$form['buttons']['preview']['#value'] = t('preview deleted merchant outlet');
+		$form['buttons']['submit']['#weight'] = 20;
+		$form['buttons']['submit']['#value'] = t('Delete merchant outlet');
+		//$form['buttons']['submit']['#attributes'] = array("onclick" => "javascript: return confirm('Are you sure');this.value='Please Wait...'; this.disabled = true;");
+		$form['buttons']['submit']['#attributes'] = array('src' => $base_url.'/sites/default/files/submit.jpg');
+	}
+}
+function hoppr_outletdeloperation_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
+	global $base_url;
+	global $user;
+	$rs_rid  = get_user_role_id($user->uid);
+	if ($node->type == 'outlet_del_process' && $op=='insert') {
+		$all_nid = $node->field_hop_mer_del_outlet_id[0]['value'];
+		$nid_exp = explode("\r\n" , $all_nid);
+		//print_r($nid_exp);die;
+		if (!ini_get('safe_mode')) {
+			set_time_limit(0);
+		}
+		ini_set('display_errors', 1);
+		ini_set('memory_limit','128M');
+		foreach($nid_exp as $outlet_nid) {
+			$neornot = db_result(db_query("select nid from {node} where type='merchant_outlet' AND nid='".$outlet_nid."' "));
+			if(!empty($neornot)) {
+				node_delete($outlet_nid);
+				drupal_set_message("Merchant outlet deleted successfully");
+			}else{
+				drupal_set_message("ERROR!");
+			}
+			
+		}
+		
+		drupal_goto($base_url.'/node/add/outlet-del-process');
+	}
+}

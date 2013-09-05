@@ -1,0 +1,5 @@
+name = Hoppr Rejected cases
+description = Rejected cases updation
+core = 6.x
+
+package = Y2CF

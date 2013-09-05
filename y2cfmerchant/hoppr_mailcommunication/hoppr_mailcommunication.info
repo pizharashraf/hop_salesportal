@@ -1,0 +1,5 @@
+name = Hoppr Mail communication
+description = Hoppr Mail communication
+core = 6.x
+
+package = Y2CF

@@ -1,0 +1,5 @@
+name = Y2CF Merchant Offers
+description = Hopper Merchants offer 
+core = 6.x
+
+package = Y2CF

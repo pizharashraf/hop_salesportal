@@ -1,0 +1,5 @@
+name = Y2CF DSR Report
+description = Hopper DSR Report
+core = 6.x
+
+package = Y2CF

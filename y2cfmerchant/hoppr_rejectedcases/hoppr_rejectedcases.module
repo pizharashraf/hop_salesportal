@@ -1,0 +1,193 @@
+<?php
+function hoppr_rejectedcases_form_alter(&$form, $form_state, $form_id) {
+	if ($form_id == 'mo_rm_rej_cases_node_form') {
+		$form['title']['#access'] = FALSE;
+		$form['path']['#access'] = FALSE;
+		$form['menu']['#access'] = FALSE;
+		$form['author']['#access'] = FALSE;
+		$form['options']['#access'] = FALSE;
+		$form['comment_settings']['#access'] = FALSE;
+		$form['revision_information']['#access'] = FALSE;
+	}
+	
+	if ($form_id == 'hoppr_oe_rej_cases_node_form') {
+		$form['title']['#access'] = FALSE;
+		$form['path']['#access'] = FALSE;
+		$form['menu']['#access'] = FALSE;
+		$form['author']['#access'] = FALSE;
+		$form['options']['#access'] = FALSE;
+		$form['comment_settings']['#access'] = FALSE;
+		$form['revision_information']['#access'] = FALSE;
+	}
+	if ($form_id == 'hoppr_docs_rej_cases_node_form') {
+		$form['title']['#access'] = FALSE;
+		$form['path']['#access'] = FALSE;
+		$form['menu']['#access'] = FALSE;
+		$form['author']['#access'] = FALSE;
+		$form['options']['#access'] = FALSE;
+		$form['comment_settings']['#access'] = FALSE;
+		$form['revision_information']['#access'] = FALSE;
+	}
+	if ($form_id == 'hoppr_gl_rej_cases_node_form') {
+		$form['title']['#access'] = FALSE;
+		$form['path']['#access'] = FALSE;
+		$form['menu']['#access'] = FALSE;
+		$form['author']['#access'] = FALSE;
+		$form['options']['#access'] = FALSE;
+		$form['comment_settings']['#access'] = FALSE;
+		$form['revision_information']['#access'] = FALSE;
+	}
+	
+	
+	
+	
+	
+}
+function get_oe_email_id($merrr_nid) {
+	$oe_vid = db_fetch_array(db_query("select max(nr.vid) as vid from {node_revisions} nr inner join {content_type_merchant_outlet} ctmo on nr.vid=ctmo.vid inner join {users_roles} ur on nr.uid=ur.uid inner join {role} r on ur.rid=r.rid where nr.nid = '".$merrr_nid."' and (ctmo.field_hop_ops_all_remrk_mo_value='Rejected by Tele-Agent' or ctmo.field_hop_ops_all_remrk_mo_value='Rejected by merchants' or ctmo.field_hop_ops_all_remrk_mo_value='Sales team meeting request' or ctmo.field_hop_ops_all_remrk_mo_value='Language Issue' or ctmo.field_hop_offer_ops_status_mo_value='Rejected') and (r.name = 'y2cfoperations' or r.name = 'hoppertelecallingops' or r.name = 'operationhead')"));
+	
+	
+	$oe_uid = db_result(db_query("SELECT uid FROM {node_revisions} WHERE vid = %d", $oe_vid['vid']));
+	$oe_email = db_result(db_query("SELECT mail FROM {users} WHERE uid = %d", $oe_uid));
+	return $oe_email;
+}
+function hoppr_rejectedcases_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
+	global $base_url;
+	global $user;
+	$rs_rid  = get_user_role_id($user->uid);
+	$edit_url = $base_url.'/y2cf/merchantsoffers';
+	
+	//RM rejected cases
+	if ($node->type == 'mo_rm_rej_cases' && ($op=='insert' || $op=='update')) {
+		if($rs_rid == 'salesperson') {
+			//Mail Sending process
+			$sender = 'connect@hoppr.com';
+			$subject = "RM rejection case updation". date("Y-m-d H:i:s");
+			$plaintext = FALSE;
+			$headers = array();
+			//print_r($node);die;
+			//Mail send to self and his/her RM
+			$sp_email = db_result(db_query("SELECT mail FROM {users} WHERE uid = %d", $user->uid));
+			$rm_id = db_result(db_query("SELECT rm_id FROM {users} WHERE uid = %d", $user->uid));
+			$rm_email = db_result(db_query("SELECT mail FROM {users} WHERE uid = %d", $rm_id));
+			$merc_name = db_result(db_query("SELECT title FROM {node} WHERE nid = %d", $node->field_hoprc_rm_rej_mn[0]['nid']));
+			
+			$body_general_mail .= " Merchant Code: ".$node->field_hoprc_rm_rej_mn[0]['nid'].'<br />';
+			$body_general_mail .= " Merchant Name: ".$merc_name.'<br />';
+			$body_general_mail .= " Rejected Status: ".$node->field_hoprc_rm_rc_sts[0]['value'].'<br />';
+			$body_general_mail .= " Comments: ".$node->field_hoprc_comments[0]['value'];
+			//Mail to SP
+			mimemail($sender, $sp_email, $subject, $body_general_mail, $plaintext = NULL, $headers=array(), $text = NULL, $attachments = array(), $mailkey = '');
+			//Mail to RM
+			mimemail($sender, $rm_email, $subject, $body_general_mail, $plaintext = NULL, $headers=array(), $text = NULL, $attachments = array(), $mailkey = '');
+			
+		}
+		drupal_goto($edit_url);
+	}
+	
+	//Docs rejected cases
+	if ($node->type == 'hoppr_docs_rej_cases' && ($op=='insert' || $op=='update')) {
+		if($rs_rid == 'salesperson') {
+			//Mail Sending process
+			$sender = 'connect@hoppr.com';
+			$subject = "Docs rejection case updation". date("Y-m-d H:i:s");
+			$plaintext = FALSE;
+			$headers = array();
+			//print_r($node);die;
+			//Mail send to self and his/her RM
+			$sp_email = db_result(db_query("SELECT mail FROM {users} WHERE uid = %d", $user->uid));
+			$rm_id = db_result(db_query("SELECT rm_id FROM {users} WHERE uid = %d", $user->uid));
+			$rm_email = db_result(db_query("SELECT mail FROM {users} WHERE uid = %d", $rm_id));
+			$merc_name = db_result(db_query("SELECT title FROM {node} WHERE nid = %d", $node->field_hoprc_docs_rej_mn[0]['nid']));
+			$docs_email = "vibhuti@hoppr.com";
+				
+			$body_general_mail .= " Merchant Code: ".$node->field_hoprc_docs_rej_mn[0]['nid'].'<br />';
+			$body_general_mail .= " Merchant Name: ".$merc_name.'<br />';
+			$body_general_mail .= " Rejected Status: ".$node->field_hoprc_new_docs_rej_mn[0]['value'].'<br />';
+			$body_general_mail .= " Comments: ".$node->field_hoprc_docs_comments[0]['value'];
+			//Mail to SP
+			mimemail($sender, $sp_email, $subject, $body_general_mail, $plaintext = NULL, $headers=array(), $text = NULL, $attachments = array(), $mailkey = '');
+			//Mail to RM
+			mimemail($sender, $rm_email, $subject, $body_general_mail, $plaintext = NULL, $headers=array(), $text = NULL, $attachments = array(), $mailkey = '');
+			//Mail to docs
+			mimemail($sender, $docs_email, $subject, $body_general_mail, $plaintext = NULL, $headers=array(), $text = NULL, $attachments = array(), $mailkey = '');
+				
+		}
+		drupal_goto($edit_url);
+	}
+	
+	//OE-  rejected cases
+	if ($node->type == 'hoppr_oe_rej_cases' && ($op=='insert' || $op=='update')) {
+		if($rs_rid == 'salesperson') {
+			//Mail Sending process
+			$sender = 'connect@hoppr.com';
+			$subject = "OE/TC rejection case updation". date("Y-m-d H:i:s");
+			$plaintext = FALSE;
+			$headers = array();
+			//print_r($node);die;
+			//Mail send to self and his/her RM
+			$sp_email = db_result(db_query("SELECT mail FROM {users} WHERE uid = %d", $user->uid));
+			$rm_id = db_result(db_query("SELECT rm_id FROM {users} WHERE uid = %d", $user->uid));
+			$rm_email = db_result(db_query("SELECT mail FROM {users} WHERE uid = %d", $rm_id));
+			$merc_name = db_result(db_query("SELECT title FROM {node} WHERE nid = %d", $node->field_hoprc_oe_rej_mn[0]['nid']));
+	
+			$body_general_mail .= " Merchant Code: ".$node->field_hoprc_oe_rej_mn[0]['nid'].'<br />';
+			$body_general_mail .= " Merchant Name: ".$merc_name.'<br />';
+			$body_general_mail .= " Rejected Status: ".$node->field_hoprc_oe_rc_sts[0]['value'].'<br />';
+			$body_general_mail .= " Comments: ".$node->field_hoprc_oe_comments[0]['value'];
+			//Mail to SP
+			mimemail($sender, $sp_email, $subject, $body_general_mail, $plaintext = NULL, $headers=array(), $text = NULL, $attachments = array(), $mailkey = '');
+			//Mail to RM
+			mimemail($sender, $rm_email, $subject, $body_general_mail, $plaintext = NULL, $headers=array(), $text = NULL, $attachments = array(), $mailkey = '');
+			//Find the particular OE.and send mail
+			$merrr_nid = $node->field_hoprc_oe_rej_mn[0]['nid'];
+			$oe_email = get_oe_email_id($merrr_nid);
+			
+			mimemail($sender, $oe_email , $subject, $body_general_mail, $plaintext = NULL, $headers=array(), $text = NULL, $attachments = array(), $mailkey = '');
+			 
+	
+		}
+		drupal_set_message("Mail sent successfully");
+		drupal_goto($edit_url);
+	}
+	//OE- GO LIVE rejected cases
+	if ($node->type == 'hoppr_gl_rej_cases' && ($op=='insert' || $op=='update')) {
+		if($rs_rid == 'salesperson') {
+			//Mail Sending process
+			$sender = 'connect@hoppr.com';
+			$subject = "Docs rejection case updation". date("Y-m-d H:i:s");
+			$plaintext = FALSE;
+			$headers = array();
+			//print_r($node);die;
+			//Mail send to self and his/her RM
+			$sp_email = db_result(db_query("SELECT mail FROM {users} WHERE uid = %d", $user->uid));
+			$rm_id = db_result(db_query("SELECT rm_id FROM {users} WHERE uid = %d", $user->uid));
+			$rm_email = db_result(db_query("SELECT mail FROM {users} WHERE uid = %d", $rm_id));
+			$merc_name = db_result(db_query("SELECT title FROM {node} WHERE nid = %d", $node->field_hoprc_gl_rej_mn[0]['nid']));
+	
+			$body_general_mail .= " Merchant Code: ".$node->field_hoprc_gl_rej_mn[0]['nid'].'<br />';
+			$body_general_mail .= " Merchant Name: ".$merc_name.'<br />';
+			$body_general_mail .= " Rejected Status: ".$node->field_hoprc_gl_rc_sts[0]['value'].'<br />';
+			$body_general_mail .= " Comments: ".$node->field_hoprc_gl_comments[0]['value'];
+			//Mail to SP
+			mimemail($sender, $sp_email, $subject, $body_general_mail, $plaintext = NULL, $headers=array(), $text = NULL, $attachments = array(), $mailkey = '');
+			//Mail to RM
+			mimemail($sender, $rm_email, $subject, $body_general_mail, $plaintext = NULL, $headers=array(), $text = NULL, $attachments = array(), $mailkey = '');
+			
+			//Find the particular OE.and send mail
+			$merrr_nid = $node->field_hoprc_gl_rej_mn[0]['nid'];
+			$oe_email = get_oe_email_id($merrr_nid);
+			mimemail($sender, $oe_email , $subject, $body_general_mail, $plaintext = NULL, $headers=array(), $text = NULL, $attachments = array(), $mailkey = '');
+			
+			
+		}
+		drupal_goto($edit_url);
+	}
+	
+	
+	
+	
+	
+	
+}
+

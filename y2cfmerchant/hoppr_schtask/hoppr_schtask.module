@@ -1,0 +1,519 @@
+<?php
+function hoppr_schtask_menu() {
+	$items = array();
+	$items['hoppr/hopschtask'] = array(
+			'title' => 'Go hopschtask',
+			'page callback' => 'hoppr_hopschtask',
+			'access arguments' => array('Administer hopschtask'),
+			'description' => 'Administer hopschtask.',
+			'weight' => -4,
+			'type' => MENU_LOCAL_TASK,
+
+	);
+	return $items;
+}
+function get_oetc_opsdt($input_array) {
+	$ops_vid = db_fetch_array(db_query("select max(nr.vid) as vid from {node_revisions} nr inner join {users} u on nr.uid=u.uid inner join {users_roles} ur on u.uid=ur.uid inner join {role} r on ur.rid=r.rid where (r.name='y2cfoperations' or r.name='hoppertelecallingops' or r.name='operationhead') and nr.nid='" . $input_array['outlet_id'] . "'  "));
+	$ops_start_date = db_fetch_array(db_query("select nr.timestamp as ops_date, nr.uid from {node_revisions} nr where nr.vid='" . $ops_vid['vid'] . "'  "));
+
+	$ops_vid_outw = db_fetch_array(db_query("select max(nr.vid) as vid from {node_revisions} nr inner join {users} u on nr.uid=u.uid inner join {users_roles} ur on u.uid=ur.uid inner join {role} r on ur.rid=r.rid where (r.name='y2cfoperations' or r.name='hoppertelecallingops' or r.name='operationhead') and nr.nid='" . $input_array['outlet_id'] . "'  "));
+	$ops_start_date_outw = db_fetch_array(db_query("select nr.timestamp as ops_date, nr.uid from {node_revisions} nr where nr.vid='" . $ops_vid_outw['vid'] . "'  "));
+
+	if($input_array['tieup_type'] != 'National') {
+		if (!empty($ops_start_date_outw['ops_date'])) {
+			$ops_dtarr['ops_stdt'] = date("m-d-Y", $ops_start_date_outw['ops_date']);
+			$ops_dtarr['ops_start_month'] = date("F", $ops_start_date_outw['ops_date']);
+			$ops_dtarr['oetc_name'] = $ops_start_date_outw['uid'];
+		}elseif (!empty($ops_start_date['ops_date'])) {
+			$ops_dtarr['ops_stdt'] = date("m-d-Y", $ops_start_date['ops_date']);
+			$ops_dtarr['ops_start_month'] = date("F", $ops_start_date['ops_date']);
+			$ops_dtarr['oetc_name'] = $ops_start_date['uid'];
+		}else{
+			$ops_dtarr['ops_stdt'] = "";
+		}
+	}else{
+		$ops_dtarr['ops_stdt'] = date("m-d-Y", $input_array['creationdate']);
+		$ops_dtarr['ops_start_month'] = date("F", $input_array['creationdate']);
+	}
+
+	return $ops_dtarr;
+}
+function get_merchant_name($merchant_name) {
+	$merchant_name = '<tr>
+	<td  align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;border-right:3px #F0D0F0 solid;width:30%;height:30px;">
+	<strong>merchant name</strong></td>
+	<td  align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;height:30px;width:60%">
+	'.$merchant_name.'</td>
+	</tr>';
+	return $merchant_name;
+}
+function get_merchant_offer_code($moc) {
+	$merchant_offer_code = '<tr>
+	<td align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;border-right:3px #F0D0F0 solid;width:30%;height:30px;"><strong>merchant offer code</strong></td>
+	<td align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;height:35px;width:60%">'.$moc.'
+	</td>
+	</tr>';
+	return $merchant_offer_code;
+}
+function get_merchant_specials($special) {
+	$mer_special = '<tr>
+	<td align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;border-right:3px #F0D0F0 solid;width:30%;height:30px;"><strong>specials</strong></td>
+	<td align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;height:35px;width:60%">'.$special.'
+	</td>
+	</tr>';
+	return $mer_special;
+}
+function get_offer_entry_date($oed) {
+	$offer_entry_date = '<tr>
+	<td align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;border-right:3px #F0D0F0 solid;width:30%;height:30px;"><strong>offer entry date</strong></td>
+	<td align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;height:35px;width:60%">'.$oed.'
+	</td>
+	</tr>';
+	return $offer_entry_date;
+}
+function get_hop_salesperson_name($sp_name) {
+	$spname = '<tr>
+	<td align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;border-right:3px #F0D0F0 solid;width:30%;height:30px;"><strong>salesperson name</strong></td>
+	<td align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;height:35px;width:60%">'.$sp_name.'
+	</td>
+	</tr>';
+	return $spname;
+}
+function get_hop_offer_validity($offer_validity) {
+	$ofr_val = '<tr><td align="left" valign="middle" style="border-bottom:0px #F0D0F0 solid;border-right:3px #F0D0F0 solid;width:30%;height:30px;"><strong>offer validity:</strong></td>
+	<td align="left" valign="middle" style="border-bottom:0px #F0D0F0 solid;height:30px;width:60%">'.$offer_validity.'</td>
+	</tr>';
+	return $ofr_val;
+}
+function get_offer_signed_dt($osdt) {
+	$offer_signed_dt = '<tr>
+	<td align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;border-right:3px #F0D0F0 solid;width:30%;height:30px;"><strong>offer signed date</strong></td>
+	<td align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;height:35px;width:60%">'.$osdt.'
+	</td>
+	</tr>';
+	return $offer_signed_dt;
+}
+function get_general_notes() {
+	$notes = '<span style="color:#red;font-weight:bold;">attention: please note that post 72 hours from the date of rejection, system will block the special permanently i.e. it will be non-editable for all respective team members</span>'; 
+	return $notes;
+}
+
+function get_rm_mail_format($offer_det_arr) {
+	$mail_body = '<div id="container" style="position:relative; margin-left:auto; margin-right:auto; width:700px; border:solid 6px #002060; padding:35px">
+	<span >
+	<font style="color:#D9096E; font-size: 20px"id="text" face="Arial">
+	<strong>dear '.strtolower($offer_det_arr['sp_name']).' / '.strtolower($offer_det_arr['rm_name']).'</strong></font>
+	<br />
+	<font style="font-size:15px" color="#000000" face="Calibri">
+	
+		
+	<table style="position:relative;width:100%;border-top:3px #D9096E solid;border-bottom:3px #D9096E solid;" cellpadding="3" cellspacing="0" id="Table1">
+	
+	<tr style="border-bottom:1px #F0D0F0 solid">
+	<td align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;border-right:3px #F0D0F0 solid;width:30%;height:30px;"><strong>rm status</strong></td>
+	<td align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;height:35px;width:60%"><strong><span style="color:red;">pending</span></strong>
+	</td>
+	</tr>
+	
+	'.	strtolower(get_merchant_name($offer_det_arr['merchant_name'])).
+	 	get_merchant_offer_code($offer_det_arr['merchant_offer_code']).
+		get_merchant_specials($offer_det_arr['offer_description']).
+		get_offer_signed_dt($offer_det_arr['offer_signed_dt']).
+		get_offer_entry_date($offer_det_arr['offer_entry_date']).'
+	
+	<tr>
+	<td align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;border-right:3px #F0D0F0 solid;width:30%;height:30px;"><strong>offer last modified date</strong></td>
+	<td align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;height:35px;width:60%">'.$offer_det_arr['offer_last_modified_date'].'
+	</td>
+	</tr>
+	
+	<tr>
+	<td align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;border-right:3px #F0D0F0 solid;width:30%;height:30px;"><strong>city</strong></td>
+	<td align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;height:35px;width:60%">'.strtolower($offer_det_arr['city_name']).'
+	</td>
+	</tr>
+	
+	'.strtolower(get_hop_salesperson_name($offer_det_arr['sp_name'])).'
+	
+	
+	
+	'.get_hop_offer_validity($offer_det_arr['offer_validity']).'
+	
+	</table>
+	'.get_general_notes().'
+	</div>';
+	return $mail_body;
+}
+
+function get_docsrejected_mail_format($offer_det_arr) {
+	$mail_body = '<div id="container" style="position:relative; margin-left:auto; margin-right:auto; width:700px; border:solid 6px #002060; padding:35px">
+	<span >
+	<font style="color:#D9096E; font-size: 20px"id="text" face="Arial"><strong>
+	dear '.strtolower($offer_det_arr['sp_name']).' / '.strtolower($offer_det_arr['rm_name']).'</strong></font><br />
+	<font style="font-size:15px" color="#000000" face="Calibri">
+	
+
+	<table style="position:relative;width:100%;border-top:3px #D9096E solid;border-bottom:3px #D9096E solid;" cellpadding="3" cellspacing="0" id="Table1">
+	
+	<tr style="border-bottom:1px #F0D0F0 solid">
+	<td align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;border-right:3px #F0D0F0 solid;width:30%;height:30px;"><strong>documentation status</strong></td>
+	<td align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;height:35px;width:60%">'.strtolower($offer_det_arr['docs_status']).'
+	</td>
+	</tr>
+	
+	<tr>
+	<td align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;border-right:3px #F0D0F0 solid;width:30%;height:30px;"><strong>documentation rejection reason</strong></td>
+	<td align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;height:35px;width:60%">'.strtolower($offer_det_arr['docs_ror']).'
+	</td>
+	</tr>
+	
+	<tr>
+	<td align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;border-right:3px #F0D0F0 solid;width:30%;height:30px;"><strong>documentation rejection date</strong></td>
+	<td align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;height:35px;width:60%">'.$offer_det_arr['docs_rejection_date'].'
+	</td>
+	</tr>
+	
+	'.strtolower(get_merchant_name($offer_det_arr['merchant_name'])).
+	get_merchant_offer_code($offer_det_arr['merchant_offer_code']).
+	strtolower(get_merchant_specials($offer_det_arr['offer_description'])).
+	get_offer_entry_date($offer_det_arr['offer_entry_date']).'
+	
+	
+
+	'.strtolower(get_hop_salesperson_name($offer_det_arr['sp_name'])).'
+	
+	'.get_hop_offer_validity($offer_det_arr['offer_validity']).'
+
+
+
+
+	</table>
+	'.get_general_notes().'
+	</div>';
+	return $mail_body;
+}
+function get_oetcrejected_mail_format($offer_det_arr) {
+	$mail_body = '<div id="container" style="position:relative; margin-left:auto; margin-right:auto; width:700px; border:solid 6px #002060; padding:35px">
+	<span >
+	<font style="color:#D9096E; font-size: 20px"id="text" face="Arial"><strong>
+	dear '.strtolower($offer_det_arr['sp_name']).' / '.strtolower($offer_det_arr['rm_name']).'</strong></font><br />
+	<font style="font-size:15px" color="#000000" face="Calibri">
+	
+
+	<table style="position:relative;width:100%;border-top:3px #D9096E solid;border-bottom:3px #D9096E solid;" cellpadding="3" cellspacing="0" id="Table1">
+	
+	'.strtolower(get_merchant_name($offer_det_arr['merchant_name'])).
+	get_merchant_offer_code($offer_det_arr['merchant_offer_code']).
+	strtolower(get_merchant_specials($offer_det_arr['offer_description'])).
+	get_offer_entry_date($offer_det_arr['offer_entry_date']).'
+	
+	<tr>
+	<td align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;border-right:3px #F0D0F0 solid;width:30%;height:30px;"><strong>verification status</strong></td>
+	<td align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;height:35px;width:60%">'.strtolower($offer_det_arr['ops_sts']).'
+	</td>
+	</tr>
+	
+	<tr>
+	<td align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;border-right:3px #F0D0F0 solid;width:30%;height:30px;"><strong>verification date</strong></td>
+	<td align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;height:35px;width:60%">'.$offer_det_arr['oetc_varification_date'].' ( '.$offer_det_arr['oetc_varification_month'].' )
+	</td>
+	</tr>
+	
+	<tr>
+	<td align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;border-right:3px #F0D0F0 solid;width:30%;height:30px;"><strong>verification done by</strong></td>
+	<td align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;height:35px;width:60%">'.strtolower($offer_det_arr['oetc_varify_by']).'
+	</td>
+	</tr>
+
+	<tr>
+	<td align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;border-right:3px #F0D0F0 solid;width:30%;height:30px;"><strong>varification comments</strong></td>
+	<td align="left" valign="middle" style="border-bottom:3px #F0D0F0 solid;height:35px;width:60%">'.strtolower($offer_det_arr['oetc_ror']).'
+	</td>
+	</tr>
+
+	'.strtolower(get_hop_salesperson_name($offer_det_arr['sp_name'])).'
+	'.get_hop_offer_validity($offer_det_arr['offer_validity']).'
+		</table>
+		'.get_general_notes().'
+	</div>';
+	return $mail_body;
+}
+
+function hoppr_reminder_mail_sending_process($input_array) {
+//TEST MAIL
+	mimemail($input_array['sender'], $input_array['test_mail'], $input_array['subject'], $input_array['mail_body'], $plaintext = NULL, $headers=array('name'=>'portal'), $text = NULL, $attachments = array(), $mailkey = '');
+//MAIL TO RM
+	//mimemail($input_array['sender'], $input_array['rm_mail'], $input_array['subject'], $input_array['mail_body'], $plaintext = NULL, $headers=array('name'=>'portal'), $text = NULL, $attachments = array(), $mailkey = '');
+//MAIL TO SP
+	//mimemail($input_array['sender'], $input_array['sp_mail'], $input_array['subject'], $input_array['mail_body'], $plaintext = NULL, $headers=array('name'=>'portal'), $text = NULL, $attachments = array(), $mailkey = '');
+//MAIL TO RUPESH
+	//mimemail($input_array['sender'], $input_array['rupesh_email_id'], $input_array['subject'], $input_array['mail_body'], $plaintext = NULL, $headers=array('name'=>'portal'), $text = NULL, $attachments = array(), $mailkey = '');
+//MAIL TO RAKSHI
+	//mimemail($input_array['sender'], $input_array['rakshi_email_id'], $input_array['subject'], $input_array['mail_body'], $plaintext = NULL, $headers=array('name'=>'portal'), $text = NULL, $attachments = array(), $mailkey = '');
+	//MAIL TO VARUN
+	//mimemail($input_array['sender'], $input_array['varun_email_id'], $input_array['subject'], $input_array['mail_body'], $plaintext = NULL, $headers=array('name'=>'portal'), $text = NULL, $attachments = array(), $mailkey = '');
+	//MAIL TO PRIYA
+	//mimemail($input_array['sender'], $input_array['priya_email_id'], $input_array['subject'], $input_array['mail_body'], $plaintext = NULL, $headers=array('name'=>'portal'), $text = NULL, $attachments = array(), $mailkey = '');
+//MAIL TO VIBHUTI
+	//mimemail($input_array['sender'], $input_array['vibhuti_email_id'], $input_array['subject'], $input_array['mail_body'], $plaintext = NULL, $headers=array('name'=>'portal'), $text = NULL, $attachments = array(), $mailkey = '');
+//MAIL TO TARUN
+	//mimemail($input_array['sender'], $input_array['tarun_email_id'], $input_array['subject'], $input_array['mail_body'], $plaintext = NULL, $headers=array('name'=>'portal'), $text = NULL, $attachments = array(), $mailkey = '');
+}
+function set_hoppr_email_id() {
+	$input_array = array();
+	$input_array['sender'] = 'connect@hoppr.com';
+	$input_array['test_mail'] = 'izhar@hoppr.com';
+	$input_array['rupesh_email_id'] = 'rupesh@hoppr.com';
+	$input_array['rakshi_email_id'] = 'rakshi@hoppr.com';
+	$input_array['varun_email_id'] = 'varun@hoppr.com';
+	$input_array['priya_email_id'] = 'priya@hoppr.com';
+	$input_array['vibhuti_email_id'] = 'vibhuti@hoppr.com';
+	$input_array['tarun_email_id'] = 'izhar@hoppr.com';
+	return $input_array;
+}
+function get_hoppr_user_detail($userid) {
+	$user_detail = db_fetch_array(db_query("SELECT * from {users} where uid='".$userid."' "));
+	return $user_detail;
+}
+function get_varified_rej_oetc($timeinterval) {
+	$sql_rej_docs = "SELECT nr.*, ctmo.field_hopper_merchant_olt_nid, ctmo.nid as outlet_id, ctmo.field_hop_offer_ops_status_mo_value, ctmo.field_hop_ops_all_remrk_mo_value, ctmo.field_hop_offer_ops_comments_mo_value, ctmo.field_hop_ops_tc_rmks_value  FROM {node} n inner join {node_revisions} nr on n.vid=nr.vid inner join {content_type_merchant_outlet} ctmo on ctmo.vid=nr.vid WHERE nr.timestamp < (UNIX_TIMESTAMP(now()) - '".$timeinterval."') AND (ctmo.field_hop_offer_ops_status_mo_value='Rejected' or ctmo.field_hop_ops_all_remrk_mo_value='Rejected by merchants' or ctmo.field_hop_ops_all_remrk_mo_value='Sales team meeting request' or ctmo.field_hop_ops_all_remrk_mo_value='Rejected by Tele-Agent' or ctmo.field_hop_ops_all_remrk_mo_value='Language Issue') AND nr.nid ='31738' ";
+	return $sql_rej_docs;
+}
+function get_rejected_docslist($timeinterval) {
+	$sql_rej_docs = "SELECT nr.*, ctod.field_offer_description_value, ctod.field_hopper_checkin1_value, ctod.field_hop_signup_city_value, ctod.field_offer_coupon_validity_value, ctod.field_hop_sp_valid_from_value, ctod.field_hop_sp_valid_from_value2, ctod.field_hop_mo_om_comments_value, ctod.field_hop_ops_agr_sta_value, ctod.field_merchant_offer_price_value,  ctod.field_mer_offer_price_value FROM {node} n inner join  {node_revisions} nr on n.vid=nr.vid inner join {content_type_offer_detail} ctod on ctod.vid=nr.vid WHERE nr.timestamp < (UNIX_TIMESTAMP(now()) - '".$timeinterval."') AND ctod.field_hop_ops_agr_sta_value='Rejected' order by nr.nid desc LIMIT 2 ";
+	return $sql_rej_docs;
+}
+//function hoppr_schtask_cron() {
+function hoppr_hopschtask() {
+	global $base_url;
+	global$user;
+	$fourty_eight_hours = '172800';
+	$seventy_two_hours = '259200';
+	$mail_time = time();
+//rm/sm---- 24 hour rrule. mail send to rm/sm id rm/sm status is not filled within 24 hour....reminder mail send to rm/sm
+	$sql_app_nl_rs_sts = db_query("SELECT n.*, ctod.field_offer_description_value, ctod.field_hopper_checkin1_value, ctod.field_mer_offer_price_value, ctod.field_merchant_offer_price_value, ctod.field_hop_signup_city_value, ctod.field_offer_coupon_validity_value, ctod.field_hop_sp_valid_from_value, ctod.field_offer_sign_date_value, ctod.field_hop_sp_valid_from_value2 FROM {node} n inner join {content_type_offer_detail} ctod on ctod.vid = n.vid WHERE ctod.field_hoppr_new_rmsmsts_value IS NULL AND n.created < (UNIX_TIMESTAMP(now()) - 86400) order by n.nid desc LIMIT 2");
+	while($rs_nlrmsts = db_fetch_array($sql_app_nl_rs_sts)) {
+		/*
+		 * TABLE NAME....maintain log for mail sending
+		* aa_sc_two_four_format
+		* 
+		* only one mail is allowed for one offer.... maintain timestamp and offerid with the given status as mailsendtime,nid,uid
+		* mail send to all respective UID  //Detail...  //subject 24 hour  //merchant name, offer ID, salesperson name,created on
+		*/
+		$mail_log_nid = db_fetch_array(db_query("select * from aa_sc_two_four_format where nid='".$rs_nlrmsts['nid']."' "));
+		if(empty($mail_log_nid['nid'])) {
+			$rm_id = db_result(db_query("SELECT rm_id from {users} where uid='".$rs_nlrmsts['uid']."' "));
+			$rm_detail = get_hoppr_user_detail($rm_id);
+			$user_detail = get_hoppr_user_detail($rs_nlrmsts['uid']);
+			
+			$offer_det_arr = array();
+			$offer_det_arr['sp_name'] = $user_detail['name'];
+			$offer_det_arr['rm_name'] = $rm_detail['name'];
+			$offer_det_arr['merchant_name'] = $rs_nlrmsts['title'];
+			$offer_det_arr['merchant_offer_code'] = $rs_nlrmsts['nid'];
+			$offer_detail = (!empty($rs_nlrmsts['field_hopper_checkin1_value'])) ? $rs_nlrmsts['field_hopper_checkin1_value'] : $rs_nlrmsts['field_offer_description_value'];
+			if(!empty($rs_docsts['field_offer_description_value'])) {
+				$hop_off_det = 'offer description - '.$offer_detail.'<br>actual price - '.$rs_docsts['field_merchant_offer_price_value'].'<br />offer price - '.$rs_docsts['field_mer_offer_price_value'];
+			}else{
+				$hop_off_det = $offer_detail;
+			}
+//offer description
+			$offer_det_arr['offer_description'] = $hop_off_det;
+			$offer_det_arr['offer_entry_date'] = date("m-d-Y H:i:s", $rs_nlrmsts['created']);
+			$offer_det_arr['offer_signed_dt'] = displat_date_in_excel_format($rs_nlrmsts['field_offer_sign_date_value']);
+			$offer_det_arr['offer_last_modified_date'] = date("m-d-Y H:i:s", $rs_nlrmsts['changed']);
+			$offer_det_arr['city_name'] = get_only_term_name($rs_nlrmsts['field_hop_signup_city_value']);
+//offer validity
+			if(!empty($rs_nlrmsts['field_hop_sp_valid_from_value'])) {
+				$from_to_val = ' (From '.displat_date_in_excel_format($rs_nlrmsts['field_hop_sp_valid_from_value']).' To '.displat_date_in_excel_format($rs_nlrmsts['field_hop_sp_valid_from_value2']).')';	
+			}
+			$offer_det_arr['offer_validity'] = $rs_nlrmsts['field_offer_coupon_validity_value'].' days '.$from_to_val;
+//mail sending process to different people
+			$email_arr = set_hoppr_email_id();
+			$input_array['sender'] = $email_arr['sender']; 
+			$input_array['subject'] = 'Reminder: RM status to be updated for merchant- '.$offer_det_arr['merchant_name'];
+			$input_array['mail_body'] = get_rm_mail_format($offer_det_arr);
+			$input_array['test_mail'] = $email_arr['test_mail'];
+			$input_array['rm_mail'] = $rm_detail['mail'];
+			$input_array['sp_mail'] = $user_detail['mail'];
+			$input_array['rupesh_email_id'] = $email_arr['rupesh_email_id'];
+			$input_array['rakshi_email_id'] = $email_arr['rakshi_email_id'];
+			$input_array['varun_email_id'] = $email_arr['varun_email_id'];
+			$input_array['priya_email_id'] = $email_arr['priya_email_id'];
+			$input_array['vibhuti_email_id'] = $email_arr['vibhuti_email_id'];
+			$input_array['tarun_email_id'] = $email_arr['tarun_email_id'];
+			hoppr_reminder_mail_sending_process($input_array);
+//INSERT data into mail log table  //send one mail in a day
+			db_query("INSERT INTO aa_sc_two_four_format (nid, mailsenttime, modified) VALUES ('".$rs_nlrmsts['nid']."','".$mail_time."','".$mail_time."') ");
+		}
+	}
+	
+/*
+ *48 hour format....for rejected documents----3 X 86400= 269200 
+ * 
+ * 
+ * 
+ */	
+	$rejdocs_str = get_rejected_docslist($fourty_eight_hours);
+	$sql_docs_rej_sts = db_query($rejdocs_str);
+	while($rs_docsts = db_fetch_array($sql_docs_rej_sts)) {
+		$rm_id = db_result(db_query("SELECT rm_id from {users} where uid='".$rs_docsts['uid']."' "));
+		/*mail send to all respective UID
+		 *Detail...
+		 *subject 24 hour
+		 *merchant name, offer ID, salesperson name,created on 
+		 * */
+		$mail_docs_log_nid = db_fetch_array(db_query("select * from aa_docs_sc_seven_two_format where nid='".$rs_docsts['nid']."' "));
+		if(empty($mail_docs_log_nid['nid'])) {
+			$sp_det = db_fetch_array(db_query("SELECT * from {node} where vid='".$rs_docsts['vid']."' "));
+			$rm_id = db_result(db_query("SELECT rm_id from {users} where uid='".$sp_det['uid']."' "));
+			$rm_detail = get_hoppr_user_detail($rm_id);
+			$user_detail = get_hoppr_user_detail($sp_det['uid']);
+			
+			$offer_det_arr = array();
+			$offer_det_arr['sp_name'] = $user_detail['name'];
+			$offer_det_arr['rm_name'] = $rm_detail['name'];
+			$offer_det_arr['merchant_name'] = $rs_docsts['title'];
+			$offer_det_arr['merchant_offer_code'] = $rs_docsts['nid'];
+			$offer_detail = (!empty($rs_docsts['field_hopper_checkin1_value'])) ? $rs_docsts['field_hopper_checkin1_value'] : $rs_docsts['field_offer_description_value'];
+//offer description
+			if(!empty($rs_docsts['field_offer_description_value'])) {
+				$hop_off_det = 'offer description - '.$offer_detail.'<br>actual price - '.$rs_docsts['field_merchant_offer_price_value'].'<br />offer price - '.$rs_docsts['field_mer_offer_price_value']; 	
+			}else{
+				$hop_off_det = $offer_detail;
+			}
+			$offer_det_arr['offer_description'] = $hop_off_det;
+			$offer_det_arr['docs_status'] = $rs_docsts['field_hop_ops_agr_sta_value'];
+			$docs_mod_dt = get_docs_exe_modsts_dt($rs_docsts['nid']); 
+			$offer_det_arr['docs_rejection_date'] = $docs_mod_dt;
+			$rs_ops_manager_docs = get_ops_manager_ror($rs_docsts['nid']); 
+			$offer_det_arr['docs_ror'] = $rs_ops_manager_docs.', '.$rs_docsts['field_hop_mo_om_comments_value']; 
+			$offer_det_arr['offer_entry_date'] = date("m-d-Y H:i:s", $sp_det['created']);
+			$offer_det_arr['offer_last_modified_date'] = date("m-d-Y H:i:s", $sp_det['changed']);
+			$offer_det_arr['city_name'] = get_only_term_name($rs_docsts['field_hop_signup_city_value']);
+//offer validity	
+			if(!empty($rs_docsts['field_hop_sp_valid_from_value'])) {
+				$from_to_val = ' (From '.displat_date_in_excel_format($rs_docsts['field_hop_sp_valid_from_value']).' To '.displat_date_in_excel_format($rs_docsts['field_hop_sp_valid_from_value2']).')';
+			}
+			$offer_det_arr['offer_validity'] = $rs_docsts['field_offer_coupon_validity_value'].' days '.$from_to_val;
+//mail sending process to different people
+			$email_arr = set_hoppr_email_id();
+			$input_array['sender'] = $email_arr['sender'];
+			$input_array['subject'] = 'Reminder: Docs rejection exceeded 48 hours for merchant- '.$rs_docsts['title'];
+			$input_array['mail_body'] = get_docsrejected_mail_format($offer_det_arr);
+			$input_array['test_mail'] = $email_arr['test_mail'];
+			$input_array['rm_mail'] = $rm_detail['mail'];
+			$input_array['sp_mail'] = $user_detail['mail'];
+			$input_array['rupesh_email_id'] = $email_arr['rupesh_email_id'];
+			$input_array['rakshi_email_id'] = $email_arr['rakshi_email_id'];
+			$input_array['varun_email_id'] = $email_arr['varun_email_id'];
+			$input_array['priya_email_id'] = $email_arr['priya_email_id'];
+			$input_array['vibhuti_email_id'] = $email_arr['vibhuti_email_id'];
+			$input_array['tarun_email_id'] = $email_arr['tarun_email_id'];
+			hoppr_reminder_mail_sending_process($input_array);
+//INSERT data into mail log table  //send one mail in a day
+			db_query("INSERT INTO aa_docs_sc_seven_two_format (nid, mailsenttime, modified) VALUES ('".$rs_docsts['nid']."','".$mail_time."','".$mail_time."') ");
+		}
+	}
+/*find rejected oe/tc status with minimum vid(first time) with 72 hour format
+	 * 48 hour format....for rejected oe/tc status----
+	 * 2X86400=172800
+	 * 3x86400=259200
+	 * */
+		$oetc_var = get_varified_rej_oetc($fourty_eight_hours);
+		$sql_oetc_rej_sts = db_query($oetc_var);
+		while($rs_oetcsts = db_fetch_array($sql_oetc_rej_sts)) {
+			$mail_oetc_log_nid = db_fetch_array(db_query("select * from aa_oetc_sc_seven_two_format where nid='".$rs_oetcsts['nid']."' "));
+			if(empty($mail_oetc_log_nid['nid'])) {
+				$sp_det = db_fetch_array(db_query("SELECT * from {node} where vid='".$rs_oetcsts['vid']."' "));
+				$rm_id = db_result(db_query("SELECT rm_id from {users} where uid='".$sp_det['uid']."' "));
+				$rm_detail = get_hoppr_user_detail($rm_id);
+				$user_detail = get_hoppr_user_detail($sp_det['uid']);
+##########################################################################################
+				$mer_off_vid = db_result(db_query("Select vid from {node} where nid='".$rs_oetcsts['field_hopper_merchant_olt_nid']."' "));
+				$merchant_offer_detail = db_fetch_array(db_query("select field_hopper_checkin1_value, field_hop_signup_city_value, field_hop_tieup_type_value, field_offer_description_value, field_offer_coupon_validity_value, field_merchant_offer_price_value,field_mer_offer_price_value, field_hop_sp_valid_from_value, field_hop_sp_valid_from_value2 FROM {content_type_offer_detail} where vid='".$mer_off_vid."' "));
+				$offer_det_arr = array();
+				$offer_det_arr['sp_name'] = $user_detail['name'];
+				$offer_det_arr['rm_name'] = $rm_detail['name'];
+				$offer_det_arr['merchant_name'] = $rs_oetcsts['title'];
+				$offer_det_arr['merchant_offer_code'] = $rs_oetcsts['nid'];
+				$offer_detail = (!empty($merchant_offer_detail['field_hopper_checkin1_value'])) ? $merchant_offer_detail['field_hopper_checkin1_value'] : $merchant_offer_detail['field_offer_description_value'];
+				
+				if(!empty($rs_docsts['field_offer_description_value'])) {
+					$hop_off_det = 'offer description - '.$offer_detail.'<br>actual price - '.$rs_docsts['field_merchant_offer_price_value'].'<br />offer price - '.$rs_docsts['field_mer_offer_price_value'];
+				}else{
+					$hop_off_det = $offer_detail;
+				}
+				$offer_det_arr['offer_description'] = $hop_off_det;
+				
+				$input_array['outlet_id'] = $rs_oetcsts['outlet_id'];
+				$input_array['tieup_type'] = $merchant_offer_detail['field_hop_tieup_type_value'];
+				$input_array['creationdate'] = $rs_oetcsts['created'];
+				$oetc_status = get_oetc_opsdt($input_array);
+				$offer_det_arr['oetc_varification_date'] = $oetc_status['ops_stdt'];
+				$offer_det_arr['oetc_varification_month'] = $oetc_status['ops_start_month'];
+				$offer_det_arr['oetc_varify_by'] = get_salesperson_name($oetc_status['oetc_name']);
+//Status
+				if(!empty($rs_oetcsts['field_hop_offer_ops_status_mo_value'])){
+					$offer_det_arr['ops_sts'] = $rs_oetcsts['field_hop_offer_ops_status_mo_value'];
+				}elseif(!empty($rs_oetcsts['field_hop_ops_all_remrk_mo_value'])){
+					$offer_det_arr['ops_sts'] = $rs_oetcsts['field_hop_ops_all_remrk_mo_value'];
+				}else{
+					$offer_det_arr['ops_sts'] = '';
+				}
+//Remarks
+				$rs_ops_exe = get_ops_exe_ror_dummy($rs_oetcsts['nid']);
+				$oe_ror1 = get_ops_exe_ror_overallrejreson($rs_oetcsts['nid']);
+				if(!empty($rs_oetcsts['field_hop_offer_ops_comments_mo_value'])){
+					$comments = $rs_oetcsts['field_hop_offer_ops_comments_mo_value'];
+				}elseif(!empty($rs_oetcsts['field_hop_ops_tc_rmks_value'])){
+					$comments = $rs_oetcsts['field_hop_ops_tc_rmks_value'];
+				}else{
+					$comments = '';
+				}
+				$offer_det_arr['oetc_ror'] = $comments.' ,'.$rs_ops_exe .' , '. $oe_ror1;
+				$offer_det_arr['offer_entry_date'] = date("m-d-Y H:i:s", $sp_det['created']);
+				$offer_det_arr['offer_last_modified_date'] = date("m-d-Y H:i:s", $sp_det['changed']);
+				$offer_det_arr['city_name'] = get_only_term_name($rs_docsts['field_hop_signup_city_value']);
+//offer validity
+				if(!empty($merchant_offer_detail['field_hop_sp_valid_from_value'])) {
+					$from_to_val = ' (From '.displat_date_in_excel_format($merchant_offer_detail['field_hop_sp_valid_from_value']).' To '.displat_date_in_excel_format($merchant_offer_detail['field_hop_sp_valid_from_value2']).')';
+				}
+				$offer_det_arr['offer_validity'] = $merchant_offer_detail['field_offer_coupon_validity_value'].' days '.$from_to_val;
+//mail sending process to different people
+				$email_arr = set_hoppr_email_id();
+				$input_array['sender'] = $email_arr['sender'];
+				$input_array['subject'] = 'Reminder:verification rejection exceeded 48 hours for merchant-'.$offer_det_arr['merchant_name'];
+				$input_array['mail_body'] = get_oetcrejected_mail_format($offer_det_arr);
+				$input_array['test_mail'] = $email_arr['test_mail'];
+				$input_array['rm_mail'] = $rm_detail['mail'];
+				$input_array['sp_mail'] = '-';
+				$input_array['rupesh_email_id'] = $email_arr['rupesh_email_id'];
+				$input_array['rakshi_email_id'] = $email_arr['rakshi_email_id'];
+				$input_array['varun_email_id'] = $email_arr['varun_email_id'];
+				$input_array['priya_email_id'] = $email_arr['priya_email_id'];
+				$input_array['vibhuti_email_id'] = $email_arr['vibhuti_email_id'];
+				$input_array['tarun_email_id'] = $email_arr['tarun_email_id'];
+				hoppr_reminder_mail_sending_process($input_array);
+//INSERT data into mail log table  //send one mail in a day
+				db_query("INSERT INTO aa_oetc_sc_seven_two_format (nid, mailsenttime, modified) VALUES ('".$rs_oetcsts['nid']."','".$mail_time."','".$mail_time."') ");
+		}
+	}
+//oe tc varification end here	
+	
+	
+//########   BLOCKING REJECTED DOCUMENTS in the 72 hour interval#######
+		/*$block_oetc_var = get_varified_rej_oetc($seventy_two_hours);
+		$block_sql_oetc_rej_sts = db_query($block_oetc_var);
+		while($block_rs_oetcsts = db_fetch_array($block_sql_oetc_rej_sts)) {
+			//BLOCK MERCHANT
+		}*/
+	
+	
+//#########  BLOCKING REJECTED/sales meeting request/Language issue FOR TC in the 72 hour interval
+		/*$block_rejdocs_str = get_rejected_docslist($seventy_two_hours);
+		$block_sql_docs_rej_sts = db_query($block_rejdocs_str);
+		while($block_rs_docsts = db_fetch_array($block_sql_docs_rej_sts)) {
+			//BLOCK MERCHANT
+		}*/
+}//function end here

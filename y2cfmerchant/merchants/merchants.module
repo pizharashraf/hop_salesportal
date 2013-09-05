@@ -1,0 +1,349 @@
+<?php
+drupal_add_js(drupal_get_path('module', 'merchants') . '/my_js_file.js');
+drupal_add_css(drupal_get_path('module', 'merchants') . '/css/jquery.treeview.css');
+drupal_add_css(drupal_get_path('module', 'merchants') . '/css/tree.css');
+drupal_add_css(drupal_get_path('module', 'merchants') . '/addcontent.css');
+drupal_add_js(drupal_get_path('module', 'merchants') . '/js/jquery-1.2.6.pack.js');
+drupal_add_js(drupal_get_path('module', 'merchants') . '/js/jquery.simple.tree.js');
+drupal_add_css('lib/calender/themes/base/ui.all.css');
+drupal_add_css('lib/calender/calender.css');
+drupal_add_js('lib/calender/ui.core.js');
+drupal_add_js('lib/calender/ui/ui.datepicker.js');
+
+/*
+ * Merchants Listing
+ *
+ */
+function merchants_perm() {
+	return array('Administer DSR', 'Administer Ancestors Tree');
+}
+
+function merchants_menu() {
+	$items = array();
+	$items['asp/dsr'] = array(
+  'title' => 'DSR',
+  'page callback' => 'daily_sales_report',
+  'access arguments' => array('Administer DSR'),
+  'description' => 'Manage Daily sales Report.',
+  'weight' => -3,
+  'type' => MENU_LOCAL_TASK,
+
+	);
+
+
+	$items['y2cf/yourancestors'] = array(
+  'title' => 'Tree',
+  'page callback' => 'y2cf_ancestors_tree',
+  'access arguments' => array('Administer Ancestors Tree'),
+  'description' => 'Manage Ancestors Tree.',
+  'weight' => -2,
+  'type' => MENU_LOCAL_TASK,
+
+	);
+  return $items;
+}
+function y2cf_ancestors_tree() {
+	$output = '';
+	$output .= theme('ancester_tree', 'hello');
+	return $output;
+}
+function merchants_theme() {
+	$path = drupal_get_path('module', 'merchants');
+	return array(
+    'ancester_tree' => array(
+    'arguments' => array('hello' => NULL),
+    'template' => 'ancester-tree',
+    'path' => $path,
+	),
+	);
+
+}
+
+function sortby_dropdown_form() {
+	$sql_my_sp .= "select us.uid,us.name from {users} us inner join {users_roles} ur on us.uid=ur.uid inner join {role} rr on ur.rid=rr.rid where rr.name='salesperson' ";
+	if ($rs_rid == 'reporting manager' || $rs_rid == 'salesmanager') {
+		$sql_my_sp .= "and us.rm_id= '" . $user->uid . "' ";
+	}
+
+	$sql_my_sp .= "order by name asc";
+	$sql_obj = db_query($sql_my_sp);
+
+	$y2cf_sales_arr = array();
+	while ($rs = db_fetch_array($sql_obj)) {
+		$y2cf_sales_arr[$rs['uid']] = $rs['name'];
+	}
+
+	$form['make_excel']['contract_excl'] = array('#type' => 'submit', '#value' => t('Save in Excel'));
+	return $form;
+}
+
+function sortby_dropdown_form_submit($form, &$form_state) {
+	$main_path=drupal_get_path('module', 'merchants');
+	include_once($main_path . '/xls-writer.php');
+	$header = array("RM", "Salesperson", "Entry Date", "Last Modified Date", "Outlet Visited", "HFA", "City", "Merchant Category", "Genre", "Call Stage", "Modified Call Stage", "Next Follow up date", "Follow up action", "Outlet Contact number", "Address", "Email", "Decision Maker/Contact Person", "Designation", "Contact person contact number");
+	$sql_merchants = get_all_y2cf_dsr();
+	$obj_merchants = db_query($sql_merchants);
+	$data=array();
+	while ($row = db_fetch_array($obj_merchants)) {
+		$salesperson_name = db_result(db_query("SELECT name FROM {users} WHERE uid = %d", $row['uid']));
+		$rm_id = db_result(db_query("SELECT rm_id FROM {users} WHERE uid = %d", $row['uid']));
+		$rm_name = db_result(db_query("SELECT name FROM {users} WHERE uid = %d", $rm_id));
+		//Modified date calculations
+		if ($row['changed'] != NULL && $row['changed'] != $row['created']) {
+			$mod_date = date("Y-m-d", $row['changed']);
+		}
+		else {
+			$mod_date = '--';
+		}
+
+		$data[] = array(
+		$rm_name,
+		$salesperson_name,
+		date("Y-m-d", $row['created']),
+		$mod_date,
+		$row['title'],
+		get_only_term_name($row['field_dsr_st_city_hfa_value']),
+		get_only_term_name(get_parent_tid_by_tid($row['field_dsr_st_city_hfa_value'])),
+		$row['field_merchant_category_value'],
+		get_only_term_name($row['field_merchant_genree_value']),
+		get_only_term_name($row['field_dsr_call_stage_value']),
+		get_only_term_name($row['field_dsr_mod_call_stage_value']),
+		displat_date_and_time($row['field_dsr_next_follow_date_value']),
+		$row['field_dsr_follow_up_action_value'],
+		$row['field_dst_outlet_cn_number'],
+		$row['field_dsr_address_value'],
+		$row['field_dsr_email_email'],
+		$row['field_dsr_decision_maker_value'],
+		$row['field_dsr_designation_value'],
+		$row['field_dsr_contact_no_number']
+		);
+
+	}
+	return unilrn_Generate_excell_format("y2cf_dsr", $header, $data);
+
+}
+
+
+function make_exvel_for_different_users_form() {
+	$form['make_excel']['contract_excl'] = array('#type' => 'submit', '#value' => t('Save in Excel'));
+	return $form;
+}
+function make_exvel_for_different_users_form_submit($form, &$form_state) {
+	$main_path=drupal_get_path('module', 'merchants');
+	include_once($main_path . '/xls-writer.php');
+	$header = array("RM", "Salesperson", "Entry Date", "Last Modified Date", "Outlet Visited", "HFA", "City", "Merchant Category", "Genre", "Call Stage", "Modified Call Stage", "Next Follow up date", "Follow up action", "Outlet Contact number", "Address", "Email", "Decision Maker/Contact Person", "Designation", "Contact person contact number");
+	$sql_merchants = get_all_y2cf_dsr_for_different_users();
+	$obj_merchants = db_query($sql_merchants);
+	$data=array();
+	while ($row = db_fetch_array($obj_merchants)) {
+		$salesperson_name = db_result(db_query("SELECT name FROM {users} WHERE uid = %d", $row['uid']));
+		$rm_id = db_result(db_query("SELECT rm_id FROM {users} WHERE uid = %d", $row['uid']));
+		$rm_name = db_result(db_query("SELECT name FROM {users} WHERE uid = %d", $rm_id));
+		//Modified date calculations
+		if ($row['changed'] != NULL && $row['changed'] != $row['created']) {
+			$mod_date = date("Y-m-d", $row['changed']);
+		}
+		else {
+			$mod_date = '--';
+		}
+		$data[] = array(
+		$rm_name,
+		$salesperson_name,
+		date("Y-m-d", $row['created']),
+		$mod_date,
+		$row['title'],
+		get_only_term_name($row['field_dsr_st_city_hfa_value']),
+		get_only_term_name(get_parent_tid_by_tid($row['field_dsr_st_city_hfa_value'])),
+		$row['field_merchant_category_value'],
+		get_only_term_name($row['field_merchant_genree_value']),
+		get_only_term_name($row['field_dsr_call_stage_value']),
+		get_only_term_name($row['field_dsr_mod_call_stage_value']),
+		displat_date_and_time($row['field_dsr_next_follow_date_value']),
+		$row['field_dsr_follow_up_action_value'],
+		$row['field_dst_outlet_cn_number'],
+		$row['field_dsr_address_value'],
+		$row['field_dsr_email_email'],
+		$row['field_dsr_decision_maker_value'],
+		$row['field_dsr_designation_value'],
+		$row['field_dsr_contact_no_number']
+		);
+	}
+	return unilrn_Generate_excell_format("y2cf_dsr", $header, $data);
+}
+
+function daily_sales_report(){
+
+	global $base_url;
+	global $user;
+	$per_page = set_per_page_counts();
+	$rs_rid  = get_user_role_id($user->uid);
+	$fresh_path = $base_url.'/node/add/y2cf-dsr';
+	$repeat_visit = $base_url.'/node/add/repeat_visit';
+	if($rs_rid != 'salesperson') {
+	}
+	$output .= '<table border="0">
+				<tr>
+					<td width="20%">'.drupal_get_form('sortby_dropdown_form', $form).'</td>
+					<td width="20%">&nbsp;&nbsp;</td>
+					<td width="60%">&nbsp;</td>
+				</tr>
+			</table>';
+
+	$header = array(
+	array('data' => 'S.No', 'field' => 'nid'),
+	array('data' => 'RM', 'field' => 'uid'),
+	array('data' => 'Salesperson', 'field' => 'uid'),
+	array('data' => 'Date', 'field' => 'created', 'sort' => 'desc'),
+	array('data' => 'Modified Date', 'field' => 'changed'),
+	array('data' => 'Outlet Visited', 'field' => 'title'),
+	array('data' => 'HFA | City', 'field' => 'field_dsr_st_city_hfa_value'),
+	//array('data' => 'City', 'field' => 'field_dsr_st_city_hfa_value'),
+	array('data' => 'Merchant Category', 'field' => 'field_merchant_category_value'),
+	array('data' => 'Genre', 'field' => 'field_merchant_genree_value'),
+	array('data' => 'Call Stage', 'field' => 'ctyd.nid'),
+	array('data' => 'Modified Call Stage', 'field' => 'nid'),
+	array('data' => 'Actions'),
+
+	);
+	if(isset($_GET['Search_val'])){
+		$rm = isset($_GET['rm'])?$_GET['rm']:"";
+		$salesperson = isset($_GET['salesperson'])?$_GET['salesperson']:"";
+		$entry_date = isset($_GET['entry_date'])?$_GET['entry_date']:"";
+		$exit_date = isset($_GET['exit_date'])?$_GET['exit_date']:"";
+		$city = isset($_GET['city'])?$_GET['city']:"";
+		$outlet_visited = isset($_GET['outlet_visited'])?$_GET['outlet_visited']:"";
+		$hfa = isset($_GET['hfa'])?$_GET['hfa']:"";
+		$merchant_category = isset($_GET['merchant_category'])?$_GET['merchant_category']:"";
+		$genre = isset($_GET['genre'])?$_GET['genre']:"";
+		$call_stage = isset($_GET['call_stage'])?$_GET['call_stage']:"";
+		$mod_call_stage = isset($_GET['mod_call_stage'])?$_GET['mod_call_stage']:"";
+
+
+
+	}
+	if(isset($_GET['Search_reset']) && $_GET['Search_reset']=="View All"){
+		drupal_goto($base_url."/asp/dsr");
+	}
+	$data = array();
+	if($rs_rid == 'salesperson') {
+		$rm_select_field = '';
+		$sp_select_field = '';
+	}else if($rs_rid == 'reporting manager' || $rs_rid == 'salesmanager') {
+		$rm_select_field = '';
+		$sp_select_field = "<SELECT name='salesperson' style='width:60px;'>".y2cf_list_of_salespersons_for_particular_rm($user->uid)."</SELECT>";
+	}else {  //For admin, national sales head
+		$rm_select_field = "<SELECT name='rm' style='width:auto;'>".y2cf_list_of_rms()."</SELECT>";
+		$sp_select_field = "<SELECT name='salesperson' style='width:60px;'>".y2cf_list_of_all_salespersons()."</SELECT>";
+
+	}
+	$data[-1] = array(
+	  'sn'=> "<form name='form2' method='get' action=''>",
+	  'rm'=> $rm_select_field,
+	  'salesperson'=> $sp_select_field,
+	  'entry_date'=> "From <input size='10' id='assign-from' type='text' name='entry_date' readonly='readonly' class='ul_search10 form-text' value='" . $entry_date . "'>
+		<script type='text/javascript'>
+		jQuery(function() {
+		jQuery('#assign-from').datepicker({
+		changeMonth: true,
+		changeYear: true,
+		yearRange: '1950:2020',
+	});
+	});
+	</script>
+	<br /><br />To&nbsp;&nbsp;&nbsp;&nbsp; <input size='10' id='assign-from_exit' type='text' name='exit_date' readonly='readonly' class='ul_search10 form-text' value='" . $exit_date . "'>
+		<script type='text/javascript'>
+		jQuery(function() {
+		jQuery('#assign-from_exit').datepicker({
+		changeMonth: true,
+		changeYear: true,
+		yearRange: '1950:2020',
+	});
+	});
+	</script>",
+	'modified_date'=> " ",
+	'outlet_visited'=> "<input type='text' name='outlet_visited' size='10' class='ul_search10 form-text' value='" . $outlet_visited . "'>",
+	'hfa'=> "<input type='text' name='hfa' size='10' class='ul_search10 form-text' value='" . $hfa . "'><br /><SELECT name='city' style='width:60px;'  >" . y2cf_list_city_for_filteration() . "</SELECT>",
+	//'city'=> "<SELECT name='city' style='width:60px;'  >" . y2cf_list_city_for_filteration() . "</SELECT>",
+	'merchant_category'=> "<input type='text' name='merchant_category' size='5' value='".$merchant_category."'>",
+	'genre'=> "<SELECT name='genre' style='width:60px;' >".y2cf_list_genre_for_filteration()."</SELECT>",
+	'call_stage'=> "<SELECT name='call_stage' style='width:60px;' >".y2cf_list_call_stage_for_filteration()."
+       </SELECT>",
+	'mod_call_stage'=> "<SELECT name='mod_call_stage' style='width:60px;' >
+	       ".y2cf_list_mod_call_stage_for_filteration()."</SELECT>",
+	'operations' =>"<input type='submit' name='Search_val' value='Filter' class='form-submit'>
+	<input type='submit' name='Search_reset' value='View All' class='form-submit'>
+					</form>",
+	);
+	$sql_merchants .= "SELECT nn.*,ctyd.* FROM {content_type_y2cf_dsr} ctyd inner join {node} nn on ctyd.nid = nn.nid ";
+	$sql_merchants .= get_merchant_dsr_filter_conditions();
+	$res_merchants = pager_query($sql_merchants . tablesort_sql($header), $limit = $per_page);
+	$serial_number = get_list_serial_number();
+	while ($row = db_fetch_array($res_merchants)) {
+		if($rs_rid != 'y2cfemployee') {
+			$edit_url = $base_url.'/node/'.$row['nid'].'/edit?destination=asp/dsr';
+			$update_url = l('Edit', $edit_url);
+		} else {
+			$update_url = '';
+		}
+		$detail_url = $base_url.'/node/'.$row['nid'];
+		$salesperson_name = db_result(db_query("SELECT name FROM {users} WHERE uid = %d", $row['uid']));
+		$rm_id = db_result(db_query("SELECT rm_id FROM {users} WHERE uid = %d", $row['uid']));
+		$rm_name = db_result(db_query("SELECT name FROM {users} WHERE uid = %d", $rm_id));
+		$rm_rm_id = db_result(db_query("SELECT rm_id FROM {users} WHERE uid = %d", $rm_id));
+		$rm_rm_name = db_result(db_query("SELECT name FROM {users} WHERE uid = %d", $rm_rm_id));
+		if ($rm_rm_name != 'y2cfmanager') {
+			$main_rm = $rm_rm_name;
+		}
+		else{
+			$main_rm = '';
+		}
+		if($row['changed']!=NULL && $row['changed'] != $row['created']) {
+	  $mod_date = date("Y-m-d H:i:s",$row['changed']);
+		} else {
+	  $mod_date = '--';
+		}
+		$add_offers_url = $base_url.'/node/add/offer-detail/' . $row['nid'];
+		$add_offer_link_url = l('Add Offer', $add_offers_url);
+
+		$data[] = array(
+			$serial_number++,
+			$rm_name.'<br /><span style="color:red;">'.$main_rm.'</span>',
+			$salesperson_name,
+			date("Y-m-d H:i:s",$row['created']),
+			$mod_date,
+			$row['title'],
+			get_only_term_name($row['field_dsr_st_city_hfa_value']).'<br /><span style="color:red;">'.get_only_term_name(get_parent_tid_by_tid($row['field_dsr_st_city_hfa_value'])).'</span>',
+			$row['field_merchant_category_value'],
+			get_only_term_name($row['field_merchant_genree_value']),
+			get_only_term_name($row['field_dsr_call_stage_value']),
+			get_only_term_name($row['field_dsr_mod_call_stage_value']),
+			l('Detail', $detail_url).'<br />'.$update_url,
+		);
+	}
+	/*
+	 $attributes = array(
+	 'border'      => 2,
+	 'cellspacing' => 0,
+	 'cellpadding' => 5,
+
+	 );
+	 $output .= theme('table', $header, $data, $attributes	);
+	 */
+	$total_cn = get_all_dsr_count_according_to_filters();
+	$output .= theme('table', $header, $data);
+	$output .= theme('pager');
+	$output .= get_custom_pager_request($total_cn);
+	return $output;
+}
+/***** validate user name******/
+function merchants_ajax_validate($string = '') {
+	if ($string) {
+		//do your validation here...say we didn't want to allow underscores in the username
+		if (strstr($string,"_")) {
+			$errors[] = t("Underscores in your username aren't allowed.");
+		}
+		foreach ($errors as $error) {
+			print "$error <br />";
+		}
+	}
+}

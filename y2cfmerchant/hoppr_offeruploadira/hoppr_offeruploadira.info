@@ -1,0 +1,5 @@
+name = Hoppr Offer upload IRA bulk csv  upload
+description = Hoppr Offer upload IRA bulk csv bulk upload
+core = 6.x
+
+package = Y2CF

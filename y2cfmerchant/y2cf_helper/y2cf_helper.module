@@ -1,0 +1,1576 @@
+<?php /**
+ * Format a time interval with the requested granularity.
+ *
+ * @param $timestamp
+ *   The length of the interval in seconds.
+ * @param $granularity
+ *   How many different units to display in the string.
+ * @param $langcode
+ *   Optional language code to translate to a language other than
+ *   what is used to display the page.
+ * @return
+ *   A translated string representation of the interval.
+ */
+
+	//calender
+	drupal_add_css('lib/calender/themes/base/ui.all.css');
+	drupal_add_css('lib/calender/calender.css');
+	drupal_add_js('lib/calender/ui.core.js');
+	drupal_add_js('lib/calender/ui/ui.datepicker.js');
+
+	/**
+	 * Fetch all dsr record for nid
+	 * @param $nid
+	 *   Node nid.
+	 * @return
+	 * GET all dsr record for nid.
+	 */
+	function get_all_dsr_using_nid($nid) {
+		$rs_dsr = db_fetch_object(db_query("SELECT nn.*,ctyd.* FROM {content_type_y2cf_dsr} ctyd inner join {node} nn on ctyd.nid = nn.nid WHERE nn.nid = '".$nid."' " ));
+		return $rs_dsr;
+	}
+	/**
+	 * Get merchant name
+	 * @param $merc_id
+	 *   Merchant id as nid.
+	 * @return
+	 * Get a particular merchant name.
+	 */
+	function get_merchant_name_by_nid($merc_id) {
+		$sql_merchant_name = db_result(db_query("SELECT title from {node}  WHERE nid = '%d' ", $merc_id ));
+		return $sql_merchant_name;
+	}
+	/**
+	 * Get parent tid
+	 * @param $term_id
+	 *   Taxonomy term id.
+	 * @return
+	 * Get parent tid.
+	 */
+	function get_parent_tid_by_tid($term_id) {
+		$parent_name = db_result(db_query("SELECT td.tid  from {term_hierarchy} th INNER JOIN {term_data} td on th.parent = td.tid WHERE th.tid = '%d' ", $term_id ));
+		return $parent_name;
+	}
+	/**
+	 * Manipulate the given date
+	 * @param $offer_date
+	 *   Offer date in given format.
+	 * @return
+	 * Get formatted date.
+	 */
+	function displat_date_and_time($offer_date) {
+		$date_exp = explode("T",$offer_date);
+		return $date_exp[0];
+	}
+	function displat_date_in_excel_format_for_go_live_dt($offer_date) {
+    $date_exp = explode("T",$offer_date);
+    if(!empty($date_exp[1])) {
+    $dddash = explode("-", $date_exp[0]); //Y-m-d
+    $daterfrm = $dddash[1].'-'.$dddash[2].'-'.$dddash[0];
+    return $daterfrm;
+    }else{
+        $dddash = explode("/", $offer_date); //m/d/y
+    $daterfrm = $dddash[0].'-'.$dddash[1].'-'.$dddash[2];
+    return $daterfrm;
+    	
+    }
+}
+
+function displat_date_in_excel_format_for_go_live_dt_intimestamp($offer_date) {
+    $date_exp = explode("T",$offer_date);
+    if(!empty($date_exp[1])) {
+    $dddash = explode("-", $date_exp[0]); //Y-m-d
+    $daterfrm = mktime(0,0,0,$dddash[1],$dddash[2],$dddash[0]);
+    return $daterfrm;
+    }else{
+        $dddash_m = explode("/", $offer_date); //m/d/y
+        $daterfrm = mktime(0,0,0,$dddash_m[0],$dddash_m[1],$dddash_m[2]);
+        //$daterfrm = $dddash[0].'-'.$dddash[1].'-'.$dddash[2];
+        return $daterfrm;
+    	
+    }
+    
+  }
+  
+  
+  function displat_date_in_excel_format_for_pos_delivered_intimestamp($offer_date) {
+  	$date_exp = explode("T",$offer_date);
+  	if(!empty($date_exp[1])) {
+  		$dddash = explode("-", $date_exp[0]); //Y-m-d
+  		$daterfrm = mktime(0,0,0,$dddash[1],$dddash[2],$dddash[0]);
+  		return $daterfrm;
+  	}
+  
+  }
+  
+  
+	/**
+	 * Manipulate the given date for downloaded excel file for dsr and merchant offers
+	 * @param $offer_date
+	 *   Offer date in given format.
+	 * @return
+	 * Get formatted date.
+	 */
+	function displat_date_in_excel_format($offer_date) {
+		$date_exp = explode("T",$offer_date);
+		$dddash = explode("-", $date_exp[0]); //Y-m-d
+		//$daterfrm = $dddash[1].'/'.$dddash[2].'/'.$dddash[0];
+        $daterfrm = $dddash[1].'-'.$dddash[2].'-'.$dddash[0];
+		return $daterfrm;
+	}
+	function displat_date_in_timestamp($offer_date) {
+    $date_exp = explode("T",$offer_date);
+    $dddash = explode("-", $date_exp[0]); //Y-m-d
+    $daterfrm = mktime("0,0,0",$dddash[1],$dddash[0],$dddash[2]);
+    return $daterfrm;
+  }
+	function displat_date_in_excel_format_in_exect_format($offer_date) {
+    $date_exp = explode("T",$offer_date);
+    $dddash = explode("-", $date_exp[0]); //Y-m-d
+    $actual_day = $dddash[2] + 1;
+    $daterfrm = $dddash[1].'-'.get_format_number($actual_day).'-'.$dddash[0];
+    return $daterfrm;
+  }
+	/**
+	 * Manipulate the given date
+	 * @param $offer_date
+	 *   Offer date in given format.
+	 * @return
+	 * Get formatted date.
+	 */
+	function displat_date_in_dash_format($offer_date) {
+		$date_exp = explode("T",$offer_date);
+		$dddash = explode("-", $date_exp[0]); //Y-m-d
+		$daterfrm = $dddash[0].'-'.$dddash[1].'-'.$dddash[2];
+		return $daterfrm;
+	}
+	/*Formatting number as 00000xxx  */
+	function get_format_number($var){
+		$fourDigit = trim($var);
+		for ($i=0; $i<=1; $i++) {
+			if (strlen($fourDigit) < 2) {$fourDigit = "0".$fourDigit;}
+		}
+		return $fourDigit;
+	}
+	/**
+	 * Get tern name
+	 * @param $term_id
+	 *   Taxonomy term id.
+	 * @return
+	 * Get term name.
+	 */
+	function get_only_term_name($term_id) {
+		$subject_name = db_result(db_query("SELECT name from {term_data}  WHERE tid = '%d' ", $term_id ));
+		return $subject_name;
+	}
+	/**
+	 * Get user role id
+	 * @param $uid
+	 *   uid of user.
+	 * @return
+	 * Get user role id.
+	 */
+	function get_user_role_id($uid) {
+		$rs_rid = db_result(db_query("select rr.name from {users_roles} ur inner join {role} rr on ur.rid=rr.rid where ur.uid='".$uid."' "));
+		return $rs_rid;
+	}
+	/**
+   * Get user role id for multi roles
+   * @param $uid
+   *   uid of user.
+   * @return
+   * Get user role id.
+   */
+	function get_all_user_roles($uid) {
+    $rs_rid = db_query("select rr.name,ur.uid from {users_roles} ur inner join {role} rr on ur.rid=rr.rid where ur.uid='".$uid."' ");
+    $roles_arr = array();
+    while($rs = db_fetch_array($rs_rid)) {
+    	$roles_arr[] = $rs;
+    }
+
+    $smm_new_array = array();
+    foreach($roles_arr as $result_num => $sub_array) {
+      $smm_new_array[$result_num] = $sub_array['name'];
+    }
+    //$smans_users_uid = implode(",", $smm_new_array);
+    return $smm_new_array;
+  }
+	/**
+	 * Get salesperson,salesmanager etc... using uid
+	 * @param $user_id
+	 *   uid of user/salesperson.
+	 * @return
+	 * Get user name.
+	 */
+	function get_salesperson_name($user_id) {
+		$sales_man = db_result(db_query("SELECT name FROM {users} WHERE uid = %d", $user_id));
+		return $sales_man;
+	}
+	/**
+	 * Get reporting manager name of salesperson/salesmanager uid
+	 * @param $user_id
+	 *   uid of user/salesperson.
+	 * @return
+	 * Get reporting manager name of salesperson/salesmanager.
+	 */
+	function get_reporting_manager_name($user_id) {
+		$rm_id = db_result(db_query("SELECT rm_id FROM {users} WHERE uid = %d", $user_id));
+		$rm_name = db_result(db_query("SELECT name FROM {users} WHERE uid = %d", $rm_id));
+		return $rm_name;
+	}
+	function get_hoppr_rm_onsp($uid) {
+	 $rm_id = db_result(db_query("SELECT rm_id FROM {users} WHERE uid = %d", $uid));
+	 $rm_name = db_result(db_query("SELECT name FROM {users} WHERE uid = %d", $rm_id));
+	 return $rm_name;
+	}
+  function get_hoppr_main_rm_on_sp($uid) {
+  	$rm_id = db_result(db_query("SELECT rm_id FROM {users} WHERE uid = %d", $uid));
+  	$rm_rm_id = db_result(db_query("SELECT rm_id FROM {users} WHERE uid = %d", $rm_id));
+  	$rm_rm_name = db_result(db_query("SELECT name FROM {users} WHERE uid = %d", $rm_rm_id));
+    if ($rm_rm_name != 'y2cfmanager') {
+      $main_rm = $rm_rm_name;
+    }
+    else{
+      $main_rm = '';
+    }
+    return $main_rm;
+  }
+
+  /**
+	 * Merchant genre manipulation
+	 * @param $merchant_type
+	 *   merchant type as A,B.
+	 * @return
+	 * manipulated string.
+	 */
+	function get_merchant_type_renam($merchant_type) {
+		if ($merchant_type == 'A') {
+			$ren_mer_type = 'A - Featured';
+		} else if ($merchant_type == 'B') {
+			$ren_mer_type = 'B - Loyalty';
+		} else if ($merchant_type == 'C') {
+			$ren_mer_type = 'C - New User';
+		} else if ($merchant_type == 'D') {
+			$ren_mer_type = 'D - Deal';
+		}
+
+		return $ren_mer_type;
+	}
+	/**
+	 * Saleshead email id
+	 * @param $salesman_id
+	 *   salesperson uid.
+	 * @return
+	 * saleshead email.
+	 */
+	function get_saleshead_mail_id($salesman_id) {
+		$sh = db_result(db_query("select ub.mail from {users} ua inner join {users} ub on ua.rm_id=ub.uid where ua.uid='".$salesman_id."' "));
+		return $sh;
+	}
+	/**
+	 * list of all salesperson of a RM
+	 * @param $reporting_uid
+	 *   rm uid.
+	 * @return
+	 * salesperson array.
+	 */
+	function get_all_salesman_of_rm($reporting_uid) {
+		$all_user = db_query("select uid from {users} where rm_id='".$reporting_uid."' ");
+		$u_arr = array();
+		while($rs = db_fetch_array($all_user)){
+			$u_arr[] = $rs;
+		}
+		return $u_arr;
+	}
+
+	/**
+	 * list of all salesmanager of a RM
+	 * @param $reporting_uid
+	 *   rm uid.
+	 * @return
+	 * salesmanager array.
+	 */
+
+	function get_all_salesmanager_of_rm($reporting_uid) {
+		$all_user = db_query("select uu.uid from {users} uu inner join {users_roles} ur on uu.uid=ur.uid inner join {role} rr on ur.rid=rr.rid where rr.name= 'salesmanager' and uu.rm_id='".$reporting_uid."' " );
+		$u_arr = array();
+		while($rs = db_fetch_array($all_user)){
+			$u_arr[] = $rs;
+		}
+		return $u_arr;
+	}
+
+	/**
+	 * list of all salesman of salesmanager
+	 * @param $rm_id
+	 *   sm uid.
+	 * @return
+	 * salesman array.
+	 */
+
+	function get_all_salesman_of_all_salesmanager($rm_id) {
+		$sales_mngr = get_all_salesmanager_of_rm($rm_id);
+		$sm_new_array = array();
+		foreach($sales_mngr as $result_num => $sub_array) {
+			$sm_new_array[$result_num] = $sub_array['uid'];
+		}
+		$sm_users_uid = implode(",", $sm_new_array);
+		$sm_all_user = db_query("select uid from {users} where rm_id in (" . $sm_users_uid . ") ");
+		$sm_u_arr = array();
+		while($rs = db_fetch_array($sm_all_user)){
+			$sm_u_arr[] = $rs;
+		}
+		$smm_new_array = array();
+		foreach($sm_u_arr as $result_num => $sub_array) {
+			$smm_new_array[$result_num] = $sub_array['uid'];
+		}
+		$smans_users_uid = implode(",", $smm_new_array);
+		return $smans_users_uid;
+	}
+
+	/**
+	 * sql - list of all DSR
+	 * @return
+	 * sql string.
+	 */
+
+	function get_all_y2cf_dsr() {
+		global $user;
+		$rs_rid  = get_user_role_id($user->uid);
+		$sql_merchants .= "SELECT nn.*,ctyd.* FROM  {content_type_y2cf_dsr} ctyd inner join {node} nn on ctyd.nid = nn.nid ";
+		if($rs_rid == 'salesperson') {
+			$sql_merchants .= "  and nn.uid='".$user->uid."' ";
+		}
+		if($rs_rid == 'salesmanager') {
+			$u_arr = get_all_salesman_of_rm($user->uid);
+			$new_array = array();
+			foreach($u_arr as $result_num => $sub_array) {
+				$new_array[$result_num] = $sub_array['uid'];
+			}
+			$users_uid = implode(",", $new_array);
+			$sql_merchants .= " and (nn.uid in (".$users_uid.") OR  nn.uid='".$user->uid."') ";
+		}
+		if($rs_rid == 'reporting manager') {
+			$u_arr = get_all_salesman_of_rm($user->uid);
+			$new_array = array();
+			foreach($u_arr as $result_num => $sub_array) {
+				$new_array[$result_num] = $sub_array['uid'];
+			}
+			$users_uid = implode(",", $new_array);
+			$all_sm_of_smngr = get_all_salesman_of_all_salesmanager($user->uid);
+			if(!empty($all_sm_of_smngr)){
+				$sql_merchants .= " and (nn.uid in (".$users_uid.") OR nn.uid in (".$all_sm_of_smngr.") OR nn.uid='".$user->uid."') ";
+			}else
+			{
+				$sql_merchants .= " and (nn.uid in (".$users_uid.") OR  nn.uid='".$user->uid."') ";
+			}
+		}
+
+	   if (isset($_GET['entry_date']) && $_GET['entry_date']!="") {
+        $curdate_1 = explode("/", $_GET['entry_date']);
+        $entry_date = mktime(0, 0, 1, $curdate_1[0], $curdate_1[1], $curdate_1[2]);
+        $sql_merchants .= " and nn.created >= '" . $entry_date . "' ";
+      }
+      if (isset($_GET['exit_date']) && $_GET['exit_date']!="") {
+        $curdate_1 = explode("/", $_GET['exit_date']);
+        $entry_date = mktime(23, 59, 59, $curdate_1[0], $curdate_1[1], $curdate_1[2]);
+        $sql_merchants .= " and nn.created <= '" . $entry_date . "' ";
+      }
+	   if (isset($_GET['rm']) && $_GET['rm']!= "" ) {
+       $sql_merchants .= " inner join {users} uu on nn.uid = uu.uid  and uu.rm_id = '" . $_GET['rm'] . "' ";
+    }
+    if (isset($_GET['salesperson']) && $_GET['salesperson']!= "" ) {
+      $sql_merchants .= " and nn.uid = '" . $_GET['salesperson'] . "' ";
+    }
+    if (isset($_GET['outlet_visited']) && $_GET['outlet_visited']!= "" ) {
+      $sql_merchants .= " and nn.title LIKE '" . trim($_GET['outlet_visited']) . "%' ";
+    }
+
+
+		return $sql_merchants;
+	}
+
+	/**
+	 * list - sql for merchant offers and outlets
+	 * @return
+	 * sql string.
+	 */
+
+	function get_all_y2cf_merchant_offers_and_outlets() {
+		global $user;
+		$act_user_id = arg(2);
+		if (!empty($act_user_id)) {
+			$user_id = $act_user_id;
+		}
+		else {
+			$user_id = $user->uid;
+		}
+		$rs_rid  = get_user_role_id($user->uid);
+		$sql_merchants .= "SELECT DISTINCT  nn.title as merchantname,ctmo.nid as merchantid, nn.uid as salesperson,nn.created as creationdate,nn.changed as changeddate, ctmo.*, coutlet.* FROM {content_type_offer_detail} ctmo inner join {node} nn on ctmo.vid = nn.vid left outer join {content_type_merchant_outlet} coutlet on ctmo.nid = coutlet.field_hopper_merchant_olt_nid inner join {node} n on coutlet.vid = n.vid and n.type='merchant_outlet'   ";
+
+		//save excel on the basis of search
+	 if (isset($_GET['rm']) && $_GET['rm']!= "" ) {
+      $sql_merchants .= " inner join {users} uu on n.uid = uu.uid  and uu.rm_id = '" . $_GET['rm'] . "' ";
+   }
+	 if (isset($_GET['salesperson']) && $_GET['salesperson']!= "" ) {
+      $sql_merchants .= " and n.uid = '" . $_GET['salesperson'] . "' ";
+   }
+	 if (isset($_GET['merchant']) && $_GET['merchant']!= "" ) {
+    $sql_merchants .= " and n.title LIKE '" . trim($_GET['merchant']) . "%' ";
+   }
+   if(isset($_GET['merchant_code']) && $_GET['merchant_code']!= "" ) {
+   	$sql_merchants  .= " and ctmo.nid= '".$_GET['merchant_code']."' ";
+   }
+   
+   
+	 if (isset($_GET['entry_date']) && $_GET['entry_date']!="") {
+     $curdate_1 = explode("/", $_GET['entry_date']);
+     $entry_date = mktime(0, 0, 1, $curdate_1[0], $curdate_1[1], $curdate_1[2]);
+     $sql_merchants .= " and n.created >= '" . $entry_date . "'  ";
+   }
+   if (isset($_GET['exit_date']) && $_GET['exit_date']!="") {
+     $curdate_1 = explode("/", $_GET['exit_date']);
+     $entry_date = mktime(23, 59, 59, $curdate_1[0], $curdate_1[1], $curdate_1[2]);
+     $sql_merchants .= " and n.created <= '" . $entry_date . "'  ";
+   }
+	 if (isset($_GET['genre']) && $_GET['genre']!= "" ) {
+     $sql_merchants .= " and ctmo.field_genre_value = '" . $_GET['genre'] . "' ";
+   }
+	if (isset($_GET['merchant_category']) && $_GET['merchant_category']!= "" ) {
+     $sql_merchants .= " and ctmo.field_hop_merch_type_value = '" . $_GET['merchant_category'] . "' ";
+   }
+	//Rm or sm ststus and OE sts and Docs status filter
+  if(isset($_GET['rm_or_sm_status']) && $_GET['rm_or_sm_status']!= "" ) {
+    $sql_merchants .= " and ctmo.field_hoppr_new_rmsmsts_value LIKE '".trim($_GET['rm_or_sm_status'])."%' ";
+  }
+  if(isset($_GET['oedocssts']) && $_GET['oedocssts']!= "" ) {
+    $sql_merchants .= " and ctmo.field_hop_ops_agr_sta_value LIKE '".trim($_GET['oedocssts'])."%' ";
+  }
+  if(isset($_GET['oests']) && $_GET['oests']!= "" ) {
+    $sql_merchants .= " and ctmo.field_hop_offer_ops_status_value LIKE '".trim($_GET['oests'])."%' ";
+  }
+
+
+
+
+
+
+		if($rs_rid == 'salesperson') {
+			$sql_merchants .= "  and nn.uid='".$user_id."' ";
+		}
+    if($rs_rid == 'salesmanager') {
+			$u_arr = get_all_salesman_of_rm($user->uid);
+			$new_array = array();
+			foreach($u_arr as $result_num => $sub_array) {
+				$new_array[$result_num] = $sub_array['uid'];
+			}
+			$users_uid = implode(",", $new_array);
+			$sql_merchants .= " and (nn.uid in (".$users_uid.") OR  nn.uid='".$user->uid."') ";
+		}
+		if($rs_rid == 'reporting manager') {
+			$u_arr = get_all_salesman_of_rm($user->uid);
+			$new_array = array();
+			foreach($u_arr as $result_num => $sub_array) {
+				$new_array[$result_num] = $sub_array['uid'];
+			}
+			$users_uid = implode(",", $new_array);
+			$all_sm_of_smngr = get_all_salesman_of_all_salesmanager($user->uid);
+			if(!empty($all_sm_of_smngr)){
+				$sql_merchants .= " and (nn.uid in (".$users_uid.") OR nn.uid in (".$all_sm_of_smngr.") OR nn.uid='".$user->uid."') ";
+			}else
+			{
+				$sql_merchants .= " and (nn.uid in (".$users_uid.") OR  nn.uid='".$user->uid."') ";
+			}
+		}
+
+		return $sql_merchants;
+	}
+
+	/**
+	 * list - sql for dsr for all users
+	 * @return
+	 * sql string.
+	 */
+
+	function get_all_y2cf_dsr_for_different_users() {
+		global $user;
+		$act_user_id = arg(2);
+		if (!empty($act_user_id)) {
+			$user_id = $act_user_id;
+		}
+		else {
+			$user_id = $user->uid;
+		}
+
+		$rs_rid  = get_user_role_id($user_id);
+		$sql_merchants .= "SELECT nn.*,ctyd.* FROM {content_type_y2cf_dsr} ctyd inner join {node} nn on ctyd.nid = nn.nid ";
+
+		if($rs_rid == 'salesperson') {
+			$sql_merchants .= " and nn.uid='".$user_id."' ";
+		}
+		if($rs_rid == 'salesmanager') {
+			$u_arr = get_all_salesman_of_rm($user->uid);
+			$new_array = array();
+			foreach($u_arr as $result_num => $sub_array) {
+				$new_array[$result_num] = $sub_array['uid'];
+			}
+			$users_uid = implode(",", $new_array);
+			$sql_merchants .= " and (nn.uid in (".$users_uid.") OR  nn.uid='".$user->uid."') ";
+		}
+		if($rs_rid == 'reporting manager') {
+			$u_arr = get_all_salesman_of_rm($user->uid);
+			$new_array = array();
+			foreach($u_arr as $result_num => $sub_array) {
+				$new_array[$result_num] = $sub_array['uid'];
+			}
+			$users_uid = implode(",", $new_array);
+			$all_sm_of_smngr = get_all_salesman_of_all_salesmanager($user->uid);
+			if(!empty($all_sm_of_smngr)){
+				$sql_merchants .= " and (nn.uid in (".$users_uid.") OR nn.uid in (".$all_sm_of_smngr.") OR nn.uid='".$user->uid."') ";
+			}else
+			{
+				$sql_merchants .= " and (nn.uid in (".$users_uid.") OR  nn.uid='".$user->uid."') ";
+			}
+		}
+
+
+
+		/*if($rs_rid == 'reporting manager' || $rs_rid == 'salesmanager') {
+		 $u_arr = get_all_salesman_of_rm($user_id);
+		 $new_array = array();
+		 foreach($u_arr as $result_num => $sub_array) {
+		 $new_array[$result_num] = $sub_array['uid'];
+		 }
+		 $users_uid = implode(",", $new_array);
+		 $sql_merchants .= " and (nn.uid in (".$users_uid.") OR nn.uid='".$user_id."') ";
+		 }*/
+		return $sql_merchants;
+	}
+
+	/**
+	 * dsr count for particular user
+	 * @param $user_id
+	 * user uid.
+	 * @return
+	 * total dsr count for a user.
+	 */
+
+	function get_counts_all_y2cf_dsr_for_different_users($user_id) {
+		$rs_rid  = get_user_role_id($user_id);
+		$sql_merchants .= "SELECT count(nn.nid) as sales FROM {content_type_y2cf_dsr} ctyd inner join {node} nn on ctyd.nid = nn.nid ";
+		if($rs_rid == 'salesperson') {
+			$sql_merchants .= " and nn.uid='".$user_id."' ";
+		}
+		if($rs_rid == 'reporting manager' || $rs_rid == 'salesmanager') {
+			$u_arr = get_all_salesman_of_rm($user_id);
+			$new_array = array();
+			foreach($u_arr as $result_num => $sub_array) {
+				$new_array[$result_num] = $sub_array['uid'];
+			}
+			$users_uid = implode(",", $new_array);
+			$sql_merchants .= " and (nn.uid in (".$users_uid.") OR nn.uid='".$user_id."') ";
+		}
+		if($count){
+			$count = db_fetch_array(db_query($sql_merchants));
+		}
+		else{
+			$count = '0';
+		}
+		$sales_count = $count['sales'];
+		return $sales_count;
+	}
+
+	/**
+	 * create dsr tree
+	 * @param $array
+	 * array of user.
+	 * @param $currentParent
+	 * current parent.
+	 * @param $currLevel
+	 * currene level
+	 * @param $prevLevel
+	 * previous level
+	 * @return
+	 * dsr tree.
+	 */
+
+	function createTree($array, $currentParent, $currLevel = 0, $prevLevel = -1) {
+		global $base_url;
+		foreach ($array as $categoryId => $category) {
+			if ($currentParent == $category['parent_id']) {
+				if ($currLevel > $prevLevel) echo " <ul> ";
+				if ($currLevel == $prevLevel) echo " </li> ";
+				$folder_id = arg(2);
+				$add_to_con_url = $base_url.'/y2cf/yourancestors/'.$categoryId;
+				if($categoryId == $folder_id) {
+					$color = 'style="color:#13b00a;font-weight:bold;"';
+				}else{
+					$color = 'style="color:#157DEC;"';
+				}
+				echo '<li ><span><a '.$color.' href="'.$add_to_con_url.'">'.ucwords($category['name']).'</a></span></span>';
+				if ($currLevel > $prevLevel) { $prevLevel = $currLevel; }
+				$currLevel++;
+				createTree ($array, $categoryId, $currLevel, $prevLevel);
+				$currLevel--;
+			}
+		}
+		if ($currLevel == $prevLevel) echo " </li>  </ul> ";
+	}
+	function createMerchantOfferTree($array, $currentParent, $currLevel = 0, $prevLevel = -1) {
+		global $base_url;
+		foreach ($array as $categoryId => $category) {
+			if ($currentParent == $category['parent_id']) {
+				if ($currLevel > $prevLevel) echo " <ul> ";
+				if ($currLevel == $prevLevel) echo " </li> ";
+				$folder_id = arg(2);
+				$add_to_con_url = $base_url.'/y2cf/offerhierarchy/'.$categoryId;
+				if($categoryId == $folder_id) {
+					$color = 'style="color:#13b00a;font-weight:bold;"';
+				}else{
+					$color = 'style="color:#157DEC;"';
+				}
+				echo '<li ><span><a '.$color.' href="'.$add_to_con_url.'">'.ucwords($category['name']).'</a></span></span>';
+				if ($currLevel > $prevLevel) { $prevLevel = $currLevel; }
+				$currLevel++;
+				createMerchantOfferTree ($array, $categoryId, $currLevel, $prevLevel);
+				$currLevel--;
+			}
+		}
+		if ($currLevel == $prevLevel) echo " </li>  </ul> ";
+	}
+
+	/**
+	 * dsr per user
+	 * @param $filter_user_id
+	 * user id from argument list.
+	 * @return
+	 * dsr per user.
+	 */
+
+	function daily_sales_report_per_user($filter_user_id) {
+		global $base_url;
+		global $user;
+		$per_page = set_per_page_counts();
+		$rs_rid  = get_user_role_id($user->uid);
+		if (!empty($filter_user_id)) {
+			$is_rm_or_not = get_user_role_id($filter_user_id);
+			if($is_rm_or_not == 'reporting manager' || $is_rm_or_not == 'salesmanager') {
+				$and_team = ' and Team ';
+			}
+			$user_name_msg = 'DSR For :&nbsp;&nbsp; <span style="font-size:15px;font-family:Verdana, Arial, Helvetica, sans-serif;color:red;">' .  ucwords(get_salesperson_name($filter_user_id)) . $and_team . '</span>';
+		}
+		$output .= '<table>
+					<tr>
+						<td width="20%">'.drupal_get_form('make_exvel_for_different_users_form', $form).'</td>
+						<td width="60%">' . $user_name_msg . '</td>
+						<td width="20%">&nbsp;</td>
+					</tr>
+				</table>';
+		$total_cn = get_all_dsr_count_according_to_filters();
+		$header = array(
+		array('data' => 'S.No', 'field' => 'nid'),
+		array('data' => 'Salesperson - (RM)', 'field' => 'uid'),
+		array('data' => 'Date(Entry-Modified)', 'field' => 'created', 'sort' => 'desc'),
+		array('data' => 'Outlet Visited', 'field' => 'title'),
+		array('data' => 'City-HFA', 'field' => 'field_dsr_st_city_hfa_value'),
+		array('data' => '(Merchant Category) - Genre', 'field' => 'field_merchant_category_value'),
+		array('data' => 'Call Stage', 'field' => 'ctyd.nid'),
+		);
+		if (isset($_GET['Search_val'])) {
+			$salesperson = isset($_GET['salesperson'])?$_GET['salesperson']:"";
+			$entry_date = isset($_GET['entry_date'])?$_GET['entry_date']:"";
+			$exit_date = isset($_GET['exit_date'])?$_GET['exit_date']:"";
+			$city = isset($_GET['city'])?$_GET['city']:"";
+			$outlet_visited = isset($_GET['outlet_visited'])?$_GET['outlet_visited']:"";
+			$hfa = isset($_GET['hfa'])?$_GET['hfa']:"";
+			$merchant_category = isset($_GET['merchant_category'])?$_GET['merchant_category']:"";
+			$genre = isset($_GET['genre'])?$_GET['genre']:"";
+			$call_stage = isset($_GET['call_stage'])?$_GET['call_stage']:"";
+		}
+		if (isset($_GET['Search_reset']) && $_GET['Search_reset']=="View All"){
+			drupal_goto($base_url."/y2cf/yourancestors");
+		}
+		$data = array();
+		if ($rs_rid == 'salesperson') {
+			$rm_select_field = '';
+			$sp_select_field = '';
+		}
+		elseif ($rs_rid == 'reporting manager' || $rs_rid == 'salesmanager') {
+			$rm_select_field = '';
+			$sp_select_field = "<SELECT name='salesperson' style='width:60px;'>".y2cf_list_of_salespersons_for_particular_rm($user->uid)."</SELECT>";
+		}
+		else {
+			$rm_select_field = "<SELECT name='rm' style='width:auto;'>".y2cf_list_of_rms()."</SELECT>";
+			$sp_select_field = "<SELECT name='salesperson' style='width:60px;'>".y2cf_list_of_all_salespersons()."</SELECT>";
+		}
+		$data[-1] = array(
+			'sn'=> "<form name='form3' method='get' action=''>",
+			'salesperson'=> $sp_select_field,
+			'entry_date'=> "From <input size='5' id='assign-from' type='text' name='entry_date' readonly='readonly' class='ul_search10 form-text' value='".$entry_date."'>
+			<script type='text/javascript'>
+			jQuery(function() {
+			jQuery('#assign-from').datepicker({
+			changeMonth: true,
+			changeYear: true,
+			yearRange: '1950:2020',
+		});
+		});
+		</script>
+		<br /><br />To&nbsp;&nbsp;&nbsp;&nbsp; <input size='5' id='assign-from_exit' type='text' name='exit_date' readonly='readonly' class='ul_search10 form-text' value='".$exit_date."'>
+			<script type='text/javascript'>
+			jQuery(function() {
+			jQuery('#assign-from_exit').datepicker({
+			changeMonth: true,
+			changeYear: true,
+			yearRange: '1950:2020',
+		});
+		});
+		</script>",
+
+			'outlet_visited'=> "<input type='text' name='outlet_visited' size='4' class='ul_search10 form-text' value='".$outlet_visited."'>",
+			'hfa'=> "HFA:<input type='text' name='hfa' size='4' class='ul_search10 form-text' value='".$hfa."'>",
+			'merchant_category'=> "<input type='text' name='merchant_category' size='5' value='".$merchant_category."'><br /><SELECT name='genre' style='width:60px;' >".y2cf_list_genre_for_filteration()."</SELECT>",
+			'call_stage'=> "<SELECT name='call_stage' style='width:60px;' >".y2cf_list_call_stage_for_filteration()."
+	       </SELECT>",
+			'operations' =>"<input type='submit' name='Search_val' value='Filter' class='form-submit'>
+			 <input type='submit' name='Search_reset' value='View All' class='form-submit'></form>",
+		);
+		$sql_merchants .= "SELECT nn.*,ctyd.* FROM {content_type_y2cf_dsr} ctyd inner join {node} nn on ctyd.nid = nn.nid ";
+		if (isset($_GET['outlet_visited']) && $_GET['outlet_visited']!= "" ) {
+			$sql_merchants .= " and nn.title LIKE '".trim($_GET['outlet_visited'])."%' ";
+		}
+		if (isset($_GET['rm']) && $_GET['rm']!= "" ) {
+			$sql_merchants .= " inner join {users} uu on nn.uid = uu.uid  and uu.rm_id = '".$_GET['rm']."' ";
+		}
+		if (isset($_GET['salesperson']) && $_GET['salesperson']!= "" ) {
+			$sql_merchants .= " inner join {users} uu on nn.uid = uu.uid  and uu.uid = '".$_GET['salesperson']."' ";
+		}
+		if (isset($_GET['hfa']) && $_GET['hfa']!="") {
+			$sql_merchants .= " inner join {term_data} td on ctyd.field_dsr_st_city_hfa_value = td.tid and td.name LIKE '".trim($_GET['hfa'])."%' ";
+		}
+		if (isset($_GET['merchant_category']) && $_GET['merchant_category']!="") {
+			$sql_merchants .= " and ctyd.field_merchant_category_value = '".trim($_GET['merchant_category'])."' ";
+		}
+		if (isset($_GET['city']) && $_GET['city']!="") {
+			$sql_merchants .= " inner join {term_data} td on ctyd.field_dsr_st_city_hfa_value = td.tid inner join {term_hierarchy} th on td.tid=th.tid  and th.parent = '".$_GET['city']."' ";
+		}
+		if (isset($_GET['genre']) && $_GET['genre']!="") {
+			$sql_merchants .= " inner join {term_data} td on ctyd.field_merchant_genree_value = td.tid  and td.tid = '".$_GET['genre']."' ";
+		}
+		if (isset($_GET['call_stage']) && $_GET['call_stage']!="") {
+			$sql_merchants .= " inner join {term_data} td on ctyd.field_dsr_call_stage_value = td.tid  and td.tid ='".$_GET['call_stage']."' ";
+		}
+		if (isset($_GET['mod_call_stage']) && $_GET['mod_call_stage']!="") {
+			$sql_merchants .= " inner join {term_data} td on ctyd.field_dsr_mod_call_stage_value = td.tid  and td.tid = '".$_GET['mod_call_stage']."' ";
+		}
+		if (isset($_GET['entry_date']) && $_GET['entry_date']!="") {
+			$today_date = date('m-d-YTH:i:s');
+			$curdate_1 = explode("/", $_GET['entry_date']);
+			$entry_date = mktime(0,0,1,$curdate_1[0],$curdate_1[1],$curdate_1[2]);
+			$sql_merchants .= " and nn.created >= '".$entry_date."' ";
+		}
+		if (isset($_GET['exit_date']) && $_GET['exit_date']!="") {
+			$curdate_1 = explode("/", $_GET['exit_date']);
+			$entry_date = mktime(23,59,59,$curdate_1[0],$curdate_1[1],$curdate_1[2]);
+			$sql_merchants .= " and nn.created <= '".$entry_date."' ";
+		}
+
+		if (arg(0)=='y2cf' && arg(1)=='yourancestors' && is_numeric(arg(2))) {
+			$new_rm_id = get_user_role_id($filter_user_id);
+			if ($new_rm_id == 'reporting manager' || $new_rm_id == 'salesmanager') {
+				$u_arr = get_all_salesman_of_rm($filter_user_id);
+				$new_array = array();
+				foreach ($u_arr as $result_num => $sub_array) {
+			  $new_array[$result_num] = $sub_array['uid'];
+				}
+				$users_uid = implode(",", $new_array);
+				$sql_merchants .= " and (nn.uid in (".$users_uid.") OR nn.uid='".$filter_user_id."') ";
+			}
+			else {
+				$sql_merchants .= " and nn.uid='".$filter_user_id."' ";
+			}
+		}
+		if ($rs_rid == 'salesperson') {
+			$sql_merchants .= " and nn.uid='".$user->uid."' ";
+		}
+		if (empty($filter_user_id) && $rs_rid == 'reporting manager' || $rs_rid == 'salesmanager') {
+			$u_arr = get_all_salesman_of_rm($user->uid);
+			$new_array = array();
+			foreach ($u_arr as $result_num => $sub_array) {
+				$new_array[$result_num] = $sub_array['uid'];
+			}
+			$users_uid = implode(",", $new_array);
+			$sql_merchants .= " and (nn.uid in (".$users_uid.") OR nn.uid='".$user->uid."') ";
+		}
+
+		$res_merchants = pager_query($sql_merchants . tablesort_sql($header), $limit = $per_page);
+		$serial_number = get_list_serial_number();
+		while ($row = db_fetch_array($res_merchants)) {
+			$edit_url = $base_url.'/node/'.$row['nid'].'/edit?destination=asp/dsr';
+			$detail_url = $base_url.'/node/'.$row['nid'];
+			$salesperson_name = get_salesperson_name($row['uid']);
+			$rm_id = db_result(db_query("SELECT rm_id FROM {users} WHERE uid = %d", $row['uid']));
+			$rm_name = db_result(db_query("SELECT name FROM {users} WHERE uid = %d", $rm_id));
+			$outlet_url = l($row['title'], $detail_url);
+			if ($row['changed']!=NULL) {  //modified date calculation
+		  $mod_date = date("Y-m-d H:i:s",$row['changed']);
+			}
+			else {
+		  $mod_date = '--';
+			}
+			$call_val = get_only_term_name($row['field_dsr_call_stage_value']);
+			if ($call_val == 'Signed') {  //Call stage calculation
+				$act_call_val = '<span style="color:red;">' . $call_val . '</span>';
+			}
+			else {
+				$act_call_val = $call_val;
+			}
+			$data[] = array(
+			$serial_number++,
+			$salesperson_name.' - (<span style="color:red;">'.$rm_name. ' </span>)',
+			date("Y-m-d H:i:s",$row['created']).'<br /><span style="color:red;">'.$mod_date.'</span>',
+			$outlet_url,
+			get_only_term_name(get_parent_tid_by_tid($row['field_dsr_st_city_hfa_value'])).'<br /><span style="color:red;">' . get_only_term_name($row['field_dsr_st_city_hfa_value']) . '</span>',
+			'( <span style="color:red;">' . $row['field_merchant_category_value'] . ' </span> ) '.get_only_term_name($row['field_merchant_genree_value']),
+			$act_call_val,
+			l('Detail', $detail_url).'&nbsp;&nbsp;&nbsp;<br />' . l('Edit', $edit_url) ,
+
+			);
+		}
+		/*
+		 $attributes = array(
+		 'border'      => 1,
+		 'width' => 1100,
+		 );
+		 $output .= theme('table', $header, $data, $attributes);
+		 */
+		$output .= theme('table', $header, $data);
+		$output .= theme('pager');
+		return $output;
+	}
+	function utf8_urldecode($str) {
+		$str = preg_replace("/%u%3F%3D([0-9a-fA-F]{3,4})/i","&#x\\1;",urldecode($str));
+		return html_entity_decode($str,null,'UTF-8');;
+	}
+
+	/**
+	 * dsr filteration
+	 * @return
+	 * sql dsr filteration.
+	 */
+
+	function get_merchant_dsr_filter_conditions() {
+		global $user;
+		$rs_rid  = get_user_role_id($user->uid);
+		if(isset($_GET['outlet_visited']) && $_GET['outlet_visited']!= "" ) {
+			$sql_merchants .= " and trim(nn.title) LIKE '".trim($_GET['outlet_visited'])."%' ";
+		}
+		if((isset($_GET['rm']) && $_GET['rm']!= "") || (isset($_GET['salesperson']) && $_GET['salesperson']!= "" )) {
+			$sql_merchants .= " inner join {users} uu on nn.uid = uu.uid   ";
+		}
+
+		if(isset($_GET['rm']) && $_GET['rm']!= "" ) {
+			$sql_merchants .= " and uu.rm_id = '".$_GET['rm']."' ";
+		}
+		if(isset($_GET['salesperson']) && $_GET['salesperson']!= "" ) {
+			$sql_merchants .= " and uu.uid = '".$_GET['salesperson']."' ";
+		}
+
+		if(isset($_GET['merchant_category']) && $_GET['merchant_category']!="") {
+			$sql_merchants .= " and ctyd.field_merchant_category_value = '".trim($_GET['merchant_category'])."' ";
+		}
+		if(isset($_GET['hfa']) && $_GET['hfa']!="") {
+			$sql_merchants .= " inner join {term_data} td on ctyd.field_dsr_st_city_hfa_value = td.tid and td.name LIKE '".trim($_GET['hfa'])."%' ";
+		}
+		if(isset($_GET['city']) && $_GET['city']!="") {
+			$sql_merchants .= " inner join {term_data} td on ctyd.field_dsr_st_city_hfa_value = td.tid inner join {term_hierarchy} th on td.tid=th.tid  and th.parent = '".$_GET['city']."' ";
+		}
+		if(isset($_GET['genre']) && $_GET['genre']!="") {
+			$sql_merchants .= " inner join {term_data} td on ctyd.field_merchant_genree_value = td.tid  and td.tid = '".$_GET['genre']."' ";
+		}
+		if(isset($_GET['call_stage']) && $_GET['call_stage']!="") {
+			$sql_merchants .= " inner join {term_data} td on ctyd.field_dsr_call_stage_value = td.tid  and td.tid ='".$_GET['call_stage']."' ";
+		}
+		if(isset($_GET['mod_call_stage']) && $_GET['mod_call_stage']!="") {
+			$sql_merchants .= " inner join {term_data} td on ctyd.field_dsr_mod_call_stage_value = td.tid  and td.tid = '".$_GET['mod_call_stage']."' ";
+		}
+		if(isset($_GET['entry_date']) && $_GET['entry_date']!="") {
+			$curdate_1 = explode("/", $_GET['entry_date']);
+			$entry_date = mktime(0,0,1,$curdate_1[0],$curdate_1[1],$curdate_1[2]);
+			$sql_merchants .= " and nn.created >= '".$entry_date."' ";
+		}
+		if(isset($_GET['exit_date']) && $_GET['exit_date']!="") {
+			$curdate_1 = explode("/", $_GET['exit_date']);
+			$entry_date = mktime(23,59,59,$curdate_1[0],$curdate_1[1],$curdate_1[2]);
+			$sql_merchants .= " and nn.created <= '".$entry_date."' ";
+		}
+		if($rs_rid == 'salesperson') {
+			$sql_merchants .= " and nn.uid='".$user->uid."' ";
+		}
+		if($rs_rid == 'salesmanager') {
+			$u_arr = get_all_salesman_of_rm($user->uid);
+			$new_array = array();
+			foreach($u_arr as $result_num => $sub_array) {
+				$new_array[$result_num] = $sub_array['uid'];
+			}
+			$users_uid = implode(",", $new_array);
+			$sql_merchants .= " and (nn.uid in (".$users_uid.") OR  nn.uid='".$user->uid."') ";
+		}
+		if($rs_rid == 'reporting manager') {
+			$u_arr = get_all_salesman_of_rm($user->uid);
+			$new_array = array();
+			foreach($u_arr as $result_num => $sub_array) {
+				$new_array[$result_num] = $sub_array['uid'];
+			}
+			$users_uid = implode(",", $new_array);
+			$all_sm_of_smngr = get_all_salesman_of_all_salesmanager($user->uid);
+			if(!empty($all_sm_of_smngr)){
+				$sql_merchants .= " and (nn.uid in (".$users_uid.") OR nn.uid in (".$all_sm_of_smngr.") OR nn.uid='".$user->uid."') ";
+			}else
+			{
+				$sql_merchants .= " and (nn.uid in (".$users_uid.") OR  nn.uid='".$user->uid."') ";
+			}
+		}
+		return $sql_merchants;
+	}
+
+	/**
+	 * dsr counting by filteration
+	 * @return
+	 * dsr counting by filteration.
+	 */
+
+	function get_all_dsr_count_according_to_filters() {
+		global $user;
+		$sql_merchants_count .= "SELECT count(nn.nid) as dsr_mer_counts FROM {content_type_y2cf_dsr} ctyd inner join {node} nn on ctyd.nid = nn.nid ";
+		$sql_merchants_count .= get_merchant_dsr_filter_conditions();
+		$dsr_mer_cou = db_fetch_array(db_query($sql_merchants_count));
+		$dsr_count = $dsr_mer_cou['dsr_mer_counts'];
+		return $dsr_count;
+	}
+
+	/**
+	 * all checkins for a particular city
+	 * @return
+	 * all checkins for a particular city.
+	 */
+
+	function get_all_checkins_counts_for_particular_city() {
+		global $user;
+		$sql_offer = "Select count(id) as checkin_count from aaaa_hoppr_checkins where city = 'DNCR'";
+		$offer_cou = db_fetch_array(db_query($sql_offer));
+		$merchant_offer_count = $offer_cou['checkin_count'];
+		return $merchant_offer_count;
+	}
+
+	/**
+	 * set number per page
+	 * @return
+	 * per page count.
+	 */
+
+	function set_per_page_counts(){
+		return 50;
+	}
+
+	/**
+	 * pager implementation
+	 * @param $total_cn
+	 * total no. of counts
+	 * @return
+	 * pager implementation.
+	 */
+
+	function get_custom_pager_request($total_cn) {
+		$per_page = set_per_page_counts();
+		if (empty($_GET['page'])) {
+			$page_count = 0;
+		}
+		else {
+			$page_count = $_GET['page'];
+		}
+		$exect_pg_coun = $page_count + 1;
+		$sta = $per_page * $page_count;
+		$stta_cn = $sta + 1;
+		$end_cn = $per_page * $exect_pg_coun;
+		if ($total_cn > 0) {
+			if ($end_cn >= $total_cn) {
+		  $ext_en_cn = $total_cn;
+			}
+			else {
+		  $ext_en_cn = $end_cn;
+			}
+			$pager_seq = $stta_cn. '&nbsp;&nbsp;-&nbsp;&nbsp;' .$ext_en_cn.'&nbsp;&nbsp;of&nbsp;&nbsp;'.$total_cn;
+			return $pager_seq;
+		}
+		else {
+			return "No Record found";
+		}
+	}
+
+	/**
+	 * list serial number implementation
+	 * @return
+	 * list serial number implementation.
+	 */
+
+	function get_list_serial_number() {
+		$per_page = set_per_page_counts();
+		if (empty($_GET['page'])) {
+			$page_count = 0;
+		}
+		else {
+			$page_count = $_GET['page'];
+		}
+		$exect_pg_coun = $page_count + 1;
+		$sta = $per_page * $page_count;
+		$stta_cn = $sta + 1;
+		return $stta_cn;
+	}
+
+	/**
+	 * build a string
+	 * @param $selected
+	 * @return
+	 * build a string.
+	 */
+
+	function unilrn_searchoptiontext($selected){
+		if ($selected=="CONTAINS") {
+			$sel = "selected";
+		}
+		else {
+			$sel = "";
+		}
+		$content = "<option option='CONTAINS'".$sel.">CONTAINS</option>";
+		if ($selected=="NOT CONTAINS") {
+			$sel = "selected";
+
+		}
+		else {
+			$sel = "";
+		}
+		$content .= "<option option='NOT CONTAINS' ".$sel." >NOT CONTAINS</option>";
+		if ($selected=="EQUALS") {
+			$sel = "selected";
+		}
+		else {
+			$sel = "";
+		}
+		$content .= "<option option='EQUALS' ".$sel.">EQUALS</option>";
+		if ($selected=="NOT EQUALS") {
+			$sel = "selected";
+		}
+		else {
+			$sel = "";
+		}
+		$content .= "<option option='NOT EQUALS' ".$sel.">NOT EQUALS</option>";
+		if ($selected=="EMPTY") {
+			$sel = "selected";
+		}
+		else {
+			$sel = "";
+		}
+		$content .= "<option option='EMPTY' ".$sel.">EMPTY</option>";
+		if ($selected=="NOT EMPTY") {
+			$sel = "selected";
+		}
+		else {
+			$sel = "";
+		}
+		$content .= "<option option='NOT EMPTY' ".$sel.">NOT EMPTY</option>";
+		if ($selected=="STARTS WITH") {
+			$sel = "selected";
+		}
+		else {
+			$sel = "";
+		}
+		$content .= "<option option='STARTS WITH' ".$sel.">STARTS WITH</option>";
+		if ($selected=="ENDS WITH") {
+			$sel = "selected";
+		}
+		else {
+			$sel = "";
+		}
+		$content .= "<option option='ENDS WITH' ".$sel.">ENDS WITH</option>";
+		return $content;
+	}
+
+	/**
+	 * build a select list for all cities in the system for filteration
+	 * @return
+	 * build a select list for all cities in the system for filteration.
+	 */
+
+	function y2cf_list_city_for_filteration(){
+		$sql = db_query("select td.tid,td.name from {term_data} td inner join {term_hierarchy} th on td.tid=th.tid where td.vid=5 and th.parent=0 order by td.name asc");
+		$content = "";
+		$content .= "<option value=''>City</option>";
+		while ($rs = db_fetch_array($sql)) {
+			if ($_GET['city'] == $rs['tid']) {
+				$sel = "selected";
+			}
+			else {
+				$sel = "";
+			}
+			$content .= "<option value=".$rs['tid']." ".$sel.">".$rs['name']."</option>";
+		}
+		return $content;
+}
+
+
+	/**
+   * build a select list for all cities in the system for filteration
+   * @return
+   * build a select list for all cities in the system for filteration.
+   */
+	function y2cf_all_sales_and_ops_citylist_for_filteration(){
+    $sql = db_query("select td.tid,td.name from {term_data} td where td.vid=4 order by td.name asc");
+    $content = "";
+    $content .= "<option value=''>City name</option>";
+    if($_GET['city'] == 'DNCR') {
+    	$seldncr = "selected";
+    }else{
+    	$seldncr = '';
+    }
+    $content .= "<option value='DNCR' ".$seldncr.">DNCR</option>";
+    
+    while ($rs = db_fetch_array($sql)) {
+      if ($_GET['city'] == $rs['tid']) {
+        $sel = "selected";
+      }else {
+        $sel = "";
+      }
+      $content .= "<option value=".$rs['tid']." ".$sel.">".$rs['name']."</option>";
+    }
+    return $content;
+  }
+  
+  
+  
+  function hoppr_all_datefiltercriteria(){
+  	$content = "";
+  	$content .= "<option value=''>Select type</option>";
+  	if($_GET['filterdate'] == 'spdate') {
+  		$seldncr = "selected";
+  	}elseif($_GET['filterdate'] == 'rmdate') {
+  		$seldncr = "selected";
+  	}elseif($_GET['filterdate'] == 'opsdate') {
+  		$seldncr = "selected";
+  	}elseif($_GET['filterdate'] == 'docsdate') {
+  		$seldncr = "selected";
+  	}else{
+  		$seldncr = '';
+  	}
+  	$content .= "<option value='spdate' ".$seldncr.">SP date</option>";
+  	$content .= "<option value='rmdate' ".$seldncr.">RM date</option>";
+  	$content .= "<option value='opsdate' ".$seldncr.">Ops date</option>";
+  	$content .= "<option value='docsdate' ".$seldncr.">Docs date</option>";
+  	return $content;
+  }
+
+
+
+  /**
+   * build a select list for all cities in the system for filteration
+   * @return
+   * build a select list for all cities in the system for filteration.
+   */
+  /*function hoppr_listof_oe_status_in_filter(){
+    $sql = db_query("select td.tid,td.name from {term_data} td where td.vid=14 order by td.name asc");
+    $content = "";
+    $content .= "<option value=''>Status</option>";
+    while ($rs = db_fetch_array($sql)) {
+      if ($_GET['city'] == $rs['tid']) {
+        $sel = "selected";
+      }
+      else {
+        $sel = "";
+      }
+      $content .= "<option value=".$rs['tid']." ".$sel.">".$rs['name']."</option>";
+    }
+    return $content;
+  }
+*/
+
+	/**
+	 * build a select list for call stage in the system for filteration
+	 * @return
+	 * build a select list for call stage in the system for filteration.
+	 */
+
+	function y2cf_list_call_stage_for_filteration(){
+		$sql = db_query("select td.tid,td.name from {term_data} td where td.vid = 6 order by td.weight");
+		$content = "";
+		$content .= "<option value=''>Call Stage</option>";
+		while ($rs = db_fetch_array($sql)) {
+			if ($_GET['call_stage'] == $rs['tid']) {
+				$sel = "selected";
+			}
+			else {
+				$sel = "";
+			}
+			$content .= "<option value=".$rs['tid']." ".$sel.">".$rs['name']."</option>";
+		}
+		return $content;
+	}
+
+	/**
+	 * build a select list for modified call stage in the system for filteration
+	 * @return
+	 * build a select list for modified call stage in the system for filteration.
+	 */
+
+	function y2cf_list_mod_call_stage_for_filteration() {
+		$sql = db_query("select td.tid,td.name from {term_data} td where td.vid = 10 order by td.weight");
+		$content = "";
+		$content .= "<option value=''>Mod Stage</option>";
+		while ($rs = db_fetch_array($sql)) {
+			if ($_GET['mod_call_stage'] == $rs['tid']) {
+				$sel = "selected";
+			}
+			else {
+				$sel = "";
+			}
+			$content .= "<option value=".$rs['tid']." ".$sel.">".$rs['name']."</option>";
+		}
+		return $content;
+	}
+
+	/**
+	 * build a select list for genre in the system for filteration
+	 * @return
+	 * build a select list for genre in the system for filteration.
+	 */
+
+	function y2cf_list_genre_for_filteration(){
+		$sql = db_query("select td.tid,td.name from {term_data} td where td.vid = 3 order by td.weight ");
+		$content = "";
+		$content .= "<option value=''>Genre</option>";
+		while ($rs = db_fetch_array($sql)) {
+			if ($_GET['genre'] == $rs['tid']) {
+				$sel = "selected";
+			}
+			else {
+				$sel = "";
+			}
+			$content .= "<option value=".$rs['tid']." ".$sel.">".$rs['name']."</option>";
+		}
+		return $content;
+	}
+
+	/**
+	 * build a select list for merchant category in the system for filteration
+	 * @return
+	 * build a select list for merchangt category in the system for filteration.
+	 */
+
+	function y2cf_list_merchant_category_for_filteration(){
+		$sql = db_query("select td.tid,td.name from {term_data} td where td.vid = 2 order by td.weight ");
+		$content = "";
+		$content .= "<option value=''>Category</option>";
+		while ($rs = db_fetch_array($sql)) {
+			if ($_GET['merchant_category'] == $rs['tid']) {
+				$sel = "selected";
+			}
+			else {
+				$sel = "";
+			}
+			$content .= "<option value=".$rs['tid']." ".$sel.">".$rs['name']."</option>";
+		}
+		return $content;
+	}
+
+	/**
+	 * build a select list for reporting managers in the system for filteration
+	 * @return
+	 * build a select list for reporting managers in the system for filteration.
+	 */
+
+	function y2cf_list_of_rms(){
+		$sql = db_query("select uu.uid, uu.status, uu.name from {users} uu inner join {users_roles} ur on uu.uid=ur.uid inner join {role} rr on ur.rid=rr.rid where rr.name= 'reporting manager' || rr.name= 'salesmanager' order by uu.name ASC");
+		$content = "";
+		$content .= "<option value=''>-- RMs or SM --</option>";
+		while ($rs = db_fetch_array($sql)) {
+			if ($_GET['rm'] == $rs['uid']) {
+				$sel = "selected";
+			}
+			else {
+				$sel = "";
+			}
+			$content .= "<option value=".$rs['uid']." ".$sel.">".ucwords($rs['name'])."</option>";
+		}
+		return $content;
+	}
+
+	/**
+	 * build a select list for salesperson in the system for filteration
+	 * @return
+	 * build a select list for salesperson in the system for filteration.
+	 */
+
+	function y2cf_list_of_all_salespersons(){
+		$sql = db_query("select uu.uid, uu.status, uu.name from {users} uu inner join {users_roles} ur on uu.uid=ur.uid inner join {role} rr on ur.rid=rr.rid where rr.name= 'salesperson' or rr.name= 'reporting manager' or rr.name='salesmanager' order by uu.name asc");
+		$content = "";
+		$content .= "<option value=''>Sales-Exe</option>";
+		while ($rs = db_fetch_array($sql)) {
+			if ($rs['status'] == 0) {
+				$sp_name = '<span style="color:red;">'.ucwords($rs['name']).'(B)</span>';
+			}
+			else {
+				 $sp_name = '<span>'.ucwords($rs['name']).'</span>';
+			}
+			if ($_GET['salesperson'] == $rs['uid']) {
+				$sel = "selected";
+			}
+			else {
+				$sel = "";
+			}
+			$content .= "<option value=".$rs['uid']." ".$sel.">".$sp_name."</option>";
+		}
+		return $content;
+	}
+
+	/**
+	 * build a select list for all salesperson of a reporting manager in the system for filteration
+	 * @param $reporting_uid
+	 * reporting manager uid
+	 * @return
+	 * build a select list for all salesperson of a reporting manager in the system for filteration.
+	 */
+
+	function y2cf_list_of_salespersons_for_particular_rm($reporting_uid) {
+		$rs_rid  = get_user_role_id($reporting_uid);
+		$u_arr = get_all_salesman_of_rm($reporting_uid);
+		$new_array = array();
+		foreach ($u_arr as $result_num => $sub_array) {
+			$new_array[$result_num] = $sub_array['uid'];
+		}
+		$users_uid = implode(",", $new_array);
+		$all_sm_of_smngr = get_all_salesman_of_all_salesmanager($reporting_uid);
+		if ($rs_rid == 'salesmanager') {
+			$sql = db_query("select uid, name from {users} where (uid in (".$users_uid.") or uid='".$reporting_uid."')  order by name asc ");
+		}
+		elseif ($rs_rid == 'reporting manager') {
+			$sql_rm .=  "select uid, name from {users} where uid in (".$users_uid.") ";
+			if(!empty($all_sm_of_smngr)) {
+				$sql_rm .= " OR uid in (".$all_sm_of_smngr.") ";
+			}
+			$sql_rm .= " order by name asc ";
+      $sql = db_query($sql_rm);
+			 //$sql = db_query("select uid, name from {users} where (uid in (".$users_uid.") OR uid in (".$all_sm_of_smngr."))  order by name asc ");
+		}
+		//print $sql_rm;die;
+		$content = "";
+		$content .= "<option value=''>Sales-Exe.</option>";
+		while($rs = db_fetch_array($sql)) {
+			if ($_GET['salesperson'] == $rs['uid']) {
+				$sel = "selected";
+			}
+			else {
+				$sel = "";
+			}
+			$content .= "<option value=".$rs['uid']." ".$sel.">".$rs['name']."</option>";
+		}
+		return $content;
+	}
+
+	/**
+	 * mail template for merchants
+	 * @param $merchangt_name
+	 * mercahnt name
+	 * @return
+	 * mail string.
+	 */
+
+	function mail_message_to_merchant_format($merchant_name) {
+		$message_to_merchant = 'Thank you, Dear '.$merchant_name.' .......we are glad to add you in the list';
+		return $message_to_merchant;
+	}
+
+	/**
+	 * calculate no of days
+	 * @param $day
+	 * day
+	 * @param $month
+	 * month name
+	 * @param year
+	 * year value
+	 * @return
+	 * no of days.
+	 */
+
+	function date_calc_date_to_days($day, $month, $year) {
+		$century = (int)substr($year, 0, 2);
+		$year = (int)substr($year, 2, 2);
+		if ($month > 2) {
+			$month -= 3;
+		}
+		else {
+			$month += 9;
+			if ($year) {
+				$year--;
+			}
+			else {
+				$year = 99;
+				$century --;
+			}
+		}
+		return (floor((146097 * $century) / 4 ) +
+		floor((1461 * $year) / 4 ) +
+		floor((153 * $month + 2) / 5 ) +
+		$day + 1721119);
+	}
+
+	/**
+	 * calculate no of days
+	 * @param $startDate
+	 * start date
+	 * @param $endDate
+	 * end date
+	 * @param $hoursPerDay
+	 * hours per day say 8
+	 * @param $excludeToday
+	 * exclude today
+	 * @return
+	 * no of days.
+	 */
+
+	function getNumberOfDays($startDate, $endDate, $hoursPerDay="8", $excludeToday=true)
+	{
+		$start = new DateTime($startDate);
+		$end = new DateTime($endDate);
+		$oneday = new DateInterval("P1D");
+		$days = array();
+
+		/* Iterate from $start up to $end+1 day, one day in each iteration.
+		 We add one day to the $end date, because the DatePeriod only iterates up to,
+		 not including, the end date. */
+		foreach(new DatePeriod($start, $oneday, $end->add($oneday)) as $day) {
+			$day_num = $day->format("N"); /* 'N' number days 1 (mon) to 7 (sun) */
+			if($day_num < 6) { /* weekday */
+				$days[$day->format("Y-m-d")] = $hoursPerDay;
+			}
+		}
+		//if ($excludeToday)
+		//array_pop ($days);
+		return $days;
+	}
+
+	/**
+	 * calculate no of months between two dates
+	 * @param $start_date
+	 * start date
+	 * @param $end_date
+	 * end date
+	 * @return
+	 * no of days.
+	 */
+
+	function get_number_of_months_between_dates($start_date,$end_date) {
+		$d1 = strtotime(date("Y-m-d", $start_date));
+		$d2 = strtotime(date("Y-m-d", $end_date));
+		$min_date = min($d1, $d2);
+		$max_date = max($d1, $d2);
+		$i = 0;
+		while (($min_date = strtotime("+1 MONTH", $min_date)) <= $max_date) {
+			$i++;
+		}
+		return $i; // 8
+	}
+	function get_all_outlet_for_merchant($merchant_id) {
+    $sql_offer = db_query("SELECT nn.*, nn.uid as sales,ctmout.*, nr.*, nr.uid as executive, nr.title as outlet_name, nr.timestamp as ops_changed_date FROM {node} nn inner join {node_revisions} nr on nn.vid = nr.vid inner join {content_type_merchant_outlet} ctmout  ON ctmout.vid = nr.vid where ctmout.field_hopper_merchant_olt_nid = '".$merchant_id."' ");
+    $rs_out_arr = array();
+    while($rs = db_fetch_array($sql_offer)) {
+      $rs_out_arr[] = $rs;
+    }
+    return $rs_out_arr;
+	}
+	function hoppr_get_merchant_outlet_detail($merchant_id) {
+	/*
+	 * 	$ops_outlet_sql_offer = "SELECT nn.*, nn.uid as sales,ctmout.*, nr.*, nr.uid as executive, nr.title as outlet_name, nr.timestamp as ops_changed_date FROM {node} nn inner join {node_revisions} nr on nn.vid = nr.vid inner join {content_type_merchant_outlet} ctmout  ON ctmout.vid = nr.vid ";
+		$ops_outlet_sql_offer .= " and ctmout.field_hopper_merchant_olt_nid = '".$merchant_id."' ";
+		$rs_address = db_query($ops_outlet_sql_offer);
+
+*/
+
+		$n_vid = db_result(db_query("Select vid from {node} where nid='".$merchant_id."' "));
+    $rs_wh_add = db_fetch_object(db_query("Select * from {content_type_merchant_outlet} where vid='".$n_vid."' "));
+
+		$hoppr_offer_det .='<fieldset><legend><span style="color:red;">Merchant Outlet Address</span></legend>';
+
+    	if(!empty($rs_wh_add->field_hop_ops_ot_mm_frm_value) || $rs_wh_add->field_hop_ops_ot_mm_frm_value!=0) {
+    		$from_min = ':'.$rs_wh_add->field_hop_ops_ot_mm_frm_value;
+    	}else{
+    		$from_min = ':00';
+    	}
+
+    if(!empty($rs_wh_add->field_hop_ops_ot_mm_to_value) || $rs_wh_add->field_hop_ops_ot_mm_to_value!=0) {
+        $to_min = ':'.$rs_wh_add->field_hop_ops_ot_mm_to_value;
+      }else{
+        $to_min = ':00';
+      }
+
+      $hoppr_offer_det .='<div>
+
+          <div><strong>Weekly Off:</strong></div>
+          <div>'.get_outlet_weekly_off($rs_wh_add->nid).'</div>
+
+          <div><strong>Operational timings:</strong></div>
+          <div>'.$rs_wh_add->field_hop_ops_frm_hrs_value.$from_min.' To '.$rs_wh_add->field_hop_ops_to_hrs_value.$to_min.'</div>
+
+          <div><strong>Appointment number:</strong></div>
+          <div>'.$rs_wh_add->field_mo_app_mon_num_number.'</div>
+          <div><strong>Alternative Appointment number:</strong></div>
+          <div>'.$rs_wh_add->field_hop_alt_enq_app_num_number.'</div>
+
+          <div><strong>Address 1:</strong></div>
+          <div>'.$rs_wh_add->field_mo_loc_address_1_value.'</div>
+          <div><strong>Address 2:</strong></div>
+          <div>'.$rs_wh_add->field_mo_loc_address_2_value.'</div>
+          <div><strong>Area/Location:</strong></div>
+          <div>'.$rs_wh_add->field_mo_loc_landmark_value.'</div>
+          <div><strong>Landmark:</strong></div>
+          <div>'.$rs_wh_add->field_mo_landmark2_value.'</div>
+          <div><strong>City:</strong></div>
+          <div>'.get_only_term_name($rs_wh_add->field_hopprs_city_value).'</div>
+          <div><strong>State:</strong></div>
+          <div>'.get_only_term_name($rs_wh_add->field_mo_hopper_state_value).'</div>
+          <div><strong>Zip Code:</strong></div>
+          <div>'.$rs_wh_add->field_mo_hop_zipcode_value.'</div>
+
+      </div>';
+
+  $hoppr_offer_det .='</fieldset>';
+		return $hoppr_offer_det;
+	}
+	
+
+	//OH sts
+	function get_oh_status($fsts, $stst) {
+	if(!empty($fsts)) {
+      $opshead_sts = $fsts;
+    }elseif(!empty($stst)) {
+      $opshead_sts = $stst;
+    }else{
+      $opshead_sts = '-';
+    }
+    return $opshead_sts;
+	}
+//OE sts
+	function get_oe_status($fsts, $stst) {
+
+    if(!empty($fsts)) {
+      $ops_oe_sts =   $fsts;
+    }elseif(!empty($stst)){
+      $ops_oe_sts =  $stst;
+    }else{
+      $ops_oe_sts = '-';
+    }
+    return $ops_oe_sts;
+	}
+	
+	
+	
+	
+

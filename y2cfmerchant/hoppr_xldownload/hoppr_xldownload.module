@@ -1,0 +1,1341 @@
+<?php
+/*
+error_reporting(E_ALL);
+ini_set('display_errors', TRUE);
+ini_set('display_startup_errors', TRUE);
+*/
+function xlsBOF() {
+	echo pack("ssssss", 0x809, 0x8, 0x0, 0x10, 0x0, 0x0);
+}
+function xlsEOF() {
+	echo pack("ss", 0x0A, 0x00);
+}
+function xlsWriteNumber($Row, $Col, $Value) {
+	echo pack("sssss", 0x203, 14, $Row, $Col, 0x0);
+	echo pack("d", $Value);
+}
+function xlsWriteLabel($Row, $Col, $Value) {
+	$L = strlen($Value);
+	echo pack("ssssss", 0x204, 8 + $L, $Row, $Col, 0x0, $L);
+	echo $Value;
+}
+function merchant_operation_save_excel_newrewrite_form_submit($form, &$form_state) {
+	global $user;
+	global $base_url;
+	//$main_path = drupal_get_path('module', 'merchants');
+	//include_once($main_path . '/xls-writer.php');
+	header("Content-Type: application/force-download");
+	header("Content-Type: application/octet-stream");
+	header("Content-Type: application/download");
+	header("Content-Disposition: attachment; filename=\"salesportal_merchants_{$msisdn}_".time().".xls\"");
+	header("Content-Transfer-Encoding: binary");
+	header("Pragma: no-cache");
+	header("Expires: 0");
+	xlsBOF();
+	        
+	
+	
+			xlsWriteLabel(0, 0, "Sr.No");
+			xlsWriteLabel(0, 1, "Final Status");
+			xlsWriteLabel(0, 2, "Offer Code");
+			//OH Status
+			xlsWriteLabel(0, 3, "latitude");
+			xlsWriteLabel(0, 4, "longitude");
+			xlsWriteLabel(0, 5, "updated latitude by OE");
+			xlsWriteLabel(0, 6, "updated longitude by OE");
+			xlsWriteLabel(0, 7, "merchant_code");
+			xlsWriteLabel(0, 8, "OH-Action date");
+			xlsWriteLabel(0, 9, "data_accetance_status");
+	
+			
+			//Offer upload status
+			xlsWriteLabel(0, 10, "da_dr_comments");
+			xlsWriteLabel(0, 11, "offer_upload_status");
+			xlsWriteLabel(0, 12, "offer_upload_comments");
+			xlsWriteLabel(0, 13, "offer_testing_status");
+			xlsWriteLabel(0, 14, "offer_test_comments");
+			xlsWriteLabel(0, 15, "Merchant Tie-up Type");
+			xlsWriteLabel(0, 16, "Merchant Code");
+			
+			//RM Status
+			xlsWriteLabel(0, 17, "RM Action Month");
+			xlsWriteLabel(0, 18, "RM Action Date");
+			xlsWriteLabel(0, 19, "RM/Salesmanager Status");
+			xlsWriteLabel(0, 20, "RM/Salesmanager Status Comment");
+			xlsWriteLabel(0, 21, "RM-Rejected case- Last Modified date");
+			xlsWriteLabel(0, 22, "RM-Rejected case status");
+			xlsWriteLabel(0, 23, "RM-Rejected case Comments");
+			
+			//Field status....by OE & TC
+			xlsWriteLabel(0, 24, "Overall Status:Ops Month");
+			xlsWriteLabel(0, 25, "Overall Status:Ops & TC date");
+			xlsWriteLabel(0, 26, "Overall Status:OE & TC -Name");
+			xlsWriteLabel(0, 27, "Overall Status:Ops & TC");
+			xlsWriteLabel(0, 28, "Overall Remarks:Ops & TC");
+			xlsWriteLabel(0, 29, "Overall Remarks- Rejected case Last Modified date");
+			xlsWriteLabel(0, 30, "Ops-TC-Rejected case status");
+			xlsWriteLabel(0, 31, "Ops-TC-Rejected case comments");
+
+			//Documentation status
+			xlsWriteLabel(0, 32, "Documentation: Agreement Status Month");
+			xlsWriteLabel(0, 33, "Documentation: Agreement Status Date");
+			xlsWriteLabel(0, 34, "Documentation: Agreement status");
+			xlsWriteLabel(0, 35, "Documentation: Reason of Agreement Rejection");
+			xlsWriteLabel(0, 36, "Documentation:-Rejected case  Last Modified date");
+			xlsWriteLabel(0, 37, "Documentation: Rejected case Status");
+			xlsWriteLabel(0, 38, "Documentation: Rejected case comments");
+			
+			//Keyword status
+			xlsWriteLabel(0, 39, "Product OPS - Evaluation Status");
+			xlsWriteLabel(0, 40, "Product OPS - Keywords Date");
+			xlsWriteLabel(0, 41, "Product OPS - Keywords");
+			xlsWriteLabel(0, 42, "Creative Design Status");
+			
+			//Pos status
+			xlsWriteLabel(0, 43, "POS: Delivery month");
+			xlsWriteLabel(0, 44, "POS: Delivery date");
+			xlsWriteLabel(0, 45, "POS: Overall POS Status");
+			xlsWriteLabel(0, 46, "POS: Reason for not delivery");
+			//Go live
+			xlsWriteLabel(0, 47, "Merchant OPS: Go Live month");
+			xlsWriteLabel(0, 48, "Merchant OPS: Go Live date");
+			xlsWriteLabel(0, 49, "Merchant OPS: Go Live Final status");
+			xlsWriteLabel(0, 50, "Merchant OPS: Reason For go-live Not Done");
+			xlsWriteLabel(0, 51, "Latitude(OE)");
+			xlsWriteLabel(0, 52, "Longitude(OE)");
+			xlsWriteLabel(0, 53, "GL:Rejected case Last Modified date");
+			xlsWriteLabel(0, 54, "GL: Rejected case status");
+			xlsWriteLabel(0, 55, "GL: Rejected case comments");
+			
+			
+//Merchant details
+			xlsWriteLabel(0, 56, "Sign up City");
+			xlsWriteLabel(0, 57, "Merchant tie-up type");
+			xlsWriteLabel(0, 58, "Offer Signed date");
+			xlsWriteLabel(0, 59, "Offer Actual Entry Month");
+			xlsWriteLabel(0, 60, "Offer Actual Entry date");
+			xlsWriteLabel(0, 61, "Entry Time");
+			
+			
+			xlsWriteLabel(0, 62, "Offer Modified date");
+			xlsWriteLabel(0, 63, "Modified Time");
+			xlsWriteLabel(0, 64, "RM");
+			xlsWriteLabel(0, 65, "Sales Person Name");
+			xlsWriteLabel(0, 66, "Sales Person Mobile No.");
+			xlsWriteLabel(0, 67, "Sales Person City");
+			xlsWriteLabel(0, 68, "Sales Person Zone");
+			xlsWriteLabel(0, 69, "Signatory Title");
+			xlsWriteLabel(0, 70, "Signatory First Name");
+			xlsWriteLabel(0, 71, "Signatory last Name");
+			
+			
+			xlsWriteLabel(0, 72, "Signatory Designation");
+			xlsWriteLabel(0, 73, "Signatory Mobile Number");
+			xlsWriteLabel(0, 74, "Signatory landline Number");
+			xlsWriteLabel(0, 75, "Signatory Email ID");
+			xlsWriteLabel(0, 76, "HFA");
+			xlsWriteLabel(0, 77, "Location / Area");
+			xlsWriteLabel(0, 78, "Merchant Type");
+			xlsWriteLabel(0, 79, "Genre");
+			xlsWriteLabel(0, 80, "Merchant");
+			xlsWriteLabel(0, 81, "Merchant bank-Merchant name");
+			
+			
+			xlsWriteLabel(0, 82, "Merchant Source");
+			xlsWriteLabel(0, 83, "Complete Address");
+			xlsWriteLabel(0, 84, "Landmark");
+			xlsWriteLabel(0, 85, "City");
+			xlsWriteLabel(0, 86, "Zip Code");
+			xlsWriteLabel(0, 87, "Outlet Number - Mobile");
+			xlsWriteLabel(0, 88, "Outlet Number - Landline");
+			xlsWriteLabel(0, 89, "Website");
+			xlsWriteLabel(0, 90, "Offer Description for D Category / Checkin offer for C Category / Tip for A category");
+			xlsWriteLabel(0, 91, "%age of discount incase of flat discount");
+			
+			
+			xlsWriteLabel(0, 92, "Menu / Rate card cost of individual service offered (will not be applicable on flat discount offers)");
+			xlsWriteLabel(0, 93, "Time taken for every service mentioned in the offer (only incase of Get Pampered)");
+			xlsWriteLabel(0, 94, "Actual Cost of offer");
+			xlsWriteLabel(0, 95, "Hoppr Offer");
+			xlsWriteLabel(0, 96, "Marketing Fee");
+			xlsWriteLabel(0, 97, "Prior Appointment");
+			xlsWriteLabel(0, 98, "Appointment number");
+			xlsWriteLabel(0, 99, "Taxes");
+			xlsWriteLabel(0, 100, "Redemption of voucher per person");
+			xlsWriteLabel(0, 101, "Weekly Off");
+			
+			
+			xlsWriteLabel(0, 102, "Operation Timings");
+			xlsWriteLabel(0, 103, "Validity");
+			xlsWriteLabel(0, 104, "Validity as per Agreement");
+			xlsWriteLabel(0, 105, "Valid From");
+			xlsWriteLabel(0, 106, "Valid to");
+			xlsWriteLabel(0, 107, "Black Days");
+			xlsWriteLabel(0, 108, "Highlights / Fineprints");
+			xlsWriteLabel(0, 109, "Logo");
+			xlsWriteLabel(0, 110, "Images");
+			xlsWriteLabel(0, 111, "Stickers requirement");
+			
+			
+			xlsWriteLabel(0, 112, "Poster requirement");
+			xlsWriteLabel(0, 113, "Tent Card requirement");
+			xlsWriteLabel(0, 114, "Standee requirement");
+			xlsWriteLabel(0, 115, "Others");
+			xlsWriteLabel(0, 116, "Remarks");
+			xlsWriteLabel(0, 117, "Data Acceptance date");
+			xlsWriteLabel(0, 118, "Reason for rejection");
+			
+			
+			xlsWriteLabel(0, 119, "Data Acceptance Status2");
+			xlsWriteLabel(0, 120, "Data Acceptance Modified Date");
+			xlsWriteLabel(0, 121, "Merchant OPS: Outlet Verification: Start date");
+			
+			xlsWriteLabel(0, 122, "Merchant OPS:OE Name");
+			xlsWriteLabel(0, 123, "Merchant OPS: Agreement status");
+			xlsWriteLabel(0, 124, "Merchant OPS: Reason of Agreement Rejection");
+			xlsWriteLabel(0, 125, "Merchant OPS: Agreement Rejection Comments");
+			xlsWriteLabel(0, 126, "Merchant OPS: Outlet Status: Easy to find?");
+			xlsWriteLabel(0, 127, "Merchant OPS: Cleanliness & Hygienic status");
+			xlsWriteLabel(0, 128, "Merchant OPS: Ambience status");
+			xlsWriteLabel(0, 129, "Merchant OPS: Behavior Check:");
+			xlsWriteLabel(0, 130, "Merchant OPS: Total Score:");
+			xlsWriteLabel(0, 131, "Merchant OPS: Overall Changes Done Status");
+			
+			
+			xlsWriteLabel(0, 132, "Documentation: Overall Changes Done Status");
+			xlsWriteLabel(0, 133, "Documentation: Agreement Available or not");
+			xlsWriteLabel(0, 134, "Documentation: Agreement Status Date");
+			xlsWriteLabel(0, 135, "Documentation: Agreement Overall Remarks");
+			xlsWriteLabel(0, 136, "Documentation: Mail Communication Sent");
+			xlsWriteLabel(0, 137, "Documentation: Mail Communication Sent On");
+			xlsWriteLabel(0, 138, "Documentation: Agreement Hard copy Received status");
+			
+			
+			//TC status
+			
+			xlsWriteLabel(0, 139, "TC - Verification Call Date");
+			xlsWriteLabel(0, 140, "TC - Person name spoken to");
+			xlsWriteLabel(0, 141, "TC - Person designation spoken to");
+			
+			xlsWriteLabel(0, 142, "TC - Person mobile number spoken to");
+			xlsWriteLabel(0, 143, "TC: Change Status");
+			xlsWriteLabel(0, 144, "TC: Overall Status: Modified Date");
+			
+			
+			//Keyword status
+			xlsWriteLabel(0, 145, "Product OPS - Evaluation Status");
+			xlsWriteLabel(0, 146, "Product OPS - Reason for Rejection");
+			xlsWriteLabel(0, 147, "Product OPS - Comment");
+			xlsWriteLabel(0, 148, "Product OPS - Keywords Date");
+			//Creative status
+			xlsWriteLabel(0, 149, "Creative Design Status");
+			
+			//Offer upload status
+			xlsWriteLabel(0, 150, "Offer Upload: Offer Upload Date");
+			xlsWriteLabel(0, 151, "Offer Upload: Upload Status");
+			xlsWriteLabel(0, 152, "Offer Upload: Comments");
+			
+			
+			//Offer testing status
+			xlsWriteLabel(0, 153, "Offer Testing: Smarnika Test date");
+			xlsWriteLabel(0, 154, "Offer Testing: Ankit Test date");
+			xlsWriteLabel(0, 155, "Offer Testing: Operator Tested");
+			xlsWriteLabel(0, 156, "Offer Testing: Testing Numbers");
+			xlsWriteLabel(0, 157, "Offer Testing: FB Link Status");
+			xlsWriteLabel(0, 158, "Offer Testing: Point SMS Status");
+			xlsWriteLabel(0, 159, "Offer Testing: Offer SMS Status");
+			xlsWriteLabel(0, 160, "Offer Testing: Coupon Code SMS Status");
+			xlsWriteLabel(0, 161, "Offer Testing: Aircel Testing Message Received Status");
+			xlsWriteLabel(0, 162, "Offer Testing: Overall Response Time Status");
+			
+			xlsWriteLabel(0, 163, "Offer Testing: Testing Status Status");
+			xlsWriteLabel(0, 164, "Offer Testing: Remarks");
+			
+			
+			//POS delivery status
+			xlsWriteLabel(0, 165, "POS: Courier date");
+			xlsWriteLabel(0, 166, "POS: Delivery date");
+			xlsWriteLabel(0, 167, "POS: Overall POS Status: Modified Date");
+			
+			//Go live status
+			xlsWriteLabel(0, 168, "Merchant OPS: Go Live Visit date");
+			xlsWriteLabel(0, 169, "Merchant OPS: Go Live POS Deployed status");
+			xlsWriteLabel(0, 170, "Merchant OPS: Go Live Reason for not done");
+			xlsWriteLabel(0, 171, "Merchant OPS: Go Live POS Deployed");
+			xlsWriteLabel(0, 172, "Merchant OPS: Go Live Others POS requirements");
+			xlsWriteLabel(0, 173, "Merchant OPS: Go Live Average Customer Walk-in Weekays");
+			xlsWriteLabel(0, 174, "Merchant OPS: Go Live Average Customer Walk-in Weekends");
+			xlsWriteLabel(0, 175, "Merchant OPS: Go Live Check-in done by merchant and Staff");
+			xlsWriteLabel(0, 176, "Merchant OPS: Go Live If Yes, number of coupon downloaded");
+			xlsWriteLabel(0, 177, "Merchant OPS: Go Live If No, please specify the reason here");
+			xlsWriteLabel(0, 178, "Merchant OPS: Go-Live Remarks");
+			
+			
+			
+			//Go live status in NON-OE cities
+			xlsWriteLabel(0, 179, "Merchant OPS in Non-OE City: Go Live Visit date");
+			xlsWriteLabel(0, 180, "Merchant OPS in Non-OE City: Go Live Status");
+			xlsWriteLabel(0, 181, "Merchant OPS: Go Live Reason for not done");
+			xlsWriteLabel(0, 182, "Merchant OPS in Non-OE City: Go Live POS Deployed");
+			
+			xlsWriteLabel(0, 183, "Merchant OPS in Non-OE City: Go Live Others POS requirements");
+			xlsWriteLabel(0, 184, "Merchant OPS in Non-OE City: Go Live Average Customer Walk-in Weekays");
+			xlsWriteLabel(0, 185, "Merchant OPS in Non-OE City: Go Live Average Customer Walk-in Weekends");
+			xlsWriteLabel(0, 186, "Merchant OPS in Non-OE City: Go Live Check-in done by merchant and Staff");
+			xlsWriteLabel(0, 187, "Merchant OPS in Non-OE City: Go Live If Yes,number of coupon downloaded");
+			xlsWriteLabel(0, 188, "Merchant OPS in Non-OE City: Go Live If No, please specify the reason here");
+			xlsWriteLabel(0, 189, "Merchant OPS in Non-OE City: Go-Live Remarks");
+			
+			
+			
+			
+			
+			//Mail communication
+			
+			xlsWriteLabel(0, 190, "docs_merchant_offer_code");
+			xlsWriteLabel(0, 191, "docs_mail_communication");
+			xlsWriteLabel(0, 192, "docs_mail_comm_on");
+			xlsWriteLabel(0, 193, "docs_agreement_hard_copy_received_status");
+			xlsWriteLabel(0, 194, "creative_merchant_name");
+			xlsWriteLabel(0, 195, "creative_merchant_code");
+			xlsWriteLabel(0, 196, "creative_status");
+		
+			
+		
+			
+			
+			
+			
+
+	$sql_merchants = get_all_y2cf_merchant_offers_and_outlets_for_ops();
+  	$obj_merchants = db_query($sql_merchants);
+	$data = array();
+	$serial_number = get_list_serial_number();
+	$xlsRow = 1;
+	while ($row = db_fetch_array($obj_merchants)) {
+		$salesperson_name = db_result(db_query("SELECT name FROM {users} WHERE uid = %d", $row['salesperson']));
+    	$rm_id = db_result(db_query("SELECT rm_id FROM {users} WHERE uid = %d", $row['salesperson']));
+		$rm_name = db_result(db_query("SELECT name FROM {users} WHERE uid = %d", $rm_id));
+		$outname = db_result(db_query("SELECT title FROM {node} where nid = '" . $row['nid'] . "' "));
+//Sales person mobile number
+		$users_nid = db_result(db_query("select nid from {node} where uid='".$row['salesperson']."' and type='profile' "));
+    	$spusers_det = db_fetch_array(db_query("select * from {content_type_profile} where nid='".$users_nid."'  "));
+
+		//TC varification call date
+		if(!empty($row['field_hop_ops_vari_date_value'])) {
+	      $tc_var_cd = displat_date_in_excel_format($row['field_hop_ops_vari_date_value']);
+	    }elseif(!empty($row['field_hop_ops_vari_date_mo_value'])) {
+	      $tc_var_cd = displat_date_in_excel_format($row['field_hop_ops_vari_date_mo_value']);
+	    }else{
+	      $tc_var_cd = '-';
+	    }
+
+    //$ops_vid = db_fetch_array(db_query("select min(nr.vid) as vid from {node_revisions} nr inner join {users} u on nr.uid=u.uid inner join {users_roles} ur on u.uid=ur.uid inner join {role} r on ur.rid=r.rid where (r.name='y2cfoperations' or r.name='hoppertelecallingops' or r.name='reporting manager' or r.name='salesmanager' or r.name='operationhead' or r.name='operationmngr' or r.name='y2cfproducts') and nr.nid='" . $row['merchantid'] . "'  "));
+
+    $ops_vid = db_fetch_array(db_query("select min(nr.vid) as vid from {node_revisions} nr inner join {users} u on nr.uid=u.uid inner join {users_roles} ur on u.uid=ur.uid inner join {role} r on ur.rid=r.rid where (r.name='y2cfoperations' or r.name='hoppertelecallingops' or r.name='operationhead') and nr.nid='" . $row['merchantid'] . "'  "));
+    $ops_start_date = db_fetch_array(db_query("select nr.timestamp as ops_date from {node_revisions} nr where nr.vid='" . $ops_vid['vid'] . "'  "));
+
+    $ops_vid_outw = db_fetch_array(db_query("select min(nr.vid) as vid from {node_revisions} nr inner join {users} u on nr.uid=u.uid inner join {users_roles} ur on u.uid=ur.uid inner join {role} r on ur.rid=r.rid where (r.name='y2cfoperations' or r.name='hoppertelecallingops' or r.name='operationhead') and nr.nid='" . $row['hop_outletid'] . "'  "));
+    $ops_start_date_outw = db_fetch_array(db_query("select nr.timestamp as ops_date from {node_revisions} nr where nr.vid='" . $ops_vid_outw['vid'] . "'  "));
+    
+if($row['field_hop_tieup_type_value']!='National') {
+	if (!empty($ops_start_date_outw['ops_date'])) {
+    	$ops_start = date("m-d-Y", $ops_start_date_outw['ops_date']);
+        $ops_start_month = date("F", $ops_start_date_outw['ops_date']);
+    }elseif (!empty($ops_start_date['ops_date'])) {
+    	$ops_start = date("m-d-Y", $ops_start_date['ops_date']);
+      $ops_start_month = date("F", $ops_start_date['ops_date']);
+    }else{
+    	$ops_start = "-";
+    }
+}else{
+    $ops_start = date("m-d-Y", $row['creationdate']);
+    $ops_start_month = date("F", $row['creationdate']);
+    }
+//Files URL path
+   $hop_image_path = db_result(db_query("select filepath from {files} where fid='" . $row['field_image_upload_fid'] . "'  "));
+   if(!empty($hop_image_path)) {
+    $image_path = $hop_image_path;
+    }
+    else {
+    	$image_path = "-";
+    }
+   $hop_web_image_path = db_result(db_query("select filepath from {files} where fid='" . $row['field_images_website_fid'] . "'  "));
+	 if(!empty($hop_web_image_path)) {
+      $web_image_path = $base_url.'/'.$hop_web_image_path;
+   }
+   else {
+      $web_image_path = "-";
+   }
+
+   $hop_menucard_path = db_result(db_query("select filepath from {files} where fid='" . $row['field_hop_menu_rate_card_filup_fid'] . "'  "));
+	 if(!empty($hop_menucard_path)) {
+      $menucard_path = $base_url.'/'.$hop_menucard_path;
+    }
+    else {
+      $menucard_path = "-";
+    }
+//Merchant code implementation
+    $usr_profile = db_result(db_query("Select nid from {node} where uid='".$row['salesperson']."' and type='profile' "));
+    $usr_city = db_result(db_query("Select field_hrm_city_value from {content_type_profile} where nid='".$usr_profile."'  "));
+
+    if(!empty($row['field_hop_signup_city_value'])) {
+    	$cityname = get_only_term_name($row['field_hop_signup_city_value']);
+    }elseif(!empty($row['field_hopprs_city_value'])){
+    	$cityname = get_only_term_name($row['field_hopprs_city_value']);
+    }elseif(!empty($row['field_hopper_city_hfa_value'])){
+    	$cityname = get_only_term_name(get_parent_tid_by_tid($row['field_hopper_city_hfa_value']));
+    }else{
+    	$cityname = get_only_term_name($usr_city);
+    }
+
+    $merchant_code = merchant_code_defined($cityname);
+
+    if(!empty($mo_agr_ror1)) {
+    	$rs_ops_exe = get_ops_exe_ror($row['nid']);
+    }else{
+    	$rs_ops_exe = get_ops_exe_ror_dummy($row['nid']);
+    }
+    $rs_ops_manager_ror = get_ops_manager_ror($row['nid']);
+
+
+	  $rs_pro_ror_od = get_pro_mngr_ror($row['nid']);
+    $rs_pro_ror_mo = get_pro_mngr_ror_mo($row['nid']);
+    if(!empty($rs_pro_ror_od)) {
+      $rs_pro_ror = $rs_pro_ror_od;
+    }else{
+      $rs_pro_ror = $rs_pro_ror_mo;
+    }
+
+    $rs_mer_ops_changes1 = get_mer_ops_change($row['nid']);
+    $rs_mer_ops_changes2 = get_mer_ops_change_dummy($row['nid']);
+    if(!empty($rs_mer_ops_changes1)) {
+      $rs_mer_ops_changes = $rs_mer_ops_changes1;
+    }elseif(!empty($rs_mer_ops_changes2)){
+    	$rs_mer_ops_changes = $rs_mer_ops_changes2;
+    }else{
+    	 $rs_mer_ops_changes = '-';
+    }
+
+    $rs_mer_ops_changes_by_mngr = get_mer_ops_change_by_opsmngr($row['nid']);
+
+    $rs_tc_chges1 = get_mer_ops_change_by_tc($row['nid']);
+    $rs_tc_chges2 = get_mer_ops_change_by_tc_outlet($row['nid']);
+    if(!empty($rs_tc_chges1)) {
+    	$rs_mer_ops_changes_by_tc = $rs_tc_chges1;
+    }elseif(!empty($rs_tc_chges2)) {
+    	$rs_mer_ops_changes_by_tc = $rs_tc_chges2;
+    }else{
+    	$rs_mer_ops_changes_by_tc = '-';
+    }
+
+
+    $opspp = get_all_ops_person_name($row['nid']);
+    $posbrand_cr_recved = get_mer_ops_by_posbrand_for_creative_recieved($row['nid']);
+
+//Offer description for merchant category A C and D
+    $offer_detail = (!empty($row['field_hopper_checkin1_value'])) ? $row['field_hopper_checkin1_value'] : $row['field_offer_description_value'];
+
+//Operational Timings
+		if(!empty($row['field_hop_ops_ot_mm_frm_value'])) {
+			$frm_min = $row['field_hop_ops_ot_mm_frm_value'];
+		}else{
+			$frm_min = '00';
+		}
+
+	  if(!empty($row['field_hop_ops_ot_mm_to_value'])) {
+      $to_min = $row['field_hop_ops_ot_mm_to_value'];
+    }else{
+      $to_min = '00';
+    }
+
+    if(!empty($row['field_mo_oprational_timings_value'])) {
+    	$ops_timings = $row['field_mo_oprational_timings_value'];
+    }elseif(!empty($row['field_hop_ops_frm_hrs_value'])) {
+    	$ops_timings = $row['field_hop_ops_frm_hrs_value'].':'.$frm_min.' Hrs To '. $row['field_hop_ops_to_hrs_value'].':'.$to_min.' Hrs ';
+    }else{
+    	$ops_timings = "-";
+    }
+//POS: delivery communication mail to OPS team in respective cities
+    if($row['field_hop_pos_dcmtopstinrcty_value'] == 1) {
+  	 $mail_sts = 'YES';
+    }elseif($row['field_hop_pos_dcmtopstinrcty_value'] == 0) {
+  	 $mail_sts = 'NO';
+    }
+//Ops easy to find
+    if(!empty($row['field_hop_offer_ops_easyfind_value'])) {
+	     $ops_etf = $row['field_hop_offer_ops_easyfind_value'];
+    }elseif(!empty($row['field_hop_offer_ops_easyfind_mo_value'])) {
+    	$ops_etf = $row['field_hop_offer_ops_easyfind_mo_value'];
+    }else{
+    	$ops_etf = '-';
+    }
+
+    if($ops_etf == 1){
+    	$etf_label = 'Poor';
+    }elseif($ops_etf == 2) {
+    	$etf_label = 'Average';
+    }elseif($ops_etf == 3) {
+      $etf_label = 'Satisfactory';
+    }elseif($ops_etf == 4) {
+      $etf_label = 'Good';
+    }elseif($ops_etf == 5) {
+      $etf_label = 'Excellent';
+    }
+//Ops cleaness and Hygiene
+    if(!empty($row['field_hop_offer_clean_in_out_value'])) {
+       $ops_cah = $row['field_hop_offer_clean_in_out_value'];
+    }elseif(!empty($row['field_hop_offer_clean_in_out_mo_value'])) {
+      $ops_cah = $row['field_hop_offer_clean_in_out_mo_value'];
+    }else{
+    	$ops_cah = '-';
+    }
+
+    if($ops_cah == 1){
+      $cah_label = 'Poor';
+    }elseif($ops_cah == 2) {
+      $cah_label = 'Average';
+    }elseif($ops_cah == 3) {
+      $cah_label = 'Satisfactory';
+    }elseif($ops_cah == 4) {
+      $cah_label = 'Good';
+    }elseif($ops_cah == 5) {
+      $cah_label = 'Excellent';
+    }
+//Ops Ambiance
+    if(!empty($row['field_hop_offer_ambiance_value'])) {
+       $ops_amb = $row['field_hop_offer_ambiance_value'];
+    }elseif(!empty($row['field_hop_offer_ambiance_mo_value'])) {
+      $ops_amb = $row['field_hop_offer_ambiance_mo_value'];
+    }else{
+    	 $ops_amb = '-';
+    }
+
+    if($ops_amb == 1){
+      $amb_label = 'Poor';
+    }elseif($ops_amb == 2) {
+      $amb_label = 'Average';
+    }elseif($ops_amb == 3) {
+      $amb_label = 'Satisfactory';
+    }elseif($ops_amb == 4) {
+      $amb_label = 'Good';
+    }elseif($ops_amb == 5) {
+      $amb_label = 'Excellent';
+    }
+//Ops Ambiance
+    if(!empty($row['field_hop_offer_beh_chk_value'])) {
+       $ops_bchk = $row['field_hop_offer_beh_chk_value'];
+    }elseif(!empty($row['field_hop_offer_beh_chk_mo_value'])) {
+      $ops_bchk = $row['field_hop_offer_beh_chk_mo_value'];
+    }
+
+    if($ops_bchk == 1){
+      $bchk_label = 'Poor';
+    }elseif($ops_bchk == 2) {
+      $bchk_label = 'Average';
+    }elseif($ops_bchk == 3) {
+      $bchk_label = 'Satisfactory';
+    }elseif($ops_bchk == 4) {
+      $bchk_label = 'Good';
+    }elseif($ops_bchk == 5) {
+      $bchk_label = 'Excellent';
+    }
+
+
+//Total score for merchant ratings
+
+    $total_score = $ops_etf  + $ops_etf + $ops_amb + $ops_bchk;
+
+//Get all Modified date and time for all operations
+    $opshexe_rej_sts_dt = get_shexe_rejection_dt($row['merchantid']);
+    $opshexe_acc_sts_dt = get_shexe_acceptance_dt($row['merchantid']);
+//
+    if(!empty($row['field_hop_ops_oh_ds_sts']) && $row['field_hop_ops_oh_ds_sts']== 'Rejected' ) {
+    	$rej_sts = $row['field_hop_ops_oh_ds_sts'];
+    }else{
+    	$rej_sts = '';
+    }
+    //Acceptence
+	  if(!empty($row['field_hop_ops_oh_ds_sts']) && $row['field_hop_ops_oh_ds_sts']== 'Accepted' ) {
+      $acc_sts = $row['field_hop_ops_oh_ds_sts'];
+    }else{
+      $acc_sts = '';
+    }
+    $ror_by_shexe = get_rorsts_by_opshexe($row['merchantid']);
+    //Last modified date.......outlet modify
+    $sp_mod_dt = get_sp_lst_mod_dt($row['hop_outletid']);
+    //Last modified date.......offer modify
+    $sp_offer_mod_dt = get_sp_lst_mod_dt($row['merchantid']);
+    
+    
+    $docs_mod_dt = get_docs_exe_modsts_dt($row['merchantid']);
+    $docs_mod_month = get_docs_exe_modsts_month($row['merchantid']);
+    //$tc_mod_dt = get_tc_exe_modsts_dt($row['merchantid']);
+    $tc_mod_dt = get_tc_exe_modsts_dt($row['nid']);
+    //$pro_ops_mod_dt = get_proops_exe_modsts_dt($row['merchantid']);
+    $pro_ops_mod_dt = get_proops_exe_modsts_dt($row['nid']);
+$pro_kw_by_bulk_csv_dt = $row['nid'];
+
+
+    $pos_sts = get_pos_exe_modsts_dt($row['merchantid']);
+
+//Outlet offer valid from--valid To
+    $mo_valid_frm = (!empty($row['field_hop_sp_valid_from_value'])) ? displat_date_in_excel_format($row['field_hop_sp_valid_from_value']) : '-';
+    $mo_valid_to = (!empty($row['field_hop_sp_valid_from_value2'])) ? displat_date_in_excel_format($row['field_hop_sp_valid_from_value2']) : '-';
+
+//Go Live date
+    $goliv_ddt = (!empty($row['field_hop_ops_glendat_value'])) ? displat_date_in_excel_format($row['field_hop_ops_glendat_value']) : '-';
+//Merchant source
+    $merch_id =  db_result(db_query("select field_hop_ops_chfamsrc_value from {content_field_hop_ops_chfamsrc} where delta='0' and vid='".$row['offervid']."' and field_hop_ops_chfamsrc_value!='NULL' "));
+    if(!empty($merch_id)){
+      $mer_bank_merchant_name =  db_result(db_query("select name from {term_data} where tid='".$merch_id."' "));
+      $mer_src_tid = db_result(db_query("select tid from {term_hierarchy} where parent='".$merch_id."' "));
+      if(!empty($mer_src_tid)) {
+        $mer_act_db =  db_result(db_query("select name from {term_data} where tid='".$mer_src_tid."' "));
+      }else{
+      	$mer_act_db =  '-';
+      }
+   }else{
+    	$mer_bank_merchant_name =  '-';
+    	$mer_act_db = '-';
+    }
+//Agreement available on offer or not
+    $docs_agr = db_result(db_query("Select count(field_docs_upload_fid) as agr_cnt from {content_field_docs_upload} where nid='".$row['merchantid']."' "));
+    //$docs_agr = db_result(db_query("Select count(field_docs_upload_fid) as agr_cnt from {content_field_docs_upload} where nid='".$row['nid']."' "));
+    $agr_cnt = ($docs_agr['agr_cnt'] !=0 ) ? 'Yes' : 'No';
+//validity as per agreement
+		if(!empty($row['field_hoppr_new_valaspragr'])) {
+			$val_asper_agr = $row['field_hoppr_new_valaspragr'];
+		}elseif(!empty($row['field_offer_coupon_validity_value'])){
+		    $val_asper_agr = $row['field_offer_coupon_validity_value'];
+		}else{
+			$val_asper_agr = '-';
+		}
+//overall status -- ops and TC
+    if(!empty($row['field_hop_offer_ops_status_value'])) {
+      $overall_sts_opstc = $row['field_hop_offer_ops_status_value'];
+    }elseif(!empty($row['field_hop_offer_ops_status_mo_value'])){
+      $overall_sts_opstc = $row['field_hop_offer_ops_status_mo_value'];
+    }elseif(!empty($row['field_hop_ops_all_remark_value'])){
+    	$overall_sts_opstc = $row['field_hop_ops_all_remark_value'];
+    }elseif(!empty($row['field_hop_ops_all_remrk_mo_value'])){
+      $overall_sts_opstc = $row['field_hop_ops_all_remrk_mo_value'];
+    }else{
+    	$overall_sts_opstc = '-';
+    }
+
+
+//overall remarks -- ops and TC
+     if(!empty($row['field_hop_offer_ops_comments_value'])) {
+     	  $opstc_rmks = $row['field_hop_offer_ops_comments_value'];
+     }elseif(!empty($row['field_hop_offer_ops_comments_mo_value'])){
+        $opstc_rmks = $row['field_hop_offer_ops_comments_mo_value'];
+    }elseif(!empty($row['field_hop_ops_tc_rmks_value'])){
+        $opstc_rmks = $row['field_hop_ops_tc_rmks_value'];
+    }elseif(!empty($row['field_hop_ops_tc_hglts_sta_value'])){
+     	  $opstc_rmks = $row['field_hop_ops_tc_hglts_sta_value'];
+     }else{
+     	  $opstc_rmks = '-';
+     }
+
+//Products operation
+     if(!empty($row['field_hop_ops_pro_keywords_value'])) {
+     	$pro_kwrds = $row['field_hop_ops_pro_keywords_value'];
+     }elseif(!empty($row['field_hop_ops_pro_kwds_mo_value'])){
+     	$pro_kwrds = $row['field_hop_ops_pro_kwds_mo_value'];
+     }else{
+     	  $pro_kwrds = '-';
+     }
+
+     if(!empty($row['field_hop_pro_evaluation_status_value'])) {
+     	$evalsts = $row['field_hop_pro_evaluation_status_value'];
+     }elseif(!empty($row['field_hop_pro_eval_status_value'])) {
+     	$evalsts = $row['field_hop_pro_eval_status_value'];
+     }else{
+        $evalsts = '-';
+     }
+
+     if(!empty($row['field_hop_pro_otherscom_value'])) {
+     	$procmts = $row['field_hop_pro_otherscom_value'];
+     }elseif(!empty($row['field_hop_pro_cmt_mo_value'])){
+     	$procmts = $row['field_hop_pro_cmt_mo_value'];
+     }else{
+     	  $procmts = '-';
+     }
+
+    //$row['field_hop_pos_oa_status_mo_value']
+//POS
+    if(!empty($row['field_hop_pos_oa_status_value'])) {
+    	$pos_sts = $row['field_hop_pos_oa_status_value'];
+    }elseif(!empty($row['field_hop_pos_oa_status_mo_value'])){
+    	$pos_sts = $row['field_hop_pos_oa_status_mo_value'];
+    }else{
+    	$pos_sts = '-';
+    }
+
+    if(!empty($row['field_hop_pos_nt_del_value'])) {
+    	$pos_rndl = $row['field_hop_pos_nt_del_value'];
+    }elseif(!empty($row['field_hop_pos_nt_del_mo_value'])) {
+    	$pos_rndl = $row['field_hop_pos_nt_del_mo_value'];
+    }else{
+    	$pos_rndl = '-';
+    }
+
+    //POS delivery date-----m/d/Y
+    if(!empty($row['field_hop_pos_del_dt_value'])) {
+    	$pos_ddt = displat_date_in_excel_format($row['field_hop_pos_del_dt_value']);
+    	$pos_month = date("F", displat_date_in_excel_format_for_pos_delivered_intimestamp($row['field_hop_pos_del_dt_value']));
+    }elseif(!empty($row['field_hop_pos_del_dt_mo_value'])){
+    	$pos_ddt = displat_date_in_excel_format($row['field_hop_pos_del_dt_mo_value']);
+    	$pos_month = date("F", displat_date_in_excel_format_for_pos_delivered_intimestamp($row['field_hop_pos_del_dt_mo_value']));
+    }else{
+    	$pos_ddt = '-';
+    	$pos_month = '-';
+    }
+    
+
+//Pos Courier date
+	if(!empty($row['field_hop_pos_cou_dt_value'])) {
+      $pos_ctdt = displat_date_in_excel_format($row['field_hop_pos_cou_dt_value']);
+    }elseif(!empty($row['field_hop_pos_cou_dt_mo_value'])){
+      $pos_ctdt = displat_date_in_excel_format($row['field_hop_pos_cou_dt_mo_value']);
+    }else{
+      $pos_ctdt = '-';
+    }
+
+//OE Status and comments
+	if(!empty($row['field_hop_offer_ops_status_value'])) {
+      $mo_ops_sts = $row['field_hop_offer_ops_status_value'];
+    }elseif(!empty($row['field_hop_offer_ops_status_mo_value'])){
+      $mo_ops_sts = $row['field_hop_offer_ops_status_mo_value'];
+    }else{
+      $mo_ops_sts = '-';
+    }
+//Ops Comments
+    if(!empty($row['field_hop_offer_ops_comments_value'])) {
+      $mo_ops_cmnts = $row['field_hop_offer_ops_comments_value'];
+    }elseif(!empty($row['field_hop_offer_ops_comments_mo_value'])){
+      $mo_ops_cmnts = $row['field_hop_offer_ops_comments_mo_value'];
+    }else{
+      $mo_ops_cmnts = '-';
+    }
+//Latitude
+	if(!empty($row['field_hopp_ops_latitude_value'])) {
+      $latitude = $row['field_hopp_ops_latitude_value'];
+    }elseif(!empty($row['field_hop_out_latitude_mo_value'])) {
+       $latitude = $row['field_hop_out_latitude_mo_value'];
+    }else{
+      $latitude = '-';
+    }
+//Longitude
+	if(!empty($row['field_hopp_ops_longitude_value'])) {
+      $longitude = $row['field_hopp_ops_longitude_value'];
+    }elseif(!empty($row['field_hop_mer_longitude_mo_value'])) {
+       $longitude = $row['field_hop_mer_longitude_mo_value'];
+    }else{
+      $longitude = '-';
+    }
+//Merchant ops agreement sts
+	if(!empty($row['field_hop_ops_exe_sta_value'])) {
+      $mo_agrsts = $row['field_hop_ops_exe_sta_value'];
+    }elseif(!empty($row['field_hop_ops_exe_sta_mo_value'])) {
+       $mo_agrsts = $row['field_hop_ops_exe_sta_mo_value'];
+    }else{
+      $mo_agrsts = '-';
+    }
+
+//TC Status
+        if(!empty($row['field_hop_ops_all_remark_value'])) {
+        	$tc_oall_sts = $row['field_hop_ops_all_remark_value'];
+        }elseif(!empty($row['field_hop_ops_all_remrk_mo_value'])) {
+        	$tc_oall_sts = $row['field_hop_ops_all_remrk_mo_value'];
+        }else{
+        	$tc_oall_sts = '-';
+        }
+//TC remarks
+	     if(!empty($row['field_hop_ops_tc_hglts_sta_value'])) {
+          $tc_rmrks = $row['field_hop_ops_tc_hglts_sta_value'];
+        }elseif(!empty($row['field_hop_ops_tc_rmks_value'])) {
+          $tc_rmrks = $row['field_hop_ops_tc_rmks_value'];
+        }else{
+          $tc_rmrks = '-';
+        }
+
+//TC Person name spoken to
+       if(!empty($row['field_hop_ops_pnspoken_value'])) {
+          $tc_pnst = $row['field_hop_ops_pnspoken_value'];
+        }elseif(!empty($row['field_hop_ops_pnspoken_mo_value'])) {
+          $tc_pnst = $row['field_hop_ops_pnspoken_mo_value'];
+        }else{
+          $tc_pnst = '-';
+        }
+
+//TC Person name spoken to
+       if(!empty($row['field_hop_ops_designation_value'])) {
+          $tc_cpdesgn = $row['field_hop_ops_designation_value'];
+        }elseif(!empty($row['field_hop_ops_desg_mo_value'])) {
+          $tc_cpdesgn = $row['field_hop_ops_desg_mo_value'];
+        }else{
+          $tc_cpdesgn = '-';
+        }
+
+//TC Person name spoken to
+       if(!empty($row['field_hop_ops_tc_mobileno_number'])) {
+          $tc_cpmobno = $row['field_hop_ops_tc_mobileno_number'];
+        }elseif(!empty($row['field_hop_ops_tc_mobno_mo_number'])) {
+          $tc_cpmobno = $row['field_hop_ops_tc_mobno_mo_number'];
+        }else{
+          $tc_cpmobno = '-';
+        }
+
+//OPs Head Status
+      if(!empty($row['field_hop_ops_oh_ds_sts_mo_value'])) {
+        $opsheadsts = $row['field_hop_ops_oh_ds_sts_mo_value'];
+      }else{
+      	$opsheadsts = '-';
+      }
+
+//Ops Head Remarks
+	    if(!empty($row['field_hop_ops_acc_rmrks_mo_value'])) {
+        $opsheadrmks = $row['field_hop_ops_acc_rmrks_mo_value'];
+      }else{
+        $opsheadrmks = '-';
+      }
+//Offer upload
+      $offer_upld_sts = (!empty($row['field_hoppr_ofr_upld_value'])) ? $row['field_hoppr_ofr_upld_value'] : '-';
+      $offer_upld_cmnts = (!empty($row['field_hop_ofr_upld_cmnts_value'])) ? $row['field_hop_ofr_upld_cmnts_value'] : '-';
+      $ofr_upld_dt = get_proops_exe_modsts_dt_hopprofferupload($row['nid']);
+//offer testing
+        $offr_test_sts = (!empty($row['field_hoppr_offr_test_value'])) ? $row['field_hoppr_offr_test_value'] : '-';
+        $offr_test_cmnts = (!empty($row['field_hop_off_test_cmnts_value'])) ? $row['field_hop_off_test_cmnts_value'] : '-';
+        $ofr_tst_upld = get_proops_exe_modsts_dt_hopproffertesting($row['nid']);
+//Crfeative design   field_hoppr_creativedsgnabu  field_hoppr_creativedsgnab_out
+        if(!empty($row['field_hoppr_creativedsgnabu_value'])) {
+        	$creative = $row['field_hoppr_creativedsgnabu_value'];
+        }elseif(!empty($row['field_hoppr_creativedsgnab_out_value'])) {
+        	 $creative = $row['field_hoppr_creativedsgnab_out_value'];
+        }else{
+        	$creative = '-';
+        }
+
+//GO LIVE Status
+      if(!empty($row['field_hop_ops_goliv_oth_cmts_value'])) {
+      	$pos_sts_oth = $row['field_hop_ops_goliv_oth_cmts_value'];
+      }elseif($row['field_hop_gl_pos_othrs_mo_value']) {
+      	$pos_sts_oth = $row['field_hop_gl_pos_othrs_mo_value'];
+      }else{
+      	$pos_sts_oth = '-';
+      }
+
+//Go Live POS sts
+      if(!empty($row['field_hop_ops_glivsts_mo_value'])) {
+      	$go_live_pos_status = $row['field_hop_ops_glivsts_mo_value'];
+      }elseif(!empty($row['field_hop_ops_glivsts_value'])) {
+      	$go_live_pos_status = $row['field_hop_ops_glivsts_value'];
+      }else{
+      	$go_live_pos_status = '-';
+      }
+//GO LIVE overall
+      if(!empty($row['field_hop_ops_glivsts_value'])) {
+        $go_live_overall_status = $row['field_hop_ops_glivsts_value'];
+      }elseif(!empty($row['field_hop_ops_glivsts_mo_value'])) {
+        $go_live_overall_status = $row['field_hop_ops_glivsts_mo_value'];
+      }elseif(!empty($row['field_sales_hop_ops_glivsts_mo_value'])) {
+        $go_live_overall_status = $row['field_sales_hop_ops_glivsts_mo_value'];
+      }else{
+        $go_live_overall_status = '-';
+      }
+//Go live reason of rejection
+      $go_live_reason_ntdone = get_mer_go_live_ops_pos_for_not_done($row['nid']);
+
+      $gl_ntdone_ror1 = get_mer_go_live_ops_pos_for_not_done($row['merchantid']);
+      $gl_ntdone_ror2 = get_golive_ror_notdone($row['nid']);
+      $gl_ntdone_ror3 = get_golive_ror_notdone_for_salesoe($row['nid']);
+      if(!empty($gl_ntdone_ror1)) {
+      	$go_live_reason_ntdone = $gl_ntdone_ror1;
+      }elseif(!empty($gl_ntdone_ror2)) {
+      	$go_live_reason_ntdone = $gl_ntdone_ror2;
+      }elseif(!empty($gl_ntdone_ror3)) {
+      	$go_live_reason_ntdone = $gl_ntdone_ror3;
+      }else{
+      	$go_live_reason_ntdone = '-';
+      }
+
+//
+      $ror_pos_nd_1 = get_goliveposstatus_notdone_ror($row['nid']);
+      $ror_pos_nd_2 = get_goliveposstatus_notdone_ror_outletwise($row['nid']);
+      if(!empty($ror_pos_nd_1)) {
+      	$ror_pos_sts = $ror_pos_nd_1;
+      }elseif(!empty($ror_pos_nd_2)) {
+      	$ror_pos_sts = $ror_pos_nd_2;
+      }else{
+      	$ror_pos_sts = '-';
+      }
+//Full address for merchant outlets
+$complete_address = $row['field_mo_loc_address_1_value'] ." ". $row['field_mo_loc_address_2_value'] ." ". $row['field_mo_loc_landmark_value'] ." ". $row['field_mo_landmark2_value'] ." ". get_only_term_name($row['field_hopprs_city_value']) ." ". $row['field_mo_hop_zipcode_value'];
+
+//Weekly off
+  $weekly_off1 = $row['field_mo_holidays_value'];
+  $weekly_off2 = get_ops_weekly_off($row['merout_vid']);
+  if(!empty($weekly_off1)) {
+  	$wklyoff = $weekly_off1;
+  }elseif(!empty($weekly_off2)) {
+  	$wklyoff = $weekly_off2;
+  }else{
+  	$wklyoff = '-';
+  }
+//Go live end date
+  
+  if(!empty($row['field_hop_ops_glivsts_mo_value']) || !empty($row['field_sales_hop_ops_glivsts_mo_value']) || !empty($row['field_hop_ops_glivsts_value'])) {
+  	$gl_outlet_vid=db_result(db_query("Select vid from node where nid='".$row['hop_outletid']."' "));
+  	$gl_date_ops_name = db_fetch_array(db_query("select * from node_revisions where vid='".$gl_outlet_vid."' "));
+  }
+  
+	
+	
+	
+      if(!empty($row['field_hop_ops_glendat_mo_value'])) {
+        $hop_gl_del_date = displat_date_in_excel_format_for_go_live_dt($row['field_hop_ops_glendat_mo_value']);
+        $gl_date_mor = displat_date_in_excel_format_for_go_live_dt_intimestamp($row['field_hop_ops_glendat_mo_value']);
+        $hop_gl_del_month = date("F", $gl_date_mor);
+      }elseif(!empty($row['field_hop_ops_glendat_value'])) {
+        //$hop_gl_del_date = displat_date_in_excel_format_for_go_live_dt($row['field_hop_ops_glendat_value']);
+      	$hop_gl_del_con = date_convert($row['field_hop_ops_glendat_value'], DATE_DATETIME, DATE_UNIX);
+      	$hop_gl_del_date = date('m-d-Y', $hop_gl_del_con);
+        $gl_date_m = displat_date_in_excel_format_for_go_live_dt_intimestamp($row['field_hop_ops_glendat_value']);
+        $hop_gl_del_month = date("F", $gl_date_m);
+        }elseif(!empty($row['field_sales_hop_ops_glendat_mo_value'])) {
+        $hop_gl_del_date = displat_date_in_excel_format_for_go_live_dt($row['field_sales_hop_ops_glendat_mo_value']);
+        $gl_date_mnp = displat_date_in_excel_format_for_go_live_dt_intimestamp($row['field_sales_hop_ops_glendat_mo_value']);
+        $hop_gl_del_month = date("F", $gl_date_mnp);
+        }elseif(!empty($row['field_hop_ops_glivsts_mo_value']) || !empty($row['field_sales_hop_ops_glivsts_mo_value']) || !empty($row['field_hop_ops_glivsts_value'])) {
+        $hop_gl_del_date = date("m-d-Y", $gl_date_ops_name['timestamp']);
+        $hop_gl_del_month = date("F", $gl_date_ops_name['timestamp']);
+  		}else{
+  			$hop_gl_del_date = '-';
+  			$hop_gl_del_month = '-';
+  		}
+  
+  
+  
+  
+/*
+      if(!empty($row['field_hop_ops_glendat_mo_value'])) {
+        $hop_gl_del_date = displat_date_in_excel_format_for_go_live_dt($row['field_hop_ops_glendat_mo_value']);
+      }elseif(!empty($row['field_hop_ops_glendat_value'])) {
+      	$hop_gl_del_date = displat_date_in_excel_format_for_go_live_dt($row['field_hop_ops_glendat_value']);
+      }elseif(!empty($row['field_sales_hop_ops_glendat_mo_value'])) {
+      	$hop_gl_del_date = displat_date_in_excel_format_for_go_live_dt($row['field_sales_hop_ops_glendat_mo_value']);
+      }
+      else{
+      	$hop_gl_del_date = '-';
+      }
+*/
+      if(!empty($row['field_sales_hop_ops_glendat_mo_value'])) {
+        $hop_gl_del_date_sp = displat_date_in_excel_format($row['field_sales_hop_ops_glendat_mo_value']);
+      }else{
+      	$hop_gl_del_date_sp = "-";
+      }
+//mail_communication
+      if(!empty($row['field_hop_mal_com_snt_on_value'])) {
+          $mail_coomm_on = displat_date_in_excel_format($row['field_hop_mal_com_snt_on_value']);
+      }else{
+      	$mail_coomm_on = "-";
+      }
+
+      if($row['field_hoppr_new_mail_comm_value']=='1') {
+      	$mail_communication = "Yes";
+      }else{
+      	$mail_communication = "No";
+      }
+
+//Go live status
+      if(!empty($row['field_offer_sign_date_value'])) {
+        $hoppr_go_live_sign_date = displat_date_in_excel_format($row['field_offer_sign_date_value']);
+      }else{
+      	$hoppr_go_live_sign_date = "-";
+      }
+
+//Mail Communication sent
+      if($row['field_hoppr_new_mail_comm_value'] ==1) {
+      	$hop_mail_comm_sent = "Yes";
+      }elseif($row['field_hoppr_new_mail_comm_value']==0) {
+      	$hop_mail_comm_sent = "No";
+      }
+//POS METERIAL SENT
+      $met_sent = get_pos_meterial($row['hop_outletid']);
+
+
+      //Sticker,Tent Card
+
+//Offer Testing
+
+      $mer_vid = db_result(db_query("Select vid from {node} where nid='".$row['hop_outletid']."' "));
+      $oprts_arr_sts = hoppr_show_all_operators($mer_vid);
+      $tstnum_arr = hoppr_show_all_testing_numbers($mer_vid);
+
+      $fblinks_arr = hoppr_show_all_testing_fblinks($mer_vid);
+      $point_sms = hoppr_show_all_testing_pointsms($mer_vid);
+      $offer_sms = hoppr_show_all_testing_offersms($mer_vid);
+      $coupon_code_sms = hoppr_show_all_testing_couponcodesms($mer_vid);
+      $merchant_sms = hoppr_show_all_testing_merchantsms($mer_vid);
+      $testing_res_time = hoppr_show_all_testing_res_time($mer_vid);
+      $testing_final_sts = hoppr_show_all_testing_tststs($mer_vid);
+
+      //OE NAME
+      $oe1 = get_oename_for_outlet($row['hop_outletid']);
+      $oe2 = get_oename_for_outlet($row['merchantid']);
+    if($row['field_hop_tieup_type_value']!='National') {
+      if(!empty($oe1)) {
+      	$oe_name = $oe1;
+      }else{
+      	$oe_name = $oe2;
+      }
+     }else{
+      $oe_name  = 'Rakhshi Khan';
+      }
+      //OUTLET MODIFIED DATE
+      if(!empty($sp_mod_dt)) {
+        $cnt_modified_date = date("m-d-Y", $sp_mod_dt);
+        $cnt_modified_date_time = date("H:i:s", $sp_mod_dt);
+      }else{
+      	$cnt_modified_date = date("m-d-Y", $row['changeddate']);
+      	$cnt_modified_date_time = date("H:i:s", $row['changeddate']);
+      }
+      
+      //Offer modify date
+      if(!empty($sp_offer_mod_dt)) {
+      	$cnt_offer_modified_date = date("m-d-Y", $sp_offer_mod_dt);
+      	$cnt_modified_date_time = date("H:i:s", $sp_offer_mod_dt);
+      }
+
+//
+      if(!empty($row['field_hop_rej_cs_sts_rmks_value'])) {
+      	$ror_rmks = $row['field_hop_rej_cs_sts_rmks_value'];
+      }elseif(!empty($row['field_hop_ror_oth_cmnts_value'])){
+      	$ror_rmks = $row['field_hop_ror_oth_cmnts_value'];
+      }else{
+      	$ror_rmks = '-';
+      }
+
+	//RM DATES
+	   $rm_general_sql = get_general_query_for_outlets($row['merchantid']);
+    $rm_sql = $rm_general_sql." and (r.name='reporting manager' or r.name='salesmanager')  ";
+    $rm_ops_vid = db_fetch_array(db_query($rm_sql));
+    $rm_ops_start_date = db_fetch_array(db_query("select nr.timestamp as ops_date from {node_revisions} nr where nr.vid='" . $rm_ops_vid['vid'] . "'  "));
+      if (!empty($rm_ops_start_date['ops_date'])) {
+      $rm_ops_start = date("m-d-Y", $rm_ops_start_date['ops_date']);
+      $rm_ops_month = date("F", $rm_ops_start_date['ops_date']);
+    }else{
+      $rm_ops_start = "-";
+      $rm_ops_month = "-";
+    }
+
+
+	//OH DATES
+
+    $oh_general_sql = "select vid from {node} where nid='" . $row['hop_outletid'] . "'  ";
+    $ohh_ops_vid = db_fetch_array(db_query($oh_general_sql));
+    $oh_str_dt = db_fetch_array(db_query("select field_hop_oh_csvlmd_value from {content_type_merchant_outlet} where vid='" . $ohh_ops_vid['vid'] . "'  "));
+    if (!empty($oh_str_dt['field_hop_oh_csvlmd_value'])) {
+      $oh_ops_start = date("m-d-Y", $oh_str_dt['field_hop_oh_csvlmd_value']);
+    }else{
+      $oh_ops_start = "-";
+    }
+
+//Final Status
+                if($pos_sts=='Delivered' && $offer_upld_sts=='Complete') {
+                    $final_status = "Active";
+                    }else{
+                        $final_status = "";
+                        }
+//$row['field_hop_tieup_type_value']
+		//RM Rejected case status
+                        /*content_type_mo_rm_rej_cases
+                         content_type_hoppr_docs_rej_cases
+                        content_type_hoppr_gl_rej_cases
+                        content_type_hoppr_oe_rej_cases
+                        */
+		$rej_meroffer_vid = db_result(db_query("Select vid from {node} where nid='".$row['merchantid']."' "));
+		$rej_cas_sts = get_rm_rejected_case_details($rej_meroffer_vid);
+		$rm_rej_max_vid = db_fetch_array(db_query("select max(vid) as vid from {content_type_mo_rm_rej_cases} where field_hoprc_rm_rej_mn_nid= '".$row['merchantid']."' "));
+		$rm_rej_lmd = db_result(db_query("Select changed from {node} where vid='".$rm_rej_max_vid['vid']."' "));
+		
+		$oe_rej_cas_sts = get_oe_rejected_cases($row['hop_outletid']);
+		$max_vid_oe = db_fetch_array(db_query("select max(vid) as vid from {content_type_hoppr_oe_rej_cases} where field_hoprc_oe_rej_mn_nid= '".$row['hop_outletid']."' "));
+		$oe_rej_lmd = db_result(db_query("Select changed from {node} where vid='".$max_vid_oe['vid']."' "));
+		
+		$docs_rej_cas_sts = get_docs_rejected_cases($rej_meroffer_vid);
+		$docs_rej_max_vid = db_fetch_array(db_query("select max(vid) as vid from {content_type_hoppr_docs_rej_cases} where field_hoprc_docs_rej_mn_nid= '".$row['merchantid']."' "));
+		$docs_rej_lmd = db_result(db_query("Select changed from {node} where vid='".$docs_rej_max_vid['vid']."' "));
+		
+		$oe_gl_rej_cas_sts = get_oe_golive_rejected_cases($row['hop_outletid']);
+		$max_vid_gl_oe = db_fetch_array(db_query("select max(vid) as vid from {content_type_hoppr_gl_rej_cases} where field_hoprc_gl_rej_mn_nid= '".$row['hop_outletid']."' "));
+		$gl_rej_lmd = db_result(db_query("Select changed from {node} where vid='".$max_vid_gl_oe['vid']."' "));
+		
+		
+    
+    		
+    		xlsWriteNumber($xlsRow,0,$serial_number++);
+    		xlsWriteNumber($xlsRow,1,$final_status);
+    		xlsWriteNumber($xlsRow,2,$row['merchantid']);
+    		xlsWriteNumber($xlsRow,3,$latitude);
+    		xlsWriteNumber($xlsRow,4,$longitude);
+    		xlsWriteNumber($xlsRow,5,$row['field_hop_oe_latitude_value']);
+    		xlsWriteNumber($xlsRow,6,$row['field_hop_oe_longitude_value']);
+    		xlsWriteNumber($xlsRow,7,$row['hop_outletid']);
+    		xlsWriteNumber($xlsRow,8,$oh_ops_start);
+    		xlsWriteNumber($xlsRow,9,$opsheadsts);
+    		xlsWriteNumber($xlsRow,10,$opsheadrmks);
+    		
+//Offer upload and testing status
+    		xlsWriteNumber($xlsRow,11,$row['field_hoppr_ofr_upld_value']);
+    		xlsWriteNumber($xlsRow,12,$row['field_hop_ofr_upld_cmnts_value']);
+    		xlsWriteNumber($xlsRow,13,$row['field_hoppr_offr_test_value']);
+    		xlsWriteNumber($xlsRow,14,$row['field_hop_off_test_cmnts_value']);
+    		
+//Merchant Tie-up type
+    		xlsWriteNumber($xlsRow,15,$row['field_hop_tieup_type_value']);
+    		
+//Merchant code
+    		xlsWriteNumber($xlsRow,16,$merchant_code.$row['hop_outletid']);
+//RM status
+    		xlsWriteNumber($xlsRow,17,$rm_ops_month);
+    		xlsWriteNumber($xlsRow,18,$rm_ops_start);
+    		xlsWriteNumber($xlsRow,19,$row['field_hoppr_new_rmsmsts_value']);
+    		xlsWriteNumber($xlsRow,20,$row['field_hoppr_new_rmsm_cmnts_value']);
+    		xlsWriteNumber($xlsRow,21,$rm_rej_lmd);
+    		xlsWriteNumber($xlsRow,22,$rej_cas_sts['field_hoprc_rm_rc_sts_value']);
+    		xlsWriteNumber($xlsRow,23,$rej_cas_sts['field_hoprc_comments_value']);
+    		
+//Overall-status Ops & TC
+    		xlsWriteNumber($xlsRow,24,$ops_start_month);
+    		xlsWriteNumber($xlsRow,25,$ops_start);
+    		xlsWriteNumber($xlsRow,26,$oe_name);
+    		xlsWriteNumber($xlsRow,27,$overall_sts_opstc);
+    		xlsWriteNumber($xlsRow,28,$opstc_rmks);
+    		xlsWriteNumber($xlsRow,29,$oe_rej_lmd);
+    		xlsWriteNumber($xlsRow,30,$oe_rej_cas_sts['field_hoprc_oe_rc_sts_value']);
+    		xlsWriteNumber($xlsRow,31,$oe_rej_cas_sts['field_hoprc_oe_comments_value']);
+    		
+    		
+//Docs status
+    		xlsWriteNumber($xlsRow,32,$docs_mod_month);
+    		xlsWriteNumber($xlsRow,33,$docs_mod_dt);
+    		xlsWriteNumber($xlsRow,34,$row['field_hop_ops_agr_sta_value']);
+    		xlsWriteNumber($xlsRow,35,$rs_ops_manager_ror);
+    		xlsWriteNumber($xlsRow,36,$docs_rej_lmd);
+    		xlsWriteNumber($xlsRow,37,$docs_rej_cas_sts['field_hoprc_new_docs_rej_mn_value']);
+    		xlsWriteNumber($xlsRow,38,$docs_rej_cas_sts['field_hoprc_docs_comments_value']);
+//Product ops status
+    		xlsWriteNumber($xlsRow,39,$evalsts);
+    		xlsWriteNumber($xlsRow,40,$pro_ops_mod_dt);
+    		xlsWriteNumber($xlsRow,41,$pro_kwrds);
+    		//Creative design
+    		xlsWriteNumber($xlsRow,42,$creative);
+    		
+//pos status
+    		xlsWriteNumber($xlsRow,43,$pos_month);
+    		xlsWriteNumber($xlsRow,44,$pos_ddt);
+    		xlsWriteNumber($xlsRow,45,$pos_sts);
+    		xlsWriteNumber($xlsRow,46,$pos_rndl);
+    		
+//Go live status
+    		xlsWriteNumber($xlsRow,47,$hop_gl_del_month);
+    		xlsWriteNumber($xlsRow,48,$hop_gl_del_date);
+    		xlsWriteNumber($xlsRow,49,$go_live_overall_status);
+    		xlsWriteNumber($xlsRow,50,$go_live_reason_ntdone);
+    		xlsWriteNumber($xlsRow,51,$row['field_hop_oe_latitude_value']);
+    		xlsWriteNumber($xlsRow,52,$row['field_hop_oe_longitude_value']);
+    		xlsWriteNumber($xlsRow,53,$gl_rej_lmd);
+    		xlsWriteNumber($xlsRow,54,$oe_gl_rej_cas_sts['field_hoprc_gl_rc_sts_value']);
+    		xlsWriteNumber($xlsRow,55,$oe_gl_rej_cas_sts['field_hoprc_gl_comments_value']);
+    		
+    		
+    		
+//Merchant outlet info
+    		xlsWriteNumber($xlsRow,56,$cityname);
+    		xlsWriteNumber($xlsRow,57,$row['field_hop_merchant_exi_new_value']);
+    		xlsWriteNumber($xlsRow,58,$hoppr_go_live_sign_date);
+    		xlsWriteNumber($xlsRow,59,date("F", $row['creationdate']));
+    		xlsWriteNumber($xlsRow,60,date("m-d-Y", $row['creationdate']));
+    		xlsWriteNumber($xlsRow,61,date("H:i:s", $row['creationdate']));
+    		xlsWriteNumber($xlsRow,62,$cnt_modified_date);
+    		xlsWriteNumber($xlsRow,63,$cnt_modified_date_time);
+    		xlsWriteNumber($xlsRow,64,$rm_name);
+    		xlsWriteNumber($xlsRow,65,$salesperson_name);
+    		xlsWriteNumber($xlsRow,66,$spusers_det['field_hopemp_mobileno_number']);
+    		xlsWriteNumber($xlsRow,67,get_only_term_name($spusers_det['field_hrm_city_value']));
+    		xlsWriteNumber($xlsRow,68,'-');
+    		xlsWriteNumber($xlsRow,69,$row['field_merchant_title_value']);
+    		xlsWriteNumber($xlsRow,70,$row['field_merchant_f_name_value']);
+    		xlsWriteNumber($xlsRow,71,$row['field_merchant_last_name_value']);
+    		xlsWriteNumber($xlsRow,72,$row['field_hop_sig_designation_value']);
+    		xlsWriteNumber($xlsRow,73,$row['field_mer_auth_mobile_no_number']);
+    		xlsWriteNumber($xlsRow,74,$row['field_merchant_ll_number_number']);
+    		xlsWriteNumber($xlsRow,75,$row['field_merchant_email_id_email']);
+    		xlsWriteNumber($xlsRow,76,get_only_term_name($row['field_hopper_city_hfa_value']));
+    		xlsWriteNumber($xlsRow,77,$row['field_hop_hfa_ar_loc_value']);
+    		xlsWriteNumber($xlsRow,78,get_only_term_name($row['field_hop_merch_type_value']));
+    		xlsWriteNumber($xlsRow,79,get_only_term_name($row['field_genre_value']));
+    		xlsWriteNumber($xlsRow,80,$row['merchantname']);
+    		xlsWriteNumber($xlsRow,81,$mer_bank_merchant_name);
+    		xlsWriteNumber($xlsRow,82,$mer_act_db);
+    		
+    		
+//Merchant outlet address section
+    		xlsWriteNumber($xlsRow,83,$complete_address);
+    		xlsWriteNumber($xlsRow,84,$row['field_mo_landmark2_value']);
+    		xlsWriteNumber($xlsRow,85,get_only_term_name($row['field_hopprs_city_value']));
+    		xlsWriteNumber($xlsRow,86,$row['field_mo_hop_zipcode_value']);
+    		xlsWriteNumber($xlsRow,87,$row['field_con_per_mon_mo_number']);
+    		xlsWriteNumber($xlsRow,88,$row['field_mo_outlet_lnd_no_number']);
+    		xlsWriteNumber($xlsRow,89,$row['field_mer_website_add_url']);
+    		xlsWriteNumber($xlsRow,90,$offer_detail);
+    		xlsWriteNumber($xlsRow,91,$row['field_offer_discount_value']);
+    		xlsWriteNumber($xlsRow,92,$row['field_hop_cost_ser_inclu_value']);
+    		xlsWriteNumber($xlsRow,93,$row['field_hop_dur_each_ser_value']);
+    		xlsWriteNumber($xlsRow,94,$row['field_merchant_offer_price_value']);
+    		xlsWriteNumber($xlsRow,95,$row['field_mer_offer_price_value']);
+    		xlsWriteNumber($xlsRow,96,$row['field_mer_marketing_fee_value']);
+    		xlsWriteNumber($xlsRow,97,$row['field_mo_appointmengt_value']);
+    		xlsWriteNumber($xlsRow,98,$row['field_mo_app_mon_num_number']);
+    		xlsWriteNumber($xlsRow,99,$row['field_inclusive_of_taxes_value']);
+    		xlsWriteNumber($xlsRow,100,$row['field_no_of_plp_voucher_value']);
+    		xlsWriteNumber($xlsRow,101,$wklyoff);
+    		xlsWriteNumber($xlsRow,102,$ops_timings);
+    		xlsWriteNumber($xlsRow,103,$row['field_offer_coupon_validity_value'] . " days");
+    		xlsWriteNumber($xlsRow,104,$val_asper_agr . " days");
+    		xlsWriteNumber($xlsRow,105,$mo_valid_frm);
+    		xlsWriteNumber($xlsRow,106,$mo_valid_to);
+    		xlsWriteNumber($xlsRow,107,$row['field_hop_outlet_nvon_value']);
+    		xlsWriteNumber($xlsRow,108,$row['field_highlights1_value'] . $row['field_highlight_2_value'] . $row['field_hop_highlights3_value'] . '/' .    $row['field_other_fine_point_one_value'] . $row['field_hop_fine_print_5_value']);
+    		xlsWriteNumber($xlsRow,109,$image_path);
+    		xlsWriteNumber($xlsRow,110,$web_image_path);
+    		xlsWriteNumber($xlsRow,111,$row['field_hop_stickers_mo_value']);
+    		xlsWriteNumber($xlsRow,112,$row['field_hop_poster_requir_mo_value']);
+    		xlsWriteNumber($xlsRow,113,$row['field_hop_tent_card_requ_mo_value']);
+    		xlsWriteNumber($xlsRow,114,$row['field_hop_standees_mo_value']);
+    		xlsWriteNumber($xlsRow,115,$row['field_hopper_other_promo_mat_value']);
+    		xlsWriteNumber($xlsRow,116,$row['field_hop_mer_remarks_mo_value']);
+    		
+    		
+//Ops head executive status
+    		//$rej_sts,
+    		xlsWriteNumber($xlsRow,117,$opshexe_rej_sts_dt);
+    		xlsWriteNumber($xlsRow,118,$opshexe_rej_sts);
+    		xlsWriteNumber($xlsRow,119,$acc_sts);
+    		xlsWriteNumber($xlsRow,120,$opshexe_acc_sts_dt);
+    		
+    		
+//Ops executive status
+    		xlsWriteNumber($xlsRow,121,$ops_start);
+    		xlsWriteNumber($xlsRow,122,$oe_name);
+    		xlsWriteNumber($xlsRow,123,$mo_agrsts);
+    		xlsWriteNumber($xlsRow,124,$rs_ops_exe);
+    		xlsWriteNumber($xlsRow,125,$mo_ops_cmnts);
+    		xlsWriteNumber($xlsRow,126,$etf_label);
+    		xlsWriteNumber($xlsRow,127,$cah_label);
+    		xlsWriteNumber($xlsRow,128,$amb_label);
+    		xlsWriteNumber($xlsRow,129,$bchk_label);
+    		xlsWriteNumber($xlsRow,130,$total_score);
+    		xlsWriteNumber($xlsRow,131,$rs_mer_ops_changes);
+    		
+//Documentation
+    		xlsWriteNumber($xlsRow,132,$rs_mer_ops_changes_by_mngr);
+    		xlsWriteNumber($xlsRow,133,$agr_cnt);
+    		xlsWriteNumber($xlsRow,134,$docs_mod_dt);
+    		xlsWriteNumber($xlsRow,135,$row['field_hop_mo_om_comments_value']);
+    		xlsWriteNumber($xlsRow,136,$hop_mail_comm_sent);
+    		xlsWriteNumber($xlsRow,137,$mail_coomm_on);
+    		xlsWriteNumber($xlsRow,138,$row['field_hop_ag_hrd_rcv_sts_value']);
+    		
+//Hoppr telecalling (TC)
+    		xlsWriteNumber($xlsRow,139,$tc_var_cd);
+    		xlsWriteNumber($xlsRow,140,$tc_pnst);
+    		xlsWriteNumber($xlsRow,141,$tc_cpdesgn);
+    		xlsWriteNumber($xlsRow,142,$tc_cpmobno);
+    		xlsWriteNumber($xlsRow,143,$rs_mer_ops_changes_by_tc);
+    		xlsWriteNumber($xlsRow,144,$tc_mod_dt);
+//Pro ops
+    		xlsWriteNumber($xlsRow,145,$evalsts);
+    		xlsWriteNumber($xlsRow,146,$rs_pro_ror);
+    		xlsWriteNumber($xlsRow,147,$procmts);
+    		xlsWriteNumber($xlsRow,148,$pro_ops_mod_dt);
+//Creative design
+    		xlsWriteNumber($xlsRow,149,$creative);
+//Offer Upload
+    		xlsWriteNumber($xlsRow,150,$offer_upld_sts);
+    		xlsWriteNumber($xlsRow,151,$offer_upld_cmnts);
+    		xlsWriteNumber($xlsRow,152,$ofr_upld_dt);
+    		
+//Offer Testing
+    		xlsWriteNumber($xlsRow,153,displat_date_in_excel_format($row['field_hop_tst_date_value']));
+    		xlsWriteNumber($xlsRow,154,displat_date_in_excel_format($row['field_hop_tst2_dat_value']));
+    		xlsWriteNumber($xlsRow,155,$oprts_arr_sts);
+    		xlsWriteNumber($xlsRow,156,$tstnum_arr);
+    		xlsWriteNumber($xlsRow,157,$fblinks_arr);
+    		xlsWriteNumber($xlsRow,158,$point_sms);
+    		xlsWriteNumber($xlsRow,159,$offer_sms);
+    		xlsWriteNumber($xlsRow,160,$coupon_code_sms);
+    		xlsWriteNumber($xlsRow,161,$merchant_sms);
+    		
+    		xlsWriteNumber($xlsRow,162,$testing_res_time);
+    		xlsWriteNumber($xlsRow,163,$testing_final_sts);
+    		xlsWriteNumber($xlsRow,164,$row['field_hop_tst_rmks_value']);
+//POS
+    		xlsWriteNumber($xlsRow,165,$pos_ctdt);
+    		xlsWriteNumber($xlsRow,166,$pos_ddt);
+    		xlsWriteNumber($xlsRow,167,$pos_sts);
+    		
+    		
+//Go LIVE
+    		xlsWriteNumber($xlsRow,168,$hop_gl_del_date);
+    		xlsWriteNumber($xlsRow,169,$go_live_pos_status);
+    		xlsWriteNumber($xlsRow,170,get_golive_ror_notdone($row['nid']));
+    		xlsWriteNumber($xlsRow,171,$ror_pos_sts);
+    		xlsWriteNumber($xlsRow,172,$pos_sts_oth);
+    		xlsWriteNumber($xlsRow,173,$row['field_hop_gl_awciwd_mo_value']);
+    		xlsWriteNumber($xlsRow,174,$row['field_hop_gl_awcwend_mo_value']);
+    		xlsWriteNumber($xlsRow,175,$row['field_hop_gl_chk_dby_ms_mo_value']);
+    		xlsWriteNumber($xlsRow,176,$row['field_hop_gl_ms_ys_mo_value']);
+    		xlsWriteNumber($xlsRow,177,$row['field_hop_gl_ms_no_mo_value']);
+    		xlsWriteNumber($xlsRow,178,$row['field_hop_gl_remrks_value']);
+    		
+    		//GO LIVE FOR Salesperson for Non-OE Cities
+    		xlsWriteNumber($xlsRow,179,$hop_gl_del_date_sp);
+    		xlsWriteNumber($xlsRow,180,$row['field_sales_hop_ops_glivsts_mo_value']);
+    		
+    		xlsWriteNumber($xlsRow,181,get_golive_ror_notdone_for_salesoe($row['nid']));
+    		xlsWriteNumber($xlsRow,182,get_golive_for_salesoe_pos_deplyd($row['nid']));
+    		
+    		xlsWriteNumber($xlsRow,183,$row['field_sales_oth_pos_req_value']);
+    		xlsWriteNumber($xlsRow,184,$row['field_sales_avg_cus_value']);
+    		xlsWriteNumber($xlsRow,185,$row['field_sales_avg_cus_pwk_value']);
+    		xlsWriteNumber($xlsRow,186,$row['field_sales_chk_by_merstf_value']);
+    		xlsWriteNumber($xlsRow,187,$row['field_sales_ifyes_chk_value']);
+    		xlsWriteNumber($xlsRow,188,$row['field_sales_ifno_chk_value']);
+    		xlsWriteNumber($xlsRow,189,$row['field_sales_gl_rmks_value']);
+    		xlsWriteNumber($xlsRow,190,$row['merchantid']);
+    		
+    		
+    		xlsWriteNumber($xlsRow,191,$row['field_hoppr_new_mail_comm_value']);
+    		xlsWriteNumber($xlsRow,192,$mail_coomm_on);
+    		xlsWriteNumber($xlsRow,193,$row['field_hop_ag_hrd_rcv_sts_value']);
+    		xlsWriteNumber($xlsRow,194,$row['merchantname']);
+    		xlsWriteNumber($xlsRow,195,$row['hop_outletid']);
+    		xlsWriteNumber($xlsRow,196,$row['field_hoppr_creativedsgnab_out_value']);
+    		
+    		
+    		
+    		
+    		
+    		
+    		
+    		
+    	
+    $xlsRow++;
+	}
+	xlsEOF();
+	//return unilrn_Generate_excell_format("hoppr_merchant_offers", $header, $data);
+}

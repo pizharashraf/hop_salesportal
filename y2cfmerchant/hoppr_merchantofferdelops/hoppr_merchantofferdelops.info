@@ -1,0 +1,5 @@
+name = Hoppr merchant offer delete
+description = Hoppr merchant offer delete operation
+core = 6.x
+
+package = Y2CF

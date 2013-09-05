@@ -1,0 +1,5 @@
+name = Y2CF Merchants List
+description = List of merchants
+core = 6.x
+
+package = Y2CF

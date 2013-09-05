@@ -1,0 +1,5 @@
+name = Hoppr Scheduled task
+description = Hoppr Scheduled task
+core = 6.x
+
+package = Y2CF

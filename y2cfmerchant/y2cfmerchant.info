@@ -1,0 +1,5 @@
+name = Y2CF Customization 
+description = Customization of fields
+core = 6.x
+
+package = Y2CF

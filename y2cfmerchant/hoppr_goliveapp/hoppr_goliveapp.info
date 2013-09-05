@@ -1,0 +1,5 @@
+name = Hoppr national go live csv bulk upload
+description = Hoppr national go live csv bulk upload
+core = 6.x
+
+package = Y2CF

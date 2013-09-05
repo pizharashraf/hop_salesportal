@@ -1,0 +1,1072 @@
+<?php
+/*
+error_reporting(E_ALL);
+ini_set('display_errors', TRUE);
+ini_set('display_startup_errors', TRUE);
+*/
+function get_rm_rejected_case_details($merchant_id) {
+
+	$rm_rej_max_vid = db_fetch_array(db_query("select max(vid) as vid from {content_type_mo_rm_rej_cases} where field_hoprc_rm_rej_mn_nid= '".$merchant_id."' "));
+	$rej_cas_sts = db_fetch_array(db_query("select * from {content_type_mo_rm_rej_cases} where vid= '".$rm_rej_max_vid['vid']."' "));
+	return $rej_cas_sts;
+}
+function get_docs_rejected_cases($merchant_id) {
+	$docs_rej_max_vid = db_fetch_array(db_query("select max(vid) as vid from {content_type_hoppr_docs_rej_cases} where field_hoprc_docs_rej_mn_nid= '".$merchant_id."' "));
+	$docs_rej_cas_sts = db_fetch_array(db_query("select * from {content_type_hoppr_docs_rej_cases} where vid= '".$docs_rej_max_vid['vid']."' "));
+	return $docs_rej_cas_sts;
+}
+function get_oe_rejected_cases($outlet_id) {
+	$max_vid_oe = db_fetch_array(db_query("select max(vid) as vid from {content_type_hoppr_oe_rej_cases} where field_hoprc_oe_rej_mn_nid= '".$outlet_id."' "));
+	$oe_rej_cas_sts = db_fetch_array(db_query("select * from {content_type_hoppr_oe_rej_cases} where vid= '".$max_vid_oe['vid']."' "));
+	return $oe_rej_cas_sts;
+}
+
+function get_oe_golive_rejected_cases($outlet_id) {
+	$max_vid_gl_oe = db_fetch_array(db_query("select max(vid) as vid from {content_type_hoppr_gl_rej_cases} where field_hoprc_gl_rej_mn_nid= '".$outlet_id."' "));
+	$oe_gl_rej_cas_sts = db_fetch_array(db_query("select * from {content_type_hoppr_gl_rej_cases} where vid= '".$max_vid_gl_oe['vid']."' "));
+	return $oe_gl_rej_cas_sts;
+}
+function get_merchant_outlet_nid_on_offer_nid($mer_offr_id) {
+	$out_nid = db_fetch_array(db_query("select distinct nid as nid from {content_type_merchant_outlet} where field_hopper_merchant_olt_nid='".$mer_offr_id."' "));
+	return $out_nid; 
+}
+function y2cf_offers_perm() {
+	return array('Administer Merchant offers', 'Administer offer Tree', 'Administer welcome message', 'Administer welcome outlet message', 'Sales Actual offer','Administer Offer delete');
+}
+function get_all_operation_ID() {
+	$sql_ops = db_query("select u.uid from {users} u inner join {users_roles} ur on u.uid=ur.uid inner join {role} r on ur.rid=r.rid where r.name='y2cfoperations' or r.name='operationhead' or r.name='operationmngr' ");
+	$ops_array =array();
+	while($rs = db_fetch_array($sql_ops)) {
+		$ops_array[] =$rs;
+	}
+	$ops_new_array = array();
+	foreach($ops_array as $result_num => $sub_array) {
+		$ops_new_array[$result_num] = $sub_array['uid'];
+	}
+	$ops_users_uid = implode(",", $ops_new_array);
+	return $ops_users_uid;
+}
+function y2cf_offers_menu() {
+	$items = array();
+
+	$items['y2cf/merchantsoffers'] = array(
+    'title' => 'Merchants Offers',
+    'page callback' => 'y2cf_merchants_offers',
+	'access arguments' => array('Administer Merchant offers'),
+    'description' => 'Manage Merchant Offers.',
+    'weight' => -4,
+	'type' => MENU_LOCAL_TASK,
+
+	);
+	$items['y2cf/offerhierarchy'] = array(
+    'title' => 'Tree',
+    'page callback' => 'y2cf_offerhierarchy_tree',
+	'access arguments' => array('Administer offer Tree'),
+    'description' => 'Administer offer Tree.',
+    'weight' => -2,
+	'type' => MENU_LOCAL_TASK,
+
+	);
+	$items['actod/%'] = array(
+    'title' => 'Sales Actual offer',
+    'page callback' => 'y2cf_sales_actual_offer',
+  'access arguments' => array('Sales Actual offer'),
+    'description' => 'Sales Actual offer.',
+    'weight' => -2,
+  'type' => MENU_LOCAL_TASK,
+
+  );
+
+
+	$items['y2cf/offerwelcomemsg'] = array(
+    'title' => 'Welcome',
+    'page callback' => 'y2cf_offerwelcomemsg',
+	'access arguments' => array('Administer welcome message'),
+    'description' => 'Administer welcome message.',
+    'weight' => -2,
+	'type' => MENU_LOCAL_TASK,
+
+	);
+
+	$items['y2cf/outletwelcomemsg'] = array(
+    'title' => 'Welcome',
+    'page callback' => 'y2cf_outletwelcomemsg',
+	'access arguments' => array('Administer welcome outlet message'),
+    'description' => 'Administer welcome outlet message.',
+    'weight' => -2,
+	'type' => MENU_LOCAL_TASK,
+
+	);
+
+    $items['y2cf/offerdelete'] = array(
+    'title' => 'Delete',
+    'page callback' => 'hoppr_offer_delete',
+  'access arguments' => array('Administer Offer delete'),
+    'description' => 'Administer Offer delete.',
+    'weight' => -4,
+  'type' => MENU_LOCAL_TASK,
+
+  );
+
+
+	return $items;
+}
+
+function hoppr_offer_delete() {
+  global $base_url;
+  global $user;
+  $nid = arg(2);
+//Chech This offer/node creator salesperson is under that RM/SM
+    $nid_uid = $outlet_nid = db_result(db_query("Select uid from {node} where nid = '".$nid."' "));
+    $rm_sm_id = db_result(db_query("Select rm_id from {users} where uid = '".$nid_uid."' "));
+    $main_rm_sm_id = db_result(db_query("Select rm_id from {users} where uid = '".$rm_sm_id."' "));
+
+	if($user->uid == $rm_sm_id || $user->uid == $main_rm_sm_id || $user->uid == 1 || $user->uid == 66){
+	  $outlet_nid = db_result(db_query("Select nid from {content_type_merchant_outlet} where field_hopper_merchant_olt_nid='".$nid."' "));
+	  if(arg(1)=='offerdelete') {
+	    node_delete($nid);
+	    if(!empty($outlet_nid)) {
+	      node_delete($outlet_nid);
+	    }
+
+	  }
+	  drupal_set_message("Offer deleted successfully");
+	  drupal_goto($base_url.'/y2cf/merchantsoffers');
+	}
+	else{
+		drupal_set_message("Oops! You are not authorized to delete this offer");
+	  drupal_goto($base_url.'/y2cf/merchantsoffers');
+	}
+}
+
+
+function get_merchant_offer_query($offer_user_id) {
+	global $user;
+	$rs_rid  = get_user_role_id($user->uid);
+	$sql_offer = "SELECT nn.*, ctmd.*,ctmd.nid as merchant_nid, nr.timestamp as ops_changed_date,nr.title as merchant_act_name FROM {node} nn inner join {node_revisions} nr on nn.vid=nr.vid  inner join {content_type_offer_detail} ctmd  ON ctmd.vid = nr.vid  ";
+	$sql_offer .= get_mer_offer_filter_conditions($offer_user_id);
+	return $sql_offer;
+}
+function get_merchant_offers_count_query($offer_user_id) {
+	global $user;
+	$rs_rid  = get_user_role_id($user->uid);
+	$sql_count_offer = "SELECT count(nn.nid) as total_mer_offer FROM {node} nn inner join {node_revisions} nr on nn.vid=nr.vid  inner join {content_type_offer_detail} ctmd  ON ctmd.vid = nr.vid  ";
+	$sql_count_offer .= get_mer_offer_filter_conditions($offer_user_id);
+
+
+
+	if(arg(0)=='y2cf' && arg(1)=='offerhierarchy' && is_numeric(arg(2))) {
+		$new_rm_id = get_user_role_id($offer_user_id);
+		if($new_rm_id == 'reporting manager') {
+			$u_arr = get_all_salesman_of_rm($offer_user_id);
+			$new_array = array();
+			foreach($u_arr as $result_num => $sub_array) {
+		  $new_array[$result_num] = $sub_array['uid'];
+			}
+			$users_uid = implode(",", $new_array);
+			$sql_count_offer .= " and (nn.uid in (".$users_uid.") OR nn.uid='".$offer_user_id."') ";
+		}else{
+	  $sql_count_offer .= " and nn.uid='".$offer_user_id."' ";
+		}
+	}
+
+	$ops_users_uid = get_all_operation_ID();
+	if($rs_rid == 'salesperson') {
+		$sql_count_offer .= " and  nn.uid='".$user->uid."' ";
+	}
+	if($rs_rid == 'salesmanager') {
+		$u_arr = get_all_salesman_of_rm($user->uid);
+		$new_array = array();
+		foreach($u_arr as $result_num => $sub_array) {
+			$new_array[$result_num] = $sub_array['uid'];
+		}
+		$users_uid = implode(",", $new_array);
+		$sql_count_offer .= " and (nn.uid in (".$users_uid.") OR  nn.uid='".$user->uid."') ";
+	}
+	if($rs_rid == 'reporting manager') {
+		$u_arr = get_all_salesman_of_rm($user->uid);
+		$new_array = array();
+		foreach($u_arr as $result_num => $sub_array) {
+			$new_array[$result_num] = $sub_array['uid'];
+		}
+		$users_uid = implode(",", $new_array);
+		$all_sm_of_smngr = get_all_salesman_of_all_salesmanager($user->uid);
+		if(!empty($all_sm_of_smngr)){
+			$sql_count_offer .= " and (nn.uid in (".$users_uid.") OR nn.uid in (".$all_sm_of_smngr.") OR nn.uid='".$user->uid."') ";
+		}else
+		{
+			$sql_count_offer .= " and (nn.uid in (".$users_uid.") OR  nn.uid='".$user->uid."') ";
+		}
+	}
+
+	$dsr_mer_offer = db_fetch_array(db_query($sql_count_offer));
+	$dsr_offer_count = $dsr_mer_offer['total_mer_offer'];
+	return $dsr_offer_count;
+}
+
+function get_mer_offer_filter_conditions($offer_user_id) {
+	if(isset($_GET['rm']) && $_GET['rm']!= "" ) {
+		$sql_offer .= " inner join {users} uu on nn.uid = uu.uid  and uu.rm_id = '".$_GET['rm']."' ";
+	}
+
+	if(isset($_GET['salesperson']) && $_GET['salesperson']!= "" ) {
+		$sql_offer .= " inner join {users} uu on nn.uid = uu.uid  and uu.uid = '".$_GET['salesperson']."' ";
+	}
+
+	if(isset($_GET['merchant']) && $_GET['merchant']!= "" ) {
+		$sql_offer .= " and trim(nn.title) LIKE '".trim($_GET['merchant'])."%' ";
+	}
+	if(isset($_GET['merchant_code']) && $_GET['merchant_code']!= "" ) {
+		$sql_offer .= " and nn.nid='".$_GET['merchant_code']."' ";
+	}
+
+	if(isset($_GET['genre']) && $_GET['genre']!="") {
+		$sql_offer .= "  and ctmd.field_genre_value = '".$_GET['genre']."' ";
+	}
+	if(isset($_GET['merchant_category']) && $_GET['merchant_category']!="") {
+		$sql_offer .= " and ctmd.field_hop_merch_type_value = '".$_GET['merchant_category']."' ";
+	}
+	if(isset($_GET['entry_date']) && $_GET['entry_date']!="") {
+		$curdate_1 = explode("/", $_GET['entry_date']);
+		$entry_date = mktime(0,0,1,$curdate_1[0],$curdate_1[1],$curdate_1[2]);
+		$sql_offer .= " and nn.created >= '".$entry_date."' ";
+
+	}
+	if(isset($_GET['exit_date']) && $_GET['exit_date']!="") {
+		$curdate_1 = explode("/", $_GET['exit_date']);
+		$entry_date = mktime(23,59,59,$curdate_1[0],$curdate_1[1],$curdate_1[2]);
+		$sql_offer .= " and nn.created <= '".$entry_date."' ";
+	}
+	//Rm or sm ststus and OE sts and Docs status filter
+	if(isset($_GET['rm_or_sm_status']) && $_GET['rm_or_sm_status']!= "" ) {
+    $sql_offer .= " and ctmd.field_hoppr_new_rmsmsts_value LIKE '".trim($_GET['rm_or_sm_status'])."%' ";
+  }
+  if(isset($_GET['oedocssts']) && $_GET['oedocssts']!= "" ) {
+    $sql_offer .= " and ctmd.field_hop_ops_agr_sta_value LIKE '".trim($_GET['oedocssts'])."%' ";
+  }
+  if(isset($_GET['oests']) && $_GET['oests']!= "" ) {
+    $sql_offer .= " and ctmd.field_hop_offer_ops_status_value LIKE '".trim($_GET['oests'])."%' ";
+  }
+
+
+	return $sql_offer;
+}
+function merchant_outlet_save_excel_form() {
+	$form['make_excel']['contract_excl'] = array('#type' => 'submit','#value' => t('Save in Excel'));
+	return $form;
+}
+function merchant_outlet_save_excel_form_submit($form, &$form_state){
+	if (!ini_get('safe_mode')) {
+		set_time_limit(0);
+	}
+	ini_set('display_errors', 1);
+	ini_set('memory_limit', '-1');
+	
+	global $user;
+	module_load_include('inc', 'phpexcel', 'phpexcel.api');
+	$main_path = drupal_get_path('module', 'merchants');
+	include_once($main_path.'/xls-writer.php');
+	
+	
+	$header = array("RM",  "Sign up City", "Salesperson", "Offer Launch", "Offer Actual Entry Date", "Last Modified Date", "Merchant","Genre", "Offer Signed date", "Tie-up Type", "No of Participating Outlet", "No of Participating Cities", "Coupon Validity", "Signatory Title", "Signatory First Name", "Signatory last Name", "Signatory Designation", "Signatory Mobile Number", "Signatory landline Number", "Signatory Email ID", "Signatory Alternative Email ID", "Merchant Type", "Offer Description for D Category / Checkin offer for C Category / Tip for A category", "Actual Price", "Hoppr Price", "Discount", "Marketing Fee", "Cost of each item for the Services included", "Duration of each of the services", "Highlights-1", "Highlights-2", "Highlights-3", "Inclusive of Taxes", "Fine Print2:Number of People Voucher Valid for", "Fine Print2:Multiple Vouchers", "Fine Print 4", "Fine Print 5", "Website address", "EPS file of Logo", "Images Provided", "Menu / Rate Card", "Facebook URL", "Twitter URL", "Agreement Upload", "Outlet Name", "City", "HFA", "State", "Store/Outlet Code", "Outlet Type", "Address 1", "Address 2", "Location / Area", "Landmark",  "Zip", "Contact Person", "Designation", "Email ID", "Contact person mobile number", "Contact person alternate mobile number", "Coupon detail to be recieved on", "Outlet Landline Number", "Appointment", "Appointment no/Enquiry no", "Alternate Appointment no/Enquiry no", "Operational Timings", "Holidays", "Not valid on", "No. of tables/Seats/beds", "Poster required", "Danglers", "Tent Card Required", "Standees", "Stickers", "Mobile Number from which Location SMS has been send", "SMS that has been sent", "Latitude", "Longitude", "Remarks");
+
+	$sql_merchants = get_all_y2cf_merchant_offers_and_outlets();
+	$obj_merchants = db_query($sql_merchants);
+	$data=array();
+	while ($row = db_fetch_array($obj_merchants)) {
+		$salesperson_name = db_result(db_query("SELECT name FROM {users} WHERE uid = %d", $row['salesperson']));
+		$rm_id = db_result(db_query("SELECT rm_id FROM {users} WHERE uid = %d", $row['salesperson']));
+		$rm_name = db_result(db_query("SELECT name FROM {users} WHERE uid = %d", $rm_id));
+		$outname = db_result(db_query("SELECT title FROM {node} where nid = '".$row['nid']."' "));
+		if(!empty($outname)) {
+			$outletname = $outname;
+		}else{
+			$outletname = "--";
+		}
+
+		//Modified date calculations
+		if($row['changeddate']!=NULL) {
+			$mod_date = date("m/d/Y",$row['changeddate']);
+		} else {
+			$mod_date = '--';
+		}
+
+		//Merchant offere
+		if($row['field_hop_offer_launch_value'] == 1) {
+			$merchant_offer_launch = 'Yes';
+		} else {
+			$merchant_offer_launch = '--';
+		}
+
+	//Offer description for merchant category A C and D
+    if(!empty($row['field_hopper_checkin1_value'])) {
+      $offer_detail = $row['field_hopper_checkin1_value'];
+    }else {
+      $offer_detail = $row['field_offer_description_value'];
+    }
+
+
+//Merchant code
+    $cityname = get_only_term_name($row['field_hop_signup_city_value']);
+    $merchant_code = merchant_code_defined($cityname);
+
+		$data[] = array(
+		$rm_name,
+		$cityname,
+		$salesperson_name,
+		$merchant_offer_launch,
+		date("m/d/Y",$row['creationdate']),
+		$mod_date,
+		$row['merchantname'],
+		get_only_term_name($row['field_genre_value']),
+		displat_date_in_excel_format($row['field_offer_sign_date_value']),
+		$row['field_hop_tieup_type_value'],
+		$row['field_hop_no_parti_outlet_value'],
+		$row['field_hop_no_part_cities_value'],
+		$row['field_offer_coupon_validity_value']." days",
+		$row['field_merchant_title_value'],
+		$row['field_merchant_f_name_value'],
+		$row['field_merchant_last_name_value'],
+		$row['field_hop_sig_designation_value'],
+		$row['field_mer_auth_mobile_no_number'],
+		$row['field_merchant_ll_number_number'],
+		$row['field_merchant_email_id_email'],
+		$row['field_mer_alt_email_id_email'],
+		get_only_term_name($row['field_hop_merch_type_value']),
+		$offer_detail,
+		$row['field_merchant_offer_price_value'],
+		$row['field_mer_offer_price_value'],
+		$row['field_offer_discount_value'],
+		$row['field_mer_marketing_fee_value'],
+		$row['field_hop_cost_ser_inclu_value'],
+		$row['field_hop_dur_each_ser_value'],
+		$row['field_highlights1_value'],
+		$row['field_highlight_2_value'],
+		$row['field_hop_highlights3_value'],
+		$row['field_inclusive_of_taxes_value'],
+		$row['field_no_of_plp_voucher_value'],
+		$row['field_multiple_vouchers_value'],
+		$row['field_other_fine_point_one_value'],
+		$row['field_hop_fine_print_5_value'],
+		$row['field_mer_website_add_url'],
+		$row['field_image_provided_value'],
+		$row['field_mer_img_pro_value'],
+		$row['field_hop_menu_ratecard_value'],
+		$row['field_hop_mer_facebook_url'],
+		$row['field_hop_mer_twitter_url_url'],
+		$row['field_flag_agree_upload_value'],
+
+
+		$outletname,
+		get_only_term_name(get_parent_tid_by_tid($row['field_hopper_city_hfa_value'])),
+		get_only_term_name($row['field_hopper_city_hfa_value']),
+		get_only_term_name($row['field_mo_hopper_state_value']),
+		$row['field_mo_hop_outlet_code_value'],
+		$row['field_mo_outlet_type_value'],
+		$row['field_mo_loc_address_1_value'],
+		$row['field_mo_loc_address_2_value'],
+		$row['field_mo_loc_landmark_value'],
+		$row['field_mo_landmark2_value'],
+		$row['field_mo_hop_zipcode_value'],
+		$row['field_mo_hop_contact_person_value'],
+		$row['field_mo_hop_cp_designation_value'],
+		$row['field_mo_hop_cp_emailid_email'],
+		$row['field_con_per_mon_mo_number'],
+		$row['field_hop_con_per_alt_mobno_number'],
+		$row['field_mo_cou_det_rec_mob_number'],
+		$row['field_mo_outlet_lnd_no_number'],
+		$row['field_mo_appointmengt_value'],
+		$row['field_mo_app_mon_num_number'],
+		$row['field_hop_alt_enq_app_num_number'],
+		$row['field_mo_oprational_timings_value'],
+		$row['field_mo_holidays_value'],
+		$row['field_hop_outlet_nvon_value'],
+		$row['field_hop_no_tbls_bed_mo_value'],
+		$row['field_hop_poster_requir_mo_value'],
+		$row['field_hop_danglers_mo_value'],
+		$row['field_hop_tent_card_requ_mo_value'],
+		$row['field_hop_standees_mo_value'],
+		$row['field_hop_stickers_mo_value'],
+		$row['field_hop_mnfwsmssend_mo_number'],
+		$row['field_mo_hop_sms_thathas_value'],
+		$row['field_hop_out_latitude_mo_value'],
+		$row['field_hop_mer_longitude_mo_value'],
+		$row['field_hop_mer_remarks_mo_value'],
+		);
+	}
+	
+	
+	$cur_time= date("m-d-Y H:i:s").')-'.$user->name;
+	$path = file_directory_path() . '/offersdump/hoppr_merchant_offers-('.$cur_time.'.xls';
+	$options = array('format' => 'xls');
+	
+	if (phpexcel_export($header, $data, $path, $options)) {
+		header("Content-Type: application/vnd.ms-excel");
+		header("Content-Disposition: attachment; filename=\"hoppr_merchant_offers-(".$cur_time.".xls\"");
+		header("Cache-Control: max-age=0");
+		readfile($path);
+		exit();
+	}
+	else {
+		drupal_set_message(t("Oops ! An error occured !"), 'error');
+	}
+}
+function y2cf_merchants_offers($offer_user_id){
+	global $user;
+	global $base_url;
+	$rs_rid  = get_user_role_id($user->uid);
+
+	$arg_user_id = arg(2);
+	if(($rs_rid=='y2cfmanager' || $rs_rid=='reporting manager' || $rs_rid=='salesmanager' || $user->uid == 1) && arg(0)=='y2cf' && arg(1)=='offerhierarchy' && is_numeric(arg(2))) {
+		$offer_user_id = $arg_user_id;
+	}else{
+		$offer_user_id = $user->uid;
+	}
+
+
+	if(!empty($offer_user_id)) {
+		$is_rm_or_not = get_user_role_id($offer_user_id);
+		if($is_rm_or_not == 'reporting manager') {
+			$and_team = ' and Team ';
+		}
+		$user_name_msg = 'Merchant Offers uploaded by :&nbsp;&nbsp; <span style="font-size:15px;font-family:Verdana, Arial, Helvetica, sans-serif;color:red;">' .  ucwords(get_salesperson_name($offer_user_id)) . $and_team . '</span>';
+	}
+
+	$total_offer_count = get_merchant_offers_count_query($offer_user_id);
+
+	$output .= '<table>
+				<tr>
+					<td width="20%">'.drupal_get_form('merchant_outlet_save_excel_form', $form).'</td>
+					<td width="20%">' . $user_name_msg . '</td>
+					<td width="60%">
+					<span style="color:red;font-weight:bold;">SP:</span> Sales person,
+					<span style="color:red;font-weight:bold;">M-Code:</span> Merchant Code,
+					<span style="color:red;font-weight:bold;">M-Name:</span> Merchant Name,
+					<span style="color:red;font-weight:bold;">RM:</span> Reporting Manager,
+<span style="color:red;font-weight:bold;">SM:</span>  Sales Manager,
+<span style="color:red;font-weight:bold;">OE:</span>  Operation Executive,
+<span style="color:red;font-weight:bold;">TC:</span>  Telecalling,
+<span style="color:red;font-weight:bold;">OH:</span>  Operation Head,
+<span style="color:red;font-weight:bold;">PRO:</span>  Product,
+<span style="color:red;font-weight:bold;">KW:</span>  Keyword,
+<span style="color:red;font-weight:bold;">AG:</span>  Agreement,
+<span style="color:red;font-weight:bold;">GL:</span>  Go Live,
+<span style="color:red;font-weight:bold;">CR:</span>  Creative design</td>
+<td width="20%">'.get_custom_pager_request($total_offer_count).'</td>
+				</tr>
+			</table>';
+
+
+	$header = array(
+	array('data' => 'S.No', 'field' => 'nid'),
+	array('data' => 'RM', 'field' => 'uid'),
+	array('data' => 'Salesperson', 'field' => 'uid'),
+	array('data' => 'Merchant', 'field' => 'title'),
+	array('data' => 'Genre', 'field' => 'ctmd.field_genre_value'),
+	array('data' => 'Offer Added on', 'field' => 'nn.created', 'sort' => 'desc'),
+	array('data' => 'Merchant Category', 'field' => 'field_hop_merch_type_value'),
+	array('data' => 'RM/SM | OH-Sts | OE-Sts | TC-Sts'),
+	array('data' => 'Docs-Sts | Pro-Sts | POS-Sts | Go Live Sts'),
+	);
+
+
+	if(isset($_GET['Search_val'])){
+		$rm = isset($_GET['rm']) ? $_GET['rm'] : "";
+		$salesperson = isset($_GET['salesperson']) ? $_GET['salesperson'] : "";
+		$merchant = isset($_GET['merchant']) ? $_GET['merchant'] : "";
+		$new_merchant_code = isset($_GET['merchant_code']) ? $_GET['merchant_code'] : "";
+		$genre = isset($_GET['genre']) ? $_GET['genre'] : "";
+		$merchant_category = isset($_GET['merchant_category']) ? $_GET['merchant_category'] : "";
+		$entry_date = isset($_GET['entry_date']) ? $_GET['entry_date'] : "";
+		$exit_date = isset($_GET['exit_date']) ? $_GET['exit_date'] : "";
+		$rm_or_sm_status = isset($_GET['rm_or_sm_status']) ? $_GET['rm_or_sm_status'] : "";
+		$oedocssts = isset($_GET['oedocssts']) ? $_GET['oedocssts'] : "";
+		$oests = isset($_GET['oests']) ? $_GET['oests'] : "";
+
+	}
+	if(isset($_GET['Search_reset']) && $_GET['Search_reset']=="View All"){
+		drupal_goto($base_url."/y2cf/merchantsoffers");
+	}
+
+	if($rs_rid == 'salesperson') {
+		$rm_select_field = '';
+		$sp_select_field = '';
+	}else if($rs_rid == 'reporting manager') {
+		$rm_select_field = '';
+		$sp_select_field = "<SELECT name='salesperson' style='width:60px;'>".y2cf_list_of_salespersons_for_particular_rm($user->uid)."</SELECT>";
+	}else if($rs_rid == 'salesmanager') {
+		$rm_select_field = '';
+		$sp_select_field = "<SELECT name='salesperson' style='width:60px;'>".y2cf_list_of_salespersons_for_particular_rm($user->uid)."</SELECT>";
+	}else {
+		$rm_select_field = "<SELECT name = 'rm' style = 'width:auto;'>".y2cf_list_of_rms()."</SELECT>";
+		$sp_select_field = "<SELECT name = 'salesperson' style = 'width:60px;'>".y2cf_list_of_all_salespersons()."</SELECT>";
+	}
+
+	
+	$data = array();
+	$data[-1] = array(
+				'sn'=> "<form name='form2' method='get' action=''>",
+				'rm'=> $rm_select_field,
+				'salesperson'=> $sp_select_field,
+				'merchant'=> "M-Code:<input type='text' name='merchant_code' size='10' class='ul_search10 form-text' value='".$new_merchant_code."' ><br />M-Name:<input type='text' name='merchant' size='10' class='ul_search10 form-text' value='".$merchant."' >",
+				'genre'=> "<SELECT name='genre' style='width:60px;' >".y2cf_list_genre_for_filteration()."</SELECT>",
+				'entry_date'=> "From <input size='10' id='assign-from' type='text' name='entry_date' readonly='readonly' class='ul_search10 form-text' value='".$entry_date."'>
+		<script type='text/javascript'>
+		jQuery(function() {
+		jQuery('#assign-from').datepicker({
+		changeMonth: true,
+		changeYear: true,
+		yearRange: '1950:2020',
+	});
+	});
+	</script>
+	<br /><br />To&nbsp;&nbsp;&nbsp;&nbsp; <input size='10' id='assign-from_exit' type='text' name='exit_date' readonly='readonly' class='ul_search10 form-text' value='".$exit_date."'>
+		<script type='text/javascript'>
+		jQuery(function() {
+		jQuery('#assign-from_exit').datepicker({
+		changeMonth: true,
+		changeYear: true,
+		yearRange: '1950:2020',
+	});
+	});
+	</script>",
+		'merchant_category'=> "<SELECT name='merchant_category' style='width:60px;' >".y2cf_list_merchant_category_for_filteration()."</SELECT>",
+	'rm_or_sm_status'=>"RM,SM<input type='text' name='rm_or_sm_status' size='5' value='" . $rm_or_sm_status . "'><br />&nbsp;&nbsp;&nbsp;&nbsp;
+	OE:<input type='text' name='oests' size='5' value='" . $oests . "'>",
+
+		'oedocssts'=>"Docs:<input type='text' name='oedocssts' size='5' value='" . $oedocssts . "'>",
+				'operations' =>"<input type='submit' name='Search_val' value='Filter' class='form-submit'>
+					<input type='submit' name='Search_reset' value='View All' class='form-submit'></form>",
+	);
+
+	$per_page = set_per_page_counts();
+	$sql_offer = get_merchant_offer_query($offer_user_id);
+
+	//offer hirarchy
+	if(arg(0)=='y2cf' && arg(1)=='offerhierarchy' && is_numeric(arg(2))) {
+		$new_rm_id = get_user_role_id($offer_user_id);
+		if($new_rm_id == 'reporting manager') {
+			$u_arr = get_all_salesman_of_rm($offer_user_id);
+			$new_array = array();
+			foreach($u_arr as $result_num => $sub_array) {
+		  $new_array[$result_num] = $sub_array['uid'];
+			}
+			$users_uid = implode(",", $new_array);
+			$sql_offer .= " and (nn.uid in (".$users_uid.") OR nn.uid='".$offer_user_id."') ";
+		}else{
+	  $sql_offer .= " and nn.uid='".$offer_user_id."' ";
+		}
+	}
+
+	$ops_users_uid = get_all_operation_ID();
+
+	if($rs_rid == 'salesperson') {
+		$sql_offer .= " and nn.uid='".$user->uid."' ";
+	}
+	if($rs_rid == 'salesmanager') {
+		$u_arr = get_all_salesman_of_rm($user->uid);
+		$new_array = array();
+		foreach($u_arr as $result_num => $sub_array) {
+			$new_array[$result_num] = $sub_array['uid'];
+		}
+		$users_uid = implode(",", $new_array);
+		$sql_offer .= " and (nn.uid in (".$users_uid.") OR  nn.uid='".$user->uid."') ";
+	}
+	
+	if($rs_rid == 'reporting manager') {
+		$u_arr = get_all_salesman_of_rm($user->uid);
+		$new_array = array();
+		foreach($u_arr as $result_num => $sub_array) {
+			$new_array[$result_num] = $sub_array['uid'];
+		}
+		$users_uid = implode(",", $new_array);
+		$all_sm_of_smngr = get_all_salesman_of_all_salesmanager($user->uid);
+		if(!empty($all_sm_of_smngr)){
+			$sql_offer .= " and (nn.uid in (".$users_uid.") OR nn.uid in (".$all_sm_of_smngr.") OR nn.uid='".$user->uid."') ";
+		}else
+		{
+			$sql_offer .= " and (nn.uid in (".$users_uid.") OR  nn.uid='".$user->uid."') ";
+
+		}
+	}
+
+	$res_offer = pager_query($sql_offer . tablesort_sql($header), $limit = $per_page);
+	$serial_number = get_list_serial_number();
+	while ($row = db_fetch_array($res_offer)) {
+		//Check operation start or not.....if start  no edit to nid else edit some.....if any vid exist by any ops exe for corresponding nid....
+    $status_launch = ($row['field_hop_offer_launch_value'] == 1) ? '<span style="color:red;">Launch</span>' : '--';
+		$node_creator = db_result(db_query("SELECT uid from {node} where nid='".$row['nid']."' "));
+		$count_vids = db_result(db_query("SELECT count(vid) from {node_revisions} nr where nid='".$row['nid']."' and uid != '".$node_creator."' "));
+
+//if salesperson.... Edit link should not be shown if .... offer is approved by any department
+/*
+		if($rs_rid == 'salesperson' && ($row['field_hoppr_new_rmsmsts_value']=='Accepted' || $row['field_hop_ops_oh_ds_sts_value']=='Accepted' || $row['field_hop_offer_ops_status_value']=='Approved' || $row['field_hop_ops_agr_sta_value']=='Approved' || $row['field_hop_ops_all_remark_value']=='Approved')) {
+		  $ed_url = '';
+		}elseif($rs_rid == 'salesperson' && ($row['field_hop_offer_ops_status_value']=='Rejected: Cancelled by merchant' || $row['field_hop_offer_ops_status_value']=='Rejected: Management changed' || $row['field_hop_offer_ops_status_mo_value']=='Rejected: Cancelled by merchant' || $row['field_hop_offer_ops_status_mo_value']=='Rejected: Management changed' || $row['field_hop_ops_all_remark_value']=='Rejected by merchants' || $row['field_hop_ops_all_remark_value']=='Sales team meeting request' || $row['field_hop_ops_all_remrk_mo_value']=='Rejected by merchants' || $row['field_hop_ops_all_remrk_mo_value']=='Sales team meeting request' || $row['field_hop_ops_agr_sta_value']=='Rejected')){
+			$ed_url = l('Edit', $edit_url).'<br />';
+		}
+*/
+		
+    $offer_delete_url = $base_url.'/y2cf/offerdelete/'.$row['nid'];
+    if($rs_rid == 'reporting manager' || $rs_rid == 'salesmanager' || $rs_rid == 'y2cfmanager' || $user->uid == 1) {
+    	$del_url = l('Delete', $offer_delete_url, array('attributes' => array('onclick' => 'return confirm("Are you sure");'))).'<br />';
+    }else {
+    	$del_url = "";
+    }
+
+    $merchants_outlets = $base_url.'/y2cf/merchantsoutlet/'.$row['nid'];
+		$merchant_add_outlet = $base_url.'/node/add/merchant-outlet/'.$row['nid'];
+    $outlet_counts = db_fetch_array(db_query("select  count(DISTINCT nid) as outlet_counts from {content_type_merchant_outlet} where field_hopper_merchant_olt_nid='".$row['nid']."'"));
+		$rs_outlet = $outlet_counts['outlet_counts'];
+
+    $outlet_nid = db_result(db_query("select distinct nid from {content_type_merchant_outlet} where field_hopper_merchant_olt_nid= '".$row['nid']."' "));
+    $outlet_link = $base_url.'/node/'.$outlet_nid;
+
+    $outlet_history = l('Outlet History', $base_url.'/node/'.$outlet_nid.'/revisions');
+
+    $outlet_edit_url = $base_url.'/node/'.$outlet_nid.'/edit?destination=y2cf/merchantsoffers';
+    $outlet_ed_url = l('Edit Outlet', $outlet_edit_url);
+
+    $outlet_view =  l('Outlets', $merchants_outlets). '<span style="color:red;">(' . $rs_outlet . ')</span>';
+	
+	if($rs_outlet > 1){
+      $outlet_detail =  '';
+    }else{
+    	$outlet_detail =  l('Outlet Detail', $outlet_link).'<br />';
+    }
+    //RM  SM
+    $rm_sm_acc_sts = (!empty($row['field_hoppr_new_rmsmsts_value'])) ? $row['field_hoppr_new_rmsmsts_value'] : '-';
+    
+
+	//OE
+    $ror_opsoe_sts = get_ops_exe_ror($row['merchant_nid']);
+    if(!empty($ror_opsoe_sts)) {
+      $rs_ops_exe = $ror_opsoe_sts;
+    }else{
+      $rs_ops_exe = get_ops_exe_ror_dummy($oe_tc_sts['outlet_nid']);
+    }
+
+
+
+    $oe_ror1 = get_ops_exe_ror_overallrejreson($oe_tc_sts['outlet_nid']);
+
+    $oe_cmts1 = $oe_tc_sts['field_hop_ror_oth_cmnts_value'];
+    $oe_cmts12 = $row['field_hop_ror_oth_cmnts_value'];
+    $oe_cmts2 = $row['field_hop_offer_ops_comments_value'];
+
+
+    if(!empty($oe_cmts1)) {
+      $oe_fnl_cmnts = $oe_cmts1;
+    }elseif(!empty($oe_cmts12)) {
+      $oe_fnl_cmnts = $oe_cmts12;
+    }elseif(!empty($oe_cmts2)) {
+      $oe_fnl_cmnts = $oe_cmts2;
+    }else{
+      $oe_fnl_cmnts = '-';
+    }
+//OH sts
+$opshd_status = (!empty($oe_tc_sts['field_hop_ops_oh_ds_sts_mo_value'])) ? $oe_tc_sts['field_hop_ops_oh_ds_sts_mo_value'] : '-';
+
+//Products status
+		  if(!empty($row['field_hop_pro_evaluation_status_value'])) {
+	      $pro_status =   $row['field_hop_pro_evaluation_status_value'];
+	    }elseif(!empty($oe_tc_sts['field_hop_pro_eval_status_value'])){
+	      $pro_status =  $oe_tc_sts['field_hop_pro_eval_status_value'];
+	    }else{
+	      $pro_status = '-';
+	    }
+
+//pro Comments
+	  $rs_pro_ror_od = get_pro_mngr_ror($row['merchant_nid']);
+    $rs_pro_ror_mo = get_pro_mngr_ror_mo($oe_tc_sts['outlet_nid']);
+    if(!empty($rs_pro_ror_od)) {
+      $rs_pro_ror = $rs_pro_ror_od;
+    }else{
+      $rs_pro_ror = $rs_pro_ror_mo;
+    }
+
+	$pro_cmts1 = $row['field_hop_pro_otherscom_value'];
+    $pro_cmts2 = $oe_tc_sts['field_hop_pro_cmt_mo_value'];
+    if(!empty($pro_cmts1)) {
+      $pro_rmks = $pro_cmts1;
+    }elseif(!empty($pro_cmts2)) {
+      $pro_rmks = $pro_cmts2;
+    }else{
+      $pro_rmks ='-';
+    }
+
+//POS status
+	   if(!empty($row['field_hop_pos_oa_status_value'])) {
+        $pos_status =   $row['field_hop_pos_oa_status_value'];
+      }elseif(!empty($oe_tc_sts['field_hop_pos_oa_status_mo_value'])){
+        $pos_status =  $oe_tc_sts['field_hop_pos_oa_status_mo_value'];
+      }else{
+        $pos_status = '-';
+      }
+
+		if(!empty($row['field_hop_pos_nt_del_value'])) {
+	      $pos_rndl = $row['field_hop_pos_nt_del_value'];
+	    }elseif(!empty($oe_tc_sts['field_hop_pos_nt_del_mo_value'])) {
+	      $pos_rndl = $oe_tc_sts['field_hop_pos_nt_del_mo_value'];
+	    }else{
+	      $pos_rndl = '-';
+	    }
+
+
+//GO LIVE status
+	    if(!empty($row['field_hop_ops_glivsts_value'])) {
+        $gl_sts_mo = $row['field_hop_ops_glivsts_value'];
+      }elseif($oe_tc_sts['field_hop_ops_glivsts_mo_value']) {
+        $gl_sts_mo = $oe_tc_sts['field_hop_ops_glivsts_mo_value'];
+      }elseif($oe_tc_sts['field_sales_gl_pos_sts_value']) {
+        $gl_sts_mo = $oe_tc_sts['field_sales_gl_pos_sts_value'];
+      }else{
+        $gl_sts_mo = '-';
+      }
+
+      $ofr_go_liv_sts = get_golive_ror_notdone($row['merchant_nid']);
+
+		  $gl_cmts1 = $row['field_hop_ops_goliv_oth_cmts_value'];
+	    $gl_cmts2 = $oe_tc_sts['field_hop_gl_remrks_value'];
+	    $gl_cmts3 = $oe_tc_sts['field_sales_gl_rmks_value'];
+	    if(!empty($gl_cmts1)) {
+	      $gl_fnl_cmnts = $gl_cmts1;
+	    }elseif(!empty($gl_cmts2)) {
+	      $gl_fnl_cmnts = $gl_cmts2;
+	    }elseif(!empty($gl_cmts3)) {
+	      $gl_fnl_cmnts = $gl_cmts3;
+	    }else{
+	      $gl_fnl_cmnts = '-';
+	    }
+	    
+	    
+//OE status
+	    $mo_outlet_vid = db_fetch_array(db_query("select max(vid) as vid from {content_type_merchant_outlet} where field_hopper_merchant_olt_nid='".$row['merchant_nid']."' "));
+	    $oe_tc_sts = db_fetch_array(db_query("select cout.nid as outlet_nid,cout.* from {content_type_merchant_outlet} cout where cout.vid='".$mo_outlet_vid['vid']."' "));
+	    //Ops Status
+	    if(!empty($row['field_hop_offer_ops_status_value'])) {
+	    	$ops_status_mo =   $row['field_hop_offer_ops_status_value'];
+	    }elseif(!empty($oe_tc_sts['field_hop_offer_ops_status_mo_value'])){
+	    	$ops_status_mo =  $oe_tc_sts['field_hop_offer_ops_status_mo_value'];
+	    }else{
+	    	$ops_status_mo = '-';
+	    }
+	    
+//TC Status
+    if(!empty($row['field_hop_ops_all_remark_value'])) {
+      $tc_status = $row['field_hop_ops_all_remark_value'];
+    }elseif(!empty($oe_tc_sts['field_hop_ops_all_remrk_mo_value'])) {
+       $tc_status = $oe_tc_sts['field_hop_ops_all_remrk_mo_value'];
+    }else{
+       $tc_status = '-';
+    }
+
+//OVERALL OPS & TC STATUS
+    if(!empty($row['field_hop_offer_ops_status_value'])) {
+    	$hop_overall_oe_tc  =   $row['field_hop_offer_ops_status_value'];
+    }elseif(!empty($oe_tc_sts['field_hop_offer_ops_status_mo_value'])){
+    	$hop_overall_oe_tc  =  $oe_tc_sts['field_hop_offer_ops_status_mo_value'];
+    }elseif(!empty($row['field_hop_ops_all_remark_value'])) {
+      $hop_overall_oe_tc  = $row['field_hop_ops_all_remark_value'];
+    }elseif(!empty($oe_tc_sts['field_hop_ops_all_remrk_mo_value'])) {
+       $hop_overall_oe_tc  = $oe_tc_sts['field_hop_ops_all_remrk_mo_value'];
+    }else{
+       $hop_overall_oe_tc  = '-';
+    }
+    
+    
+   
+    
+    
+    
+	  $tc_sts_ofr = get_ops_sts_ror_by_tc($row['merchant_nid']);
+    $tc_sts_out = get_ops_sts_ror_by_tc_merchant_section($oe_tc_sts['outlet_nid']);
+    if(!empty($tc_sts_ofr)) {
+      $tc_ofr_sts = $tc_sts_ofr;
+    }elseif(!empty($tc_sts_out)) {
+      $tc_ofr_sts = $tc_sts_out;
+    }else{
+      $tc_ofr_sts = '-';
+    }
+
+	  $tc_cmts1 = $row['field_hop_ops_tc_hglts_sta_value'];
+    $tc_cmts2 = $oe_tc_sts['field_hop_ops_tc_rmks_value'];
+    if(!empty($tc_cmts1)) {
+      $tc_remarks = $tc_cmts1;
+    }elseif(!empty($tc_cmts2)) {
+      $tc_remarks = $tc_cmts2;
+    }else{
+      $tc_remarks = '-';
+    }
+//Docs
+    
+    $docs_status = (!empty($row['field_hop_ops_agr_sta_value'])) ? $row['field_hop_ops_agr_sta_value'] : '-';
+    $rs_ops_manager_ror = get_ops_manager_ror($row['merchant_nid']);
+
+    $rev_url = l('Offer History', $base_url.'/node/'.$row['nid'].'/revisions');
+
+	if($rs_outlet > 1) {
+		  $opshd_status = l('Click here', $merchants_outlets);
+      $ops_status = l('Click here', $merchants_outlets);
+      $tc_status = l('Click here', $merchants_outlets);
+      $pro_status = l('Click here', $merchants_outlets);
+      $pos_status = l('Click here', $merchants_outlets);
+      $gl_sts = l('Click here', $merchants_outlets);
+    }else{
+    	$opshd_status = '<span class="qtip-link">
+            <div class="qtip-tooltip">'.$oe_tc_sts['field_hop_ops_acc_rmrks_mo_value'].'</div>
+            '.$opshd_status.'
+          </span>';
+      $ops_status = '<span class="qtip-link">
+            <div class="qtip-tooltip">'.$rs_ops_exe.' , '.$oe_ror1.'<br>'.$oe_fnl_cmnts.'</div>
+            '.$ops_status_mo.'
+         </span>';
+      $tc_status = '<span class="qtip-link">
+            <div class="qtip-tooltip">'.$tc_ofr_sts.'<br>'.$tc_remarks.'</div>
+            '.$tc_status.'
+         </span>';
+
+      $pro_status = '<span class="qtip-link">
+            <div class="qtip-tooltip">'.$rs_pro_ror.'<br />'.$pro_rmks.'</div>
+            '.$pro_status.'
+         </span>';
+      $pos_status = '<span class="qtip-link">
+            <div class="qtip-tooltip">'.$pos_rndl.'</div>
+            '.$pos_status.'
+         </span>';
+      $gl_sts = '<span class="qtip-link">
+            <div class="qtip-tooltip">'.$ofr_go_liv_sts.'<br />'.$gl_fnl_cmnts.'</div>
+            '.$gl_sts_mo.'
+         </span>';
+    }
+    
+//Rejected cases updation by salesperson
+    //RM Rejected cases
+    $out_nid = get_merchant_outlet_nid_on_offer_nid($row['nid']);
+    $rej_cas_edit_url = $base_url.'/node/add/mo-rm-rej-cases/'.$row['nid'].'?destination=y2cf/merchantsoffers';
+    $rej_cas_sts = get_rm_rejected_case_details($row['nid']);
+//DOCS
+    $docs_rej_cas_sts = get_docs_rejected_cases($row['nid']);
+//OE Rejected cases
+    $oe_rej_cas_sts = get_oe_rejected_cases($out_nid['nid']);
+//OE go live rejedted sts
+    $oe_gl_rej_cas_sts = get_oe_golive_rejected_cases($out_nid['nid']);
+//Condition start from here   field_hop_ops_agr_sta
+
+    if($rs_rid == 'salesperson' || $rs_rid == 'operationhead') {
+    	
+    if(!empty($row['field_hoppr_new_rmsmsts_value']) && ($row['field_hoppr_new_rmsmsts_value']=='Rejected') && empty($rej_cas_sts['field_hoprc_rm_rc_sts_value'])) {//RM case
+    	$rej_cas_ed_url = l('Edit Rejected status', $rej_cas_edit_url).'<br />';
+    	$edit_url = $base_url.'/node/'.$row['nid'].'/edit?destination=node/add/mo-rm-rej-cases/'.$row['nid'];
+    }elseif($rej_cas_sts['field_hoprc_rm_rc_sts_value']=='Open' || $rej_cas_sts['field_hoprc_rm_rc_sts_value']=='Follow up'){//RM case
+    	$ed_rej_cas_edit_url = $base_url.'/node/'.$rej_cas_sts['nid'].'/edit?destination=y2cf/merchantsoffers';
+    	$rej_cas_ed_url = l('Edit Rejected status', $ed_rej_cas_edit_url).'<br />';
+    	$edit_url = $base_url.'/node/'.$row['nid'].'/edit?destination=node/'.$rej_cas_sts['nid'].'/edit';
+    }elseif(($hop_overall_oe_tc=='Rejected' || $hop_overall_oe_tc=='Sales team meeting request' || $hop_overall_oe_tc=='Rejected: Cancelled by merchant' || $hop_overall_oe_tc=='Rejected: Quality Issue' || $hop_overall_oe_tc=='Rejected: Outlet under renovation' || $hop_overall_oe_tc=='Language Issue') ){//OE case
+    	
+    	$oe_rej_cas_edit_url = $base_url.'/node/add/hoppr-oe-rej-cases/'.$out_nid['nid'].'?destination=y2cf/merchantsoffers';
+    	//$rej_cas_ed_url = l('Edit Rejected status', $oe_rej_cas_edit_url).'<br />';
+    	$edit_url = l('Edit Rejected status', $oe_rej_cas_edit_url).'<br />';
+    	$edit_url = $base_url.'/node/'.$row['nid'].'/edit?destination=node/add/hoppr-oe-rej-cases/'.$out_nid['nid'];
+    }elseif($oe_rej_cas_sts['field_hoprc_oe_rc_sts_value']=='Open' || $oe_rej_cas_sts['field_hoprc_oe_rc_sts_value']=='Follow up'){//OE case
+    	$oe_ed_rej_cas_edit_url = $base_url.'/node/'.$oe_rej_cas_sts['nid'].'/edit?destination=y2cf/merchantsoffers';
+    	$rej_cas_ed_url = l('Edit Rejected status', $oe_ed_rej_cas_edit_url).'<br />';
+    	$edit_url = $base_url.'/node/'.$row['nid'].'/edit?destination=node/'.$oe_rej_cas_sts['nid'].'/edit';
+    }elseif(!empty($row['field_hop_ops_agr_sta_value']) && ($row['field_hop_ops_agr_sta_value']=='Rejected') && empty($docs_rej_cas_sts['field_hoprc_new_docs_rej_mn_value'])) {//DOCS case
+    	
+    	$docs_rej_cas_edit_url = $base_url.'/node/add/hoppr-docs-rej-cases/'.$row['nid'].'?destination=y2cf/merchantsoffers';
+    	$rej_cas_ed_url = l('Edit Rejected status', $docs_rej_cas_edit_url);
+    	$edit_url = $base_url.'/node/'.$row['nid'].'/edit?destination=node/add/hoppr-docs-rej-cases/'.$row['nid'];
+    	//$rejected_edit_url = $base_url.'/node/add/hoppr-docs-rej-cases/';
+    }elseif($docs_rej_cas_sts['field_hoprc_new_docs_rej_mn_value']=='Open' || $docs_rej_cas_sts['field_hoprc_new_docs_rej_mn_value']=='Follow up'){//Docs case
+    	$docs_ed_rej_cas_edit_url = $base_url.'/node/'.$docs_rej_cas_sts['nid'].'/edit?destination=y2cf/merchantsoffers';
+    	$rej_cas_ed_url = l('Edit Rejected status', $docs_ed_rej_cas_edit_url).'<br />';
+    	$edit_url = $base_url.'/node/'.$row['nid'].'/edit?destination=node/'.$docs_rej_cas_sts['nid'].'/edit';
+    }elseif($gl_sts_mo=='Not Done' && empty($oe_gl_rej_cas_sts['field_hoprc_gl_rc_sts_value'])){//OE Go live case
+    	$oe_gl_rej_cas_edit_url = $base_url.'/node/add/hoppr-gl-rej-cases/'.$out_nid['nid'].'?destination=y2cf/merchantsoffers';
+    	$rej_cas_ed_url = l('Edit Rejected status', $oe_gl_rej_cas_edit_url).'<br />';
+    	$edit_url = $base_url.'/node/'.$row['nid'].'/edit?destination=node/add/hoppr-gl-rej-cases/'.$out_nid['nid'];
+    }elseif($oe_gl_rej_cas_sts['field_hoprc_gl_rc_sts_value']=='Open' || $oe_gl_rej_cas_sts['field_hoprc_gl_rc_sts_value']=='Follow up'){//OE Go live case
+    	$oe_ed_gl_rej_cas_edit_url = $base_url.'/node/'.$oe_gl_rej_cas_sts['nid'].'/edit?destination=y2cf/merchantsoffers';
+    	$rej_cas_ed_url = l('Edit Rejected status', $oe_ed_gl_rej_cas_edit_url).'<br />';
+    	$edit_url = $base_url.'/node/'.$row['nid'].'/edit?destination=node/'.$oe_gl_rej_cas_sts['nid'].'/edit';
+    }else{
+    	$rej_cas_ed_url = "";
+    	$edit_url = $base_url.'/node/'.$row['nid'].'/edit?destination=y2cf/merchantsoffers';
+    }
+  }elseif($rs_rid == 'reporting manager' || $rs_rid == 'salesmanager' || $rs_rid == 'y2cfmanager' || $user->uid==1) { 
+    	$rej_cas_ed_url = "";
+    	$edit_url = $base_url.'/node/'.$row['nid'].'/edit?destination=y2cf/merchantsoffers';
+    }
+    
+    
+    
+//Edit URL...Rule....if outlet detail is not filled by salesperson, RM/SM will not allowed to change status
+    $out_vid = db_result(db_query("select vid from {node} where nid='".$out_nid['nid']."' "));
+    $rm_outlet_detail = db_fetch_array(db_query("select  field_mo_loc_address_1_value,field_hop_ops_all_remrk_mo_value,field_mo_loc_address_2_value,field_mo_loc_landmark_value,field_hopprs_city_value,field_hopper_city_hfa_value,field_hop_out_latitude_mo_value,field_hop_mer_longitude_mo_value from {content_type_merchant_outlet} where vid='".$out_vid."'"));
+    $rm_sp_latitude = $rm_outlet_detail['field_hop_out_latitude_mo_value'];
+    $rm_sp_longitude = $rm_outlet_detail['field_hop_mer_longitude_mo_value'];
+    $merchant_offer_id= $row['nid'];
+    
+    
+    if($rs_rid == 'reporting manager' || $rs_rid == 'salesmanager' || $user->uid==1) {
+    	if(empty($rm_outlet_detail['field_mo_loc_address_1_value']) || empty($rm_outlet_detail['field_mo_loc_address_2_value']) || empty($rm_outlet_detail['field_mo_loc_landmark_value']) || empty($rm_outlet_detail['field_hopprs_city_value']) || $rm_sp_latitude < '8.05923' || $rm_sp_latitude > '37.09024' || $rm_sp_longitude < '67.694458' || $rm_sp_longitude > '97.024658' ||  ($row['field_hopdocs_sopaon_value']=='NO' && $row['field_hopdocs_immstmahdc_value']=='NO')) { 
+    		$ed_url = '<span class="qtip-link">
+    		<div class="qtip-tooltip">Incomplete outlet detail as incomplete details or Wrong longitude or Wrong longitude value<br />Stamp on agreement available or not:'.$row['field_hopdocs_sopaon_value'].'<br/>Is merchant mailer sent to merchants@hoppr.com- '.$row['field_hopdocs_immstmahdc_value'].' </div>
+    		Incomplete outlet detail<br />
+    		</span>';
+    		
+    	}else{
+    		$ed_url = l('Edit Offer', $edit_url).'<br />';
+    		
+    	}
+    }elseif($rs_rid == 'salesperson'){
+    	$ed_url = l('Edit Offer', $edit_url).'<br />';
+    }elseif($rs_rid == 'salesperson'  || $rs_rid == 'y2cfmanager' || $rs_rid == 'operationhead'){
+    	$ed_url = l('Edit Offer', $edit_url).'<br />';
+    }    
+
+    
+    
+   //Salesperson status
+    if($row['field_hoppr_new_rmsmsts_value']=='Accepted' && $ops_status_mo=='Approved'  && $row['field_hop_ops_agr_sta_value']=='Approved' &&  $gl_sts_mo=='Done') {
+    	$salesperson_status = "Closed";
+    }else{
+    	$salesperson_status = "OPEN";
+    }
+//NODE REVISION LIST....node_revision_list($node)
+    $msg_rm_rej_thr = "RM case- ".$rej_cas_sts['field_hoprc_rm_rc_sts_value']. " : ". $rej_cas_sts['field_hoprc_comments_value']."<br />
+    OE case:".$oe_rej_cas_sts['field_hoprc_oe_rc_sts_value']." : ".$oe_rej_cas_sts['field_hoprc_oe_comments_value']."<br />
+    Docs case: ".$row['field_hoprc_new_docs_rej_mn_value'].": ".$row['field_hoprc_docs_comments_value']."<br />
+    GL case:".$oe_gl_rej_cas_sts['field_hoprc_gl_rc_sts_value'].": ".$oe_gl_rej_cas_sts['field_hoprc_gl_comments_value'];
+    
+    //OUTLET Details
+    if(!empty($rm_outlet_detail['field_hopper_city_hfa_value'])) {
+    	$hfa_name = get_only_term_name($rm_outlet_detail['field_hopper_city_hfa_value']);
+    	$city_name = get_only_term_name(get_parent_tid_by_tid($rm_outlet_detail['field_hopper_city_hfa_value']));
+    }else{
+    	$hfa_name = "-";
+    	$city_name = "-";
+    }
+    
+    $hfa_city_name = $hfa_name."<br />".$city_name;
+    //if outlet is permanently blocked   field_hop_ops_all_remrk_mo_value
+    if($rm_outlet_detail['field_hop_ops_all_remrk_mo_value']=='Blocked') {
+    	$final_ed_url='';
+    }else{
+    	$final_ed_url = $ed_url;
+    }
+
+    $data[] = array(
+				$serial_number++,
+				get_reporting_manager_name($row['uid']),
+				get_salesperson_name($row['uid']),
+				$row['merchant_act_name']."<br />".$hfa_city_name,
+				get_only_term_name($row['field_genre_value']),
+				date("Y-m-d H:i:s", $row['created']),
+				get_only_term_name($row['field_hop_merch_type_value']),
+
+		    'SP: <span class="qtip-link">
+            <div class="qtip-tooltip">'.$msg_rm_rej_thr.'</div>
+            '.$salesperson_status.'
+        </span><br />
+    		RM:
+		    <span class="qtip-link">
+            <div class="qtip-tooltip">'.$row['field_hoppr_new_rmsm_cmnts_value'].'</div>
+            '.$rm_sm_acc_sts.'
+        </span>
+          <br />
+		     OH: '.$opshd_status.'
+          <br />
+		     OE: '.$ops_status.'
+          <br />
+		     TC: '.$tc_status,
+
+		     'Docs:
+		     <span class="qtip-link">
+            <div class="qtip-tooltip">'.$rs_ops_manager_ror.'<br>'.$row['field_hop_mo_om_comments_value'].'</div>
+            '.$docs_status.'
+         </span>
+				<br />
+		      Pro: '.$pro_status.'
+         <br />
+		      POS: '.$pos_status.'
+         <br />
+		      GL: '.$gl_sts,
+
+				l('Offer Detail', $base_url.'/node/'.$row['nid']).'<br />'.
+				$final_ed_url. 
+    			$rej_cas_ed_url.
+    			$rev_url .'<br />'.
+				$outlet_view.'<br />',
+
+				);
+	}
+
+  $output .= theme('table', $header, $data);
+	$output .= theme('pager');
+	$output .= get_custom_pager_request($total_offer_count);
+	return $output;
+}
+function y2cf_offerhierarchy_tree(){
+	$output = '';
+	$output .= theme('merchantoffer_tree', 'Offers Tree');
+	return $output;
+}
+function y2cf_sales_actual_offer() {
+	$output = '';
+  $output .= theme('sales_actualoffer', 'sales actual offer');
+  return $output;
+}
+function y2cf_offerwelcomemsg() {
+	$output = '';
+	$output .= theme('offerwelcomemsg', 'Welcome message');
+	return $output;
+}
+function y2cf_outletwelcomemsg() {
+	$output = '';
+	$output .= theme('outletwelcomemsg', 'Welcome outlet message');
+	return $output;
+
+}
+function y2cf_offers_theme() {
+	$path = drupal_get_path('module', 'y2cf_offers');
+	return array(
+    'merchantoffer_tree' => array(
+    'arguments' => array('hello' => NULL),
+    'template' => 'merchantoffer-tree',
+    'path' => $path,
+	),
+	  'offerwelcomemsg' => array(
+    'arguments' => array('welcome' => NULL),
+    'template' => 'offerwelcomemsg',
+    'path' => $path,
+	),
+	  'outletwelcomemsg' => array(
+    'arguments' => array('welcome' => NULL),
+    'template' => 'outletwelcomemsg',
+    'path' => $path,
+	),
+	'sales_actualoffer' => array(
+    'arguments' => array('welcome' => NULL),
+    'template' => 'sales_actualoffer',
+    'path' => $path,
+  ),
+
+
+	);
+
+}
+function y2cf_offers_cron() {
+  global $base_url;
+  global $user;
+//Update field_hopper_merchant_olt_nid field to corresponding nid -- as some how this id is zero
+  $sql_blank_olt_nid = db_query("select nid, vid, field_hopper_merchant_olt_nid from {content_type_merchant_outlet} where field_hopper_merchant_olt_nid='0' ");
+  while($rs = db_fetch_array($sql_blank_olt_nid)) {
+  	$min_vid = db_fetch_array(db_query("select min(vid) as min_vid from {content_type_merchant_outlet} where nid='".$rs['nid']."'  "));
+  	$olt_nid = db_result(db_query("select field_hopper_merchant_olt_nid from {content_type_merchant_outlet} where vid='".$min_vid['min_vid']."'  "));
+  	$max_vid = db_fetch_array(db_query("select max(vid) as max_vid from {content_type_merchant_outlet} where nid='".$rs['nid']."'  "));
+  	db_query("UPDATE {content_type_merchant_outlet} set field_hopper_merchant_olt_nid='".$olt_nid."' where vid='".$max_vid['max_vid']."' ");
+  }
+}
+

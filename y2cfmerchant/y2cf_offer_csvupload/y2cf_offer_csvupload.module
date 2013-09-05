@@ -1,0 +1,1284 @@
+<?php
+global $base_url;
+global $imgsrc;
+global $crossimgsrc;
+global $notmandatoryimgsrc;
+
+$imgsrc = $base_url.'/sites/all/themes/y2cfprod/images/OK.png';
+$crossimgsrc = $base_url.'/sites/all/themes/y2cfprod/images/delete.png';
+$notmandatoryimgsrc = $base_url.'/sites/all/themes/y2cfprod/images/alerts.png';
+
+
+
+function y2cf_offer_csvupload_perm() {
+	return array('Administer CSV Upload');
+}
+
+function y2cf_offer_csvupload_menu() {
+	$items = array();
+	$items['y2cf/merchantcsvupload'] = array(
+    'title' => 'CSV Upload',
+    'page callback' => 'y2cf_merchantcsvupload',
+	'access arguments' => array('Administer CSV Upload'),
+    'description' => 'Manage CSV Upload.',
+    'weight' => -4,
+	'type' => MENU_LOCAL_TASK,
+
+	);
+
+	$items['citylist'] = array(
+    'title' => 'City List',
+    'page callback' => 'y2cf_citylist',
+	'access arguments' => array('Administer City List'),
+    'description' => 'Manage City List.',
+    'weight' => -4,
+	'type' => MENU_LOCAL_TASK,
+
+	);
+
+	return $items;
+}
+function convert_dateformat_from_csv_to_portal($insert_date) {
+	$first_tester_date = trim($insert_date);
+      if(!empty($first_tester_date)) {
+          $tst_del_date = explode("/", $first_tester_date);
+          if($tst_del_date[0] > 12 || $tst_del_date[0] < 1) {
+            form_set_error('field_upload_csv', 'POS:Error in date format');
+            drupal_goto($base_url.'/node/add/csv-upload');
+          }
+    //Error for day
+          if($tst_del_date[1] > 31 || $tst_del_date[1] < 1) {
+            form_set_error('field_upload_csv', 'POS:Error in date format');
+            drupal_goto($base_url.'/node/add/csv-upload');
+          }
+      }
+      $dt_m = $tst_del_date[1];
+      $day_of_month = $dt_m;
+      $tst_final_del_date = $tst_del_date[2].'-'.get_format_number($tst_del_date[0]).'-'.get_format_number($day_of_month);
+      return $tst_final_del_date;
+}
+function y2cf_citylist(){
+	$output = "";
+	$output .= "jamia hamdard mtech";
+	return $output;
+}
+function y2cf_offer_csvupload_form_alter(&$form, $form_state, $form_id) {
+	global $base_url;
+	global $imgsrc;
+	global $crossimgsrc;
+	global $notmandatoryimgsrc;
+
+
+	global $user;
+	if($form_id=='csv_upload_node_form') {
+		$form['path']['#access'] = FALSE;
+		$form['menu']['#access'] = FALSE;
+		$form['author']['#access'] = FALSE;
+		$form['options']['#access'] = FALSE;
+		$form['comment_settings']['#access'] = FALSE;
+		$form['revision_information']['#access'] = FALSE;
+		$form['title']['#access'] = FALSE;
+		unset($form['buttons']['preview']);
+/*
+		$form['fileuptipsplace'] = array(
+			'#type' => 'item',
+			'#weight' => -19,
+			'#description' => superfish_fileupload_menudisplay().'<br /><br />'
+			);
+
+			$form['city_list'] = array(
+			'#type' => 'item',
+			'#weight' => -16,
+			'#description' => 'This is bulk upload process for merchant offer.First browse the merchant offer CSV file then click on upload and finally save.After that you are redirected to a new page with status detail with three symbol as <br />
+	<img src="'.$imgsrc.'" width="20px" height="20px"> - data in corresponding field is OK <br />
+	<img src="'.$crossimgsrc.'" width="20px" height="20px"> - data in corresponding field is NOT OK and this field data not inserted into portal until you fix it but remaining data inserted <br />
+	<img src="'.$notmandatoryimgsrc.'" width="20px" height="20px"> - Blank field
+	<br />
+	<span class="qtip-link">
+            <div class="qtip-tooltip">'.somevalidationrule_formerchantoffers().'</div>
+            Some Validation rule
+          </span>
+	&nbsp;&nbsp;&nbsp;&nbsp;
+
+	<span class="qtip-link">
+            <div class="qtip-tooltip">Eat & Drink, Entertainment, Fitness, Get pampared, Shopping, Tatoo & body art, Others</div>
+            Genre
+          </span>
+		  &nbsp;&nbsp;&nbsp;&nbsp;
+
+		  <span class="qtip-link">
+            <div class="qtip-tooltip">Single, Mid Size, National</div>
+            Tie-up Type
+          </span>
+		  &nbsp;&nbsp;&nbsp;&nbsp;
+
+		  <span class="qtip-link">
+            <div class="qtip-tooltip">Mr, Mrs, Ms, Dr, Prof, Engg</div>
+            Signatory Title
+          </span>
+		  &nbsp;&nbsp;&nbsp;&nbsp;
+
+		  <span class="qtip-link">
+            <div class="qtip-tooltip">A, B, C, D</div>
+            Merchant Type
+          </span>
+		  &nbsp;&nbsp;&nbsp;&nbsp;
+
+		  <span class="qtip-link">
+            <div class="qtip-tooltip">Single Person, Double, Triple, Multiple</div>
+            Fine Print2:Number of People Voucher Valid for
+          </span>
+			&nbsp;&nbsp;&nbsp;&nbsp;'
+			);
+*/
+
+
+	}
+
+	if($form_id=='csv_merchant_outlet_upload_node_form') {
+		$form['path']['#access'] = FALSE;
+		$form['menu']['#access'] = FALSE;
+		$form['author']['#access'] = FALSE;
+		$form['options']['#access'] = FALSE;
+		$form['comment_settings']['#access'] = FALSE;
+		$form['revision_information']['#access'] = FALSE;
+		$form['title']['#access'] = FALSE;
+		unset($form['buttons']['preview']);
+
+		$form['fileuptipsplace'] = array(
+			'#type' => 'item',
+			'#weight' => -19,
+			'#description' => superfish_fileupload_menudisplay().'<br /><br />'
+			);
+
+
+			//City list, state list
+			$form['city_list'] = array(
+			'#type' => 'item',
+			'#weight' => -16,
+			'#description' => 'This is bulk upload process for merchant outlet.First browse the outlet CSV file then click on upload and finally save.After that you are redirected to a new page with status detail with three symbol as <br />
+	<img src="'.$imgsrc.'" width="20px" height="20px"> - data in corresponding field is OK <br />
+	<img src="'.$crossimgsrc.'" width="20px" height="20px"> - data in corresponding field is NOT OK and this field data not inserted into portal until you fix it but remaining data inserted <br />
+	<img src="'.$notmandatoryimgsrc.'" width="20px" height="20px"> - Blank field
+<br />
+	<span class="qtip-link">
+            <div class="qtip-tooltip">'.somevalidationrule_formerchant_outlets().'</div>
+            Some Validation rule
+          </span>
+		  &nbsp;&nbsp;&nbsp;&nbsp;'.get_city_list().'
+		  &nbsp;&nbsp;&nbsp;&nbsp;'.get_state_list().'
+
+		  &nbsp;&nbsp;&nbsp;&nbsp;'
+		  );
+	}
+
+
+	if($form_id=='merchant_offer_upload_logo_node_form') {
+		$form['path']['#access'] = FALSE;
+		$form['menu']['#access'] = FALSE;
+		$form['author']['#access'] = FALSE;
+		$form['options']['#access'] = FALSE;
+		$form['comment_settings']['#access'] = FALSE;
+		$form['revision_information']['#access'] = FALSE;
+		$form['title']['#access'] = FALSE;
+		unset($form['buttons']['preview']);
+
+
+
+		$form['fileuptipsplace'] = array(
+			'#type' => 'item',
+			'#weight' => -19,
+			'#description' => superfish_fileupload_menudisplay().'<br />'
+			);
+
+			$form['allfileupload'] = array(
+			'#type' => 'item',
+			'#weight' => -16,
+			'#description' => '<br /><span style="color:red;">This is file upload form.You can upload all logo, images, menu cards and agreement file before bulk CSV upload for merchants offer and outlet.</span>'
+			);
+
+
+	}
+}
+
+function superfish_fileupload_menudisplay() {
+	global $base_url;
+	$url = $base_url.'/node/add/y2cf-tips-addplaces';
+	$offer_csv_url = $base_url.'/node/add/csv-upload';
+	$outlet_csv_url = $base_url.'/node/add/csv-merchant-outlet-upload';
+  /*
+	$strings = '<ul class="sf-menu">
+			<li class="current">
+				'.l("Offer-CSV", $offer_csv_url, array( 'attributes' => array('class' => 'popups-form'))).'
+
+			</li>
+			<li class="current">
+				'.l("Outlet-CSV", $outlet_csv_url, array( 'attributes' => array('class' => 'popups-form'))).'
+			</li></ul>';
+*/
+	return $strings;
+
+}
+
+
+function y2cf_offer_csvupload_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
+	global $base_url;
+	global $user;
+//Merchants offers
+	if ($node->type == 'csv_upload' && $op=='insert') {
+    if (!ini_get('safe_mode')) {
+	   set_time_limit(0);
+		}
+		ini_set('display_errors', 1);
+    $path_module = drupal_get_path('module', 'y2cf_offer_csvupload');
+		require_once($path_module."/DataSource.php");
+		require_once($path_module."/fileread.php");
+    $last_csv_upload_nid  = db_fetch_array(db_query("select max(nid) as nid from {node} where type='csv_upload' and uid='".$user->uid."'"));
+    $csv_file_name = db_fetch_array(db_query("select ff.filepath from {content_type_csv_upload} ctcu inner join {files} ff on ctcu.field_upload_csv_fid = ff.fid where nid ='".$last_csv_upload_nid['nid']."' and uid='".$user->uid."' "));
+		$path= $base_url.'/'.$csv_file_name['filepath'];
+
+    $csv = new File_CSV_DataSource;
+		$csv->load($csv_file_name['filepath']);
+		$data_array = $csv->connect();
+    $merchant_errors = array();
+
+    //print_r($data_array);die;
+
+
+      $operators_incr = 0;
+      $testing_number_incr = 0;
+      $fb_linksts_incr = 0;
+      $point_sms_incr = 0;
+      $offer_sms_incr = 0;
+      $coupon_code_sms_incr = 0;
+      $merchant_sms_incr = 0;
+      $overall_resp_time_incr = 0;
+      $testing_sts_incr = 0;
+      $tester_delta = 0;
+
+    foreach($data_array as $key => $offer_value) {
+      $merchant_code = $offer_value['merchant_code'];
+			$mer_vid = db_result(db_query("select vid from {node} where nid='".$merchant_code."' "));
+			$merchant_name = db_result(db_query("select title from {node} where nid='".$mer_vid."' "));
+      $data_acc_status = $offer_value['data_accetance_status'];
+			$comments = $offer_value['da_dr_comments'];
+			$latitude = $offer_value['latitude'];
+			$longitude = $offer_value['longitude'];
+
+      $ofr_upld_sts = $offer_value['offer_upload_status'];
+      $ofr_upl_cmnts = $offer_value['offer_upload_comments'];
+      $ofr_tst_sts = $offer_value['offer_testing_status'];
+      $ofr_tst_cmnts = $offer_value['offer_test_comments'];
+
+      $lmd_exp = explode("/", date("m/d/Y"));
+      $lmd = mktime(0,0,0,$lmd_exp[0],$lmd_exp[1],$lmd_exp[2]);
+
+
+//User role
+      $rs_rid  = get_user_role_id($user->uid);
+//Ops head status upload
+   
+    if($rs_rid == 'operationhead') {
+    	//field_mo_outlet_lnd_no_number   field_hoppr_new_ll2_value
+    	$app_val_status = $offer_value['app_validation'];
+    	$outlet_con_num = $offer_value['outlet_contact_number'];
+    	$outlet_con_alt_num = $offer_value['outlet_alt_contact_number'];
+    	
+    $merchant_name = db_result(db_query("select title from {node} where nid='".$mer_vid."' "));
+    $sql_sts = "UPDATE {content_type_merchant_outlet} set field_hop_revalidation_appval_value='".$app_val_status."', field_mo_outlet_lnd_no_number = '".$outlet_con_num."', field_hoppr_new_ll2_value = '".$outlet_con_alt_num."' where vid='".$mer_vid."' ";
+    db_query($sql_sts);
+    	
+    	/*$sql_sts = "UPDATE {content_type_merchant_outlet} set field_hop_ops_oh_ds_sts_mo_value='".$data_acc_status."', field_hop_ops_acc_rmrks_mo_value='".$comments."', field_hop_out_latitude_mo_value='".$latitude."', field_hop_mer_longitude_mo_value='".$longitude."', field_hop_oh_csvlmd_value='".$lmd."' where vid='".$mer_vid."' ";
+      db_query($sql_sts);
+//Automated date
+      $oh_act_date = db_result(db_query("select field_hop_oh_csvlmd_value from {content_type_merchant_outlet} where vid= '".$mer_vid."' "));
+      if(empty($oh_act_date)) {
+        $oh_sql_date_upd = "UPDATE {content_type_merchant_outlet} set field_hop_oh_csvlmd_value='".$lmd."' where vid='".$mer_vid."' ";
+        db_query($oh_sql_date_upd);
+      }*/
+      drupal_set_message("App Validation Status for merchant &nbsp;&nbsp; -> &nbsp;&nbsp;".$merchant_name);
+    }
+   
+//product ops for script entry
+if($rs_rid == 'y2cfproducts') {
+	$pro_kw_script = $offer_value['merchant_script'];
+    $pro_keywords = $offer_value['keyword'];
+    $sql_sts = "UPDATE {content_type_merchant_outlet} set field_pro_script_value='".$pro_kw_script."',field_hop_ops_pro_kwds_mo_value='".$pro_keywords."' where vid='".$mer_vid."' ";
+      db_query($sql_sts);
+      //Automated date
+      $pro_act_date = db_result(db_query("select field_hop_pro_lmdate_value from {content_type_merchant_outlet} where vid= '".$mer_vid."' "));
+      if(!empty($pro_keywords)) {
+        if(empty($pro_act_date)) {
+            $pro_sql_date_upd = "UPDATE {content_type_merchant_outlet} set field_hop_pro_lmdate_value='".$lmd."' where vid='".$mer_vid."' ";
+            db_query($pro_sql_date_upd);
+        }
+}
+$update_mer_scr = db_result(db_query("select title from {node} where vid='".$mer_vid."' "));
+    drupal_set_message("Script edited for the merchant &nbsp;&nbsp; -> &nbsp;&nbsp;".$update_mer_scr);
+}
+//Creative design status
+    if($rs_rid == 'hopprcreativedesign') {
+      $cr_merchant_code = $offer_value['creative_merchant_code'];
+      $merchant_name = db_result(db_query("select title from {node} where nid='".$cr_merchant_code."' "));
+      $cr_mer_vid = db_result(db_query("select vid from {node} where nid='".$cr_merchant_code."' "));
+      $creative_status = $offer_value['creative_status'];
+
+      if($creative_status == 'Yes' || $creative_status == 'YES' || $creative_status== 'yes') {
+          $cr_creative_status = 'Yes';
+      }else{
+          form_set_error('field_upload_csv', 'Error in Creative design Status format');
+          drupal_goto($base_url.'/node/add/csv-upload');
+      }
+
+      $cr_sql_sts = "UPDATE {content_type_merchant_outlet} set field_hoppr_creativedsgnab_out_value='".$cr_creative_status."'  where vid='".$cr_mer_vid."' ";
+      db_query($cr_sql_sts);
+    //Automated date
+      $crt_act_date = db_result(db_query("select field_hop_cr_csvlmd_value from {content_type_merchant_outlet} where vid= '".$mer_vid."' "));
+      if(empty($crt_act_date)) {
+        $crt_sql_date_upd = "UPDATE {content_type_merchant_outlet} set field_hop_cr_csvlmd_value='".$lmd."' where vid='".$mer_vid."' ";
+        db_query($crt_sql_date_upd);
+      }
+
+
+      drupal_set_message("Creative Status updated for the merchant &nbsp;&nbsp; -> &nbsp;&nbsp;".$merchant_name);
+    }
+//hoppr offr upload
+    if($rs_rid == 'hopprofferupload') {
+  		if($ofr_upld_sts=='Complete' || $ofr_upld_sts=='complete') {
+  			$sql_ofr_sts = "UPDATE {content_type_merchant_outlet} set field_hoppr_ofr_upld_value='".ucwords($ofr_upld_sts)."', field_hop_ofr_upld_cmnts_value='".$ofr_upl_cmnts."'  where vid='".$mer_vid."' ";
+  			db_query($sql_ofr_sts);
+  		}else{
+  			form_set_error('title','ERROR');
+  		}  	
+      
+
+    //Automated date
+      $ofrupl_act_date = db_result(db_query("select field_hop_ou_csvlmd_value from {content_type_merchant_outlet} where vid= '".$mer_vid."' "));
+      if(empty($ofrupl_act_date)) {
+        $ofr_uplsql_date_upd = "UPDATE {content_type_merchant_outlet} set field_hop_ou_csvlmd_value='".$lmd."' where vid='".$mer_vid."' ";
+        db_query($ofr_uplsql_date_upd);
+      }
+
+      drupal_set_message("Offer upload Status for the merchant &nbsp;&nbsp; -> &nbsp;&nbsp;".$merchant_name);
+    }
+//Documentation department
+//Merchant offer---Docs---update mail communication and mail communication status.
+    if($rs_rid == 'operationmngr' || $rs_rid == 'y2cfmanager') {
+    	$merchant_offer_code = $offer_value['docs_merchant_offer_code'];
+      $mer_offer_vid = db_result(db_query("select vid from {node} where nid='".$merchant_offer_code."' "));
+      $merchant_name = db_result(db_query("select title from {node} where nid='".$merchant_offer_code."' "));
+      $mail_comm = $offer_value['docs_mail_communication'];
+      $mail_on = explode("/", $offer_value['docs_mail_comm_on']);
+//Exception for month and date
+//Error for month
+      if($mail_on[0] > 12 || $mail_on[0] < 1) {
+        form_set_error('field_upload_csv', 'Error in date format-date');
+        drupal_goto($base_url.'/node/add/csv-upload');
+      }
+//Error for day
+      if($mail_on[1] > 31 || $mail_on[1] < 1) {
+        form_set_error('field_upload_csv', 'Error in date format-month');
+        drupal_goto($base_url.'/node/add/csv-upload');
+      }
+      $docs_dt_m = $mail_on[1];
+      $docs_day_of_month = $docs_dt_m - 1;
+      $mail_comm_on = $mail_on[2].'-'.get_format_number($mail_on[0]).'-'.get_format_number($docs_day_of_month).'T18:30:00';
+      $agr_hard_copy_rcvd_sts = $offer_value['docs_agreement_hard_copy_received_status'];
+
+
+      $sql_docs_comm_sts = "UPDATE {content_type_offer_detail} set field_hoppr_new_mail_comm_value = '".$mail_comm."', field_hop_mal_com_snt_on_value = '".$mail_comm_on."' where vid='".$mer_offer_vid."' ";
+      db_query($sql_docs_comm_sts);
+      drupal_set_message("Mail communication updated for the merchant &nbsp;&nbsp; -> &nbsp;&nbsp;".$merchant_name);
+    }
+
+// POS department
+    if($rs_rid == 'posbrand') {
+      $pos_merchant_code = $offer_value['pos_merchant_code'];
+      $pos_mer_vid = db_result(db_query("select vid from {node} where nid='".$pos_merchant_code."' "));
+      $pos_merchant_name = db_result(db_query("select title from {node} where nid='".$pos_merchant_code."' "));
+      $delivery_date = trim($offer_value['pos_delivery_date']);
+      if(!empty($delivery_date)) {
+		      $pos_del_date = explode("/", $delivery_date);
+		      if($pos_del_date[0] > 12 || $pos_del_date[0] < 1) {
+		        form_set_error('field_upload_csv', 'POS:Error in date format');
+		        drupal_goto($base_url.'/node/add/csv-upload');
+		      }
+		//Error for day
+		      if($pos_del_date[1] > 31 || $pos_del_date[1] < 1) {
+		        form_set_error('field_upload_csv', 'POS:Error in date format');
+		        drupal_goto($base_url.'/node/add/csv-upload');
+		      }
+      }
+      $dt_m = $pos_del_date[1];
+      $day_of_month = $dt_m - 1;
+      $pos_final_del_date = $pos_del_date[2].'-'.get_format_number($pos_del_date[0]).'-'.get_format_number($day_of_month).'T18:30:00';
+//Stickers
+      $sticker_sent = $offer_value['pos_sticker_sent'];
+      if(!empty($sticker_sent)) {
+	      if($sticker_sent == 'Sticker' || $sticker_sent == 'sticker' || $sticker_sent== 'Yes' || $sticker_sent == 'yes') {
+	        $pos_sticker_sent = 'Sticker';
+	      }else{
+	      	form_set_error('field_upload_csv', 'Error in Sticker format');
+	        drupal_goto($base_url.'/node/add/csv-upload');
+	      }
+      }
+      $tentcard_sent = $offer_value['pos_tentcard_sent'];
+      if(!empty($tentcard_sent)) {
+	      if($tentcard_sent == 'Tent Card' || $tentcard_sent == 'tent card' || $tentcard_sent == 'Yes' || $tentcard_sent == 'yes') {
+	        $pos_tentcard_sent = 'Tent Card';
+	      }else{
+	        form_set_error('field_upload_csv', 'Error in Tent Card format');
+	        drupal_goto($base_url.'/node/add/csv-upload');
+	      }
+      }
+
+      $poster_sent = $offer_value['pos_poster_sent'];
+      if(!empty($poster_sent)) {
+	      if($poster_sent == 'poster' || $poster_sent == 'Poster' || $poster_sent == 'Yes' || $poster_sent == 'yes') {
+	        $pos_poster_sent = 'poster';
+	      }else{
+	        form_set_error('field_upload_csv', 'Error in poster format');
+	        drupal_goto($base_url.'/node/add/csv-upload');
+	      }
+      }
+      //if not delivered or Not Delivered
+      $pos_overallstatus = trim($offer_value['pos_overall_status']);
+      /*if(!empty($pos_overallstatus)) {
+	      if($pos_overallstatus != 'Delivered' || $pos_overallstatus != 'Not Delivered') {
+	      	form_set_error('field_upload_csv', 'Error in Overall Status format as "Delivered" or "Not Delivered" ');
+	        drupal_goto($base_url.'/node/add/csv-upload');
+	      }
+      }*/
+      $pos_reason_for_not_del = trim($offer_value['pos_reason_for_not_delivered']);
+
+
+
+      $pos_sql_ofr_sts = "UPDATE {content_type_merchant_outlet} set field_hop_pos_del_dt_mo_value='".$pos_final_del_date."', field_hop_pos_oa_status_mo_value='".$pos_overallstatus."', field_hop_pos_nt_del_mo_value='".$pos_reason_for_not_del."' where vid='".$pos_mer_vid."' ";
+      db_query($pos_sql_ofr_sts);
+
+
+      $i=0;
+      db_query("delete from content_field_hoppr_metral_sent_mo where nid='".$pos_merchant_code."' ");
+
+      if(!empty($sticker_sent)) {
+        db_query("INSERT into content_field_hoppr_metral_sent_mo (vid,nid,delta,field_hoppr_metral_sent_mo_value) values('".$pos_mer_vid."','".$pos_merchant_code."','".$i."','".$pos_sticker_sent."') ");
+      }
+      if(!empty($tentcard_sent)) {
+        db_query("insert into content_field_hoppr_metral_sent_mo (vid,nid,delta,field_hoppr_metral_sent_mo_value) values('".$pos_mer_vid."','".$pos_merchant_code."','".++$i."','".$pos_tentcard_sent."') ");
+      }
+      if(!empty($poster_sent)) {
+        db_query("insert into content_field_hoppr_metral_sent_mo (vid,nid,delta,field_hoppr_metral_sent_mo_value) values('".$pos_mer_vid."','".$pos_merchant_code."','".++$i."','".$pos_poster_sent."') ");
+      }
+
+    drupal_set_message("POS updated for the merchant &nbsp;&nbsp; -> &nbsp;&nbsp;".$pos_merchant_name);
+
+
+    }//POS end s here
+//Offer Testing departments
+
+//OFFER TESTING
+    if($rs_rid == 'hopproffer testing' || $user->uid==1) {
+    	$tstmerchant_offer_code = $offer_value['outlet_code'];
+      $mer_offer_vid = db_result(db_query("select vid from {node} where nid='".$tstmerchant_offer_code."' "));
+      $tst_merchant_name = db_result(db_query("select title from {node} where nid='".$tstmerchant_offer_code."' "));
+
+
+
+      $operators = $offer_value['operators'];
+      $testing_number = $offer_value['testing_numbers'];
+      $fb_linksts = $offer_value['fb_link_sts'];
+      $point_sms = $offer_value['point_sms_sts'];
+      $offer_sms = $offer_value['offer_sms_sts'];
+      $coupon_code_sms = $offer_value['coupon_code_sms_sts'];
+      $merchant_sms = $offer_value['merchant_sms_sts'];
+      $overall_resp_time = $offer_value['overall_response_time'];
+      $testing_sts = $offer_value['testing_sts'];
+
+      db_query("delete from content_field_hop_mg_oprts where nid='".$tstmerchant_offer_code."' and field_hop_mg_oprts_value is null and delta='0' ");
+
+
+      db_query("delete from content_field_hop_mg_tst2_num where nid='".$tstmerchant_offer_code."' and field_hop_mg_tst2_num_number is null and delta='0' ");
+
+
+      db_query("delete from content_field_hop_mg_fb_lnk where nid='".$tstmerchant_offer_code."' and field_hop_mg_fb_lnk_value is null and delta='0' ");
+
+
+      db_query("delete from content_field_hop_mg_psms where nid='".$tstmerchant_offer_code."' and field_hop_mg_psms_value is null and delta='0' ");
+
+
+      db_query("delete from content_field_hop_mg_ofrsms where nid='".$tstmerchant_offer_code."' and field_hop_mg_ofrsms_value is null and delta='0' ");
+
+
+      db_query("delete from content_field_hop_mg_ccsms where nid='".$tstmerchant_offer_code."' and field_hop_mg_ccsms_value is null and delta='0' ");
+
+
+      db_query("delete from content_field_hop_mg_mersms where nid='".$tstmerchant_offer_code."' and field_hop_mg_mersms_value is null and delta='0' ");
+
+
+      db_query("delete from content_field_hop_mg_rt where nid='".$tstmerchant_offer_code."' and field_hop_mg_rt_value is null and delta='0' ");
+
+
+      db_query("delete from content_field_hop_mg_tststs where nid='".$tstmerchant_offer_code."' and field_hop_mg_tststs_value is null and delta='0' ");
+
+
+//Tester Entry
+      $tester_name = $offer_value['tester_name'];
+      db_query("delete from content_field_hop_testers where nid='".$tstmerchant_offer_code."' and field_hop_testers_value is null ");
+     db_query("REPLACE INTO {content_field_hop_testers} (vid,nid,delta,field_hop_testers_value) values('".$mer_offer_vid."','".$tstmerchant_offer_code."','".$tester_delta++."','".$tester_name."') ");
+//Date Entry
+      $first_tester_date = $offer_value['user1_testing_date'];
+      $second_tester_date = $offer_value['user2_testing_date'];
+      if(!empty($first_tester_date)) {
+        $tst_final_del_date = convert_dateformat_from_csv_to_portal($first_tester_date);
+      }
+      if(!empty($second_tester_date)) {
+        $second_tester_date = convert_dateformat_from_csv_to_portal($second_tester_date);
+      }
+
+      $testing_sql_ofr_sts = "UPDATE {content_type_merchant_outlet} set  field_hop_tst_date_value='".$tst_final_del_date."', field_hop_tst2_dat_value='".$second_tester_date."',field_hop_ot_csvlmd_value='".$lmd."' where vid='".$mer_offer_vid."' ";
+      db_query($testing_sql_ofr_sts);
+
+
+			if(!empty($operators)) {
+				db_query("REPLACE INTO {content_field_hop_mg_oprts} (vid,nid,delta,field_hop_mg_oprts_value) values('".$mer_offer_vid."','".$tstmerchant_offer_code."','".$operators_incr++."','".$operators."') ");
+			}
+
+			if(!empty($testing_number)) {
+				db_query("REPLACE INTO {content_field_hop_mg_tst2_num} (vid,nid,delta,field_hop_mg_tst2_num_number) values('".$mer_offer_vid."','".$tstmerchant_offer_code."','".$testing_number_incr++."','".$testing_number."') ");
+			}
+      if(!empty($fb_linksts)){
+      db_query("REPLACE INTO {content_field_hop_mg_fb_lnk} (vid,nid,delta,field_hop_mg_fb_lnk_value) values('".$mer_offer_vid."','".$tstmerchant_offer_code."','".$fb_linksts_incr++."','".$fb_linksts."') ");
+      }
+			if(!empty($point_sms)){
+				db_query("REPLACE INTO {content_field_hop_mg_psms} (vid,nid,delta,field_hop_mg_psms_value) values('".$mer_offer_vid."','".$tstmerchant_offer_code."','".$point_sms_incr++."','".$point_sms."') ");
+			}
+      if(!empty($offer_sms)){
+      db_query("REPLACE INTO {content_field_hop_mg_ofrsms} (vid,nid,delta,field_hop_mg_ofrsms_value) values('".$mer_offer_vid."','".$tstmerchant_offer_code."','".$offer_sms_incr++."','".$offer_sms."') ");
+      }
+			if(!empty($coupon_code_sms)){
+				db_query("REPLACE INTO {content_field_hop_mg_ccsms} (vid,nid,delta,field_hop_mg_ccsms_value) values('".$mer_offer_vid."','".$tstmerchant_offer_code."','".$coupon_code_sms_incr++."','".$coupon_code_sms."') ");
+			}
+		 if(!empty($merchant_sms)){
+		 	    db_query("REPLACE INTO {content_field_hop_mg_mersms} (vid,nid,delta,field_hop_mg_mersms_value) values('".$mer_offer_vid."','".$tstmerchant_offer_code."','".$merchant_sms_incr++."','".$merchant_sms."') ");
+		 }
+			if(!empty($overall_resp_time)){
+				db_query("REPLACE INTO {content_field_hop_mg_rt} (vid,nid,delta,field_hop_mg_rt_value) values('".$mer_offer_vid."','".$tstmerchant_offer_code."','".$overall_resp_time_incr++."','".$overall_resp_time."') ");
+			}
+      if(!empty($testing_sts)) {
+      	db_query("REPLACE INTO {content_field_hop_mg_tststs} (vid,nid,delta,field_hop_mg_tststs_value) values('".$mer_offer_vid."','".$tstmerchant_offer_code."','".$testing_sts_incr++."','".$testing_sts."') ");
+      }
+  }
+}
+  drupal_flush_all_caches();
+//Delete the file from the system
+  unlink($path);
+//delete the csv uploaded file node
+/*
+    $nid = db_query("SELECT nid from {node} where type ='csv_upload' ");
+		while($rs = db_fetch_array($nid)){
+			node_delete($rs['nid']);
+		}
+		*/
+    //return $output;
+	}
+
+
+
+	/***********************		Upload Merchant Outlet		****************************/
+  if ($node->type == 'csv_merchant_outlet_upload' && $op=='insert') {
+    if (!ini_get('safe_mode')) {
+			set_time_limit(0);
+		}
+		ini_set('display_errors', 1);
+		ini_set('memory_limit', '-1');
+		
+    $path = drupal_get_path('module', 'y2cf_offer_csvupload');
+		require_once($path."/DataSource.php");
+		require_once($path."/fileread.php");
+    $last_csv_upload_nid  = db_fetch_array(db_query("select max(nid) as nid from {node} where type='csv_merchant_outlet_upload' and uid='".$user->uid."'"));
+    $csv_file_name = db_fetch_array(db_query("select ff.filepath from {content_type_csv_merchant_outlet_upload} ctcu inner join {files} ff on ctcu.field_csv_merchant_out_upl_fid = ff.fid where nid ='".$last_csv_upload_nid['nid']."' and uid='".$user->uid."' "));
+		$path = $base_url.'/'.$csv_file_name['filepath'];
+    $csv = new File_CSV_DataSource;
+		$csv->load($csv_file_name['filepath']);
+		$data_array = $csv->connect();
+    $outlet_errors = array();
+    foreach($data_array as $key => $offer_value){
+
+    	$mercahnt_avail = db_result(db_query("Select vid from node where nid='".$offer_value['merchant_code']."' and type='offer_detail' "));
+
+    	if(empty($mercahnt_avail)) {
+    		$mer_id_errmsg = '<a href="'.$base_url.'"/node/add/offer-detail">Click here</a>';
+    		form_set_error("title", "First enter merchant offer details. ". $mer_id_errmsg." to add merchant offer");
+    		drupal_goto($base_url.'/node/add/csv-merchant-outlet-upload');
+    	}
+
+      $merchant_outlet = db_fetch_array(db_query("select n.nid from {node} n inner join {content_type_merchant_outlet} ctmo on n.vid=ctmo.vid where n.title = '" . trim($offer_value['outlet_name']) . "' and n.type='merchant_outlet' and ctmo.field_hopper_merchant_olt_nid='".$offer_value['merchant_code']."' "));
+      if (!empty($merchant_outlet['nid'])) {
+        $node = node_load($merchant_outlet['nid']);
+        $node->is_new = 0;
+      }else {
+        $node = new stdClass();
+        $node->is_new = 1;
+        $node->type = "merchant_outlet";
+        $node->uid = 66;
+        $node->name = 'admin';
+        $node->status = 1;
+        $node->created = time();
+        $node->changed = time();
+      }
+
+			$outlet_name = trim($offer_value['outlet_name']);
+			if (!empty($outlet_name)) {
+				$node->title = $outlet_name;
+			}
+			else {
+				form_set_error("title", "Outlet name should be required");
+				csv_node_deletion();
+				drupal_goto($base_url.'/node/add/csv-merchant-outlet-upload');
+			}
+//ERRORS
+			$y2cf_yes_msg = "YES";
+			$y2cf_no_msg = "NO";
+			$y2cf_not_msg = "NOTM";
+
+//CITY NAME  field_hopprs_city  vid=4
+  $hop_city = trim($offer_value['city']);
+      if(!empty($hop_city)) {
+
+        if (is_numeric($hop_city)) {
+          $city_tid = db_result(db_query("select tid from {term_data} where tid = '".$hop_city."' and vid='4' "));
+          if($city_tid) {
+            $match_city = $city_tid;
+          }else {
+
+            csv_node_deletion();
+          }
+        }
+        else {
+          $match_city = db_result(db_query("select tid from {term_data} where name = '".$hop_city."' and vid='4' "));
+        }
+        if($match_city) {
+          $node->field_hopprs_city[0]['value'] = $match_city;
+          $outlet_errors[$outlet_name]['city'] = $y2cf_yes_msg;
+        }
+        else {
+          $outlet_errors[$outlet_name]['city'] = $y2cf_no_msg;
+          csv_node_deletion();
+        }
+      }else {
+        $outlet_errors[$outlet_name]['city'] = $y2cf_not_msg;
+      }
+
+
+//  CITY HFA
+  $city_hfa = $offer_value['hfa'];
+  if(!empty($city_hfa)) {
+    if (is_numeric($city_hfa)) {
+      $hfa_tid = db_result(db_query("select tid from {term_data} where tid = '".$city_hfa."' and vid='5' "));
+      if($hfa_tid) {
+        $match_hfa = $hfa_tid;
+      }else {
+        $outlet_errors[$outlet_name][] = $hfa_error;
+        csv_node_deletion();
+      }
+    }else {
+        $match_hfa = db_result(db_query("select tid from {term_data} where name = '".$city_hfa."' and vid='5' "));
+    }
+    if ($match_hfa) {
+      $node->field_hopper_city_hfa[0]['value'] = $match_hfa;
+      $outlet_errors[$outlet_name]['hfa'] = $y2cf_yes_msg;
+    }else {
+      $outlet_errors[$outlet_name]['hfa'] = $y2cf_no_msg;
+      csv_node_deletion();
+    }
+  }else{
+        $outlet_errors[$outlet_name]['hfa'] = $y2cf_not_msg;
+      }
+//outlet type
+      $outlet_type = $offer_value['outlet_type'];
+      if(!empty($outlet_type)) {
+        if($outlet_type == 'own' || $outlet_type == 'Own' || $outlet_type == 'franchise' || $outlet_type == 'Franchise' || $outlet_type == 'other' || $outlet_type == 'Other') {
+
+          $node->field_mo_outlet_type[0]['value'] = trim(ucwords($outlet_type));
+          $outlet_errors[$outlet_name]['outlet_type'] = $y2cf_yes_msg;
+        }
+        else {
+          $outlet_errors[$outlet_name]['outlet_type'] = $y2cf_no_msg;
+          csv_node_deletion();
+        }
+      }else {
+      $outlet_errors[$outlet_name]['outlet_type'] = $y2cf_not_msg;
+      }
+
+
+      $node->field_mo_hop_outlet_code[0]['value'] = $offer_value['outlet_code'];
+// STATE NAME
+      $hop_state = trim($offer_value['state']);
+      if(!empty($hop_state)) {
+        if (is_numeric($hop_state)) {
+          $state_tid = db_result(db_query("select tid from {term_data} where tid = '".$hop_state."' and vid='12' "));
+          if($state_tid) {
+            $match_state = $state_tid;
+            }else {
+            $outlet_errors[$outlet_name][] = $state_error;
+            csv_node_deletion();
+            }
+          }
+        else {
+          $state_sub = substr($hop_state,0,4);
+          $match_state = db_result(db_query("select tid from {term_data} where name LIKE '".$hop_state."%' and vid='12' "));
+        }
+        if($match_state) {
+          $node->field_mo_hopper_state[0]['value'] = $match_state;
+          $outlet_errors[$outlet_name]['state'] = $y2cf_yes_msg;
+        }
+        else {
+          $outlet_errors[$outlet_name]['state'] = $y2cf_no_msg;
+          csv_node_deletion();
+        }
+      }else {
+      $outlet_errors[$outlet_name]['state'] = $y2cf_not_msg;
+      }
+//ZIP Code
+      $zip = $offer_value['zip'];
+      if(!empty($zip)) {
+        if (is_numeric($zip)) {
+          $node->field_mo_hop_zipcode[0]['value'] = $zip;
+          $outlet_errors[$outlet_name]['zip'] = $y2cf_yes_msg;
+        }
+        else {
+          $outlet_errors[$outlet_name]['zip'] = $y2cf_no_msg;
+          csv_node_deletion();
+        }
+      }else {
+        $outlet_errors[$outlet_name]['zip'] = $y2cf_not_msg;
+      }
+      $node->field_hop_hfa_ar_loc[0]['value'] = $offer_value['area_location'];
+			$node->field_mo_loc_address_1[0]['value'] = $offer_value['address_1'];
+			$node->field_mo_loc_address_2[0]['value'] = $offer_value['address_2'];
+			$node->field_mo_loc_landmark[0]['value'] = $offer_value['address_3'];
+			$node->field_mo_landmark2[0]['value'] = $offer_value['landmark'];
+      $node->field_mo_hop_contact_person[0]['value'] = $offer_value['contact_person'];
+			$node->field_mo_hop_cp_designation[0]['value'] = $offer_value['designation'];
+			$node->field_mo_hop_cp_emailid[0]['email'] = $offer_value['email_id'];
+			$node->field_hop_ops_pro_kwds_mo[0]['value'] = $offer_value['keyword'];
+      //Different Status
+			$node->field_hop_ops_oh_ds_sts_mo[0]['value'] = "Accepted";
+			$node->field_hop_offer_ops_status_mo[0]['value'] = "Approved";
+			$node->field_hop_pro_eval_status[0]['value'] = "Approved";
+//contact person mobile
+			$cp_mobile_no = $offer_value['contact_person_mobile_no'];
+			$mobile_no_length = strlen($cp_mobile_no);
+			if(!empty($cp_mobile_no)) {
+				if (is_numeric($cp_mobile_no) && ($mobile_no_length >= 10 && $mobile_no_length <= 11)) {
+					$node->field_con_per_mon_mo[0]['number'] = $cp_mobile_no;
+					$outlet_errors[$outlet_name]['contact_person_mobile_no'] = $y2cf_yes_msg;
+				}
+				else {
+					$outlet_errors[$outlet_name]['contact_person_mobile_no'] = $y2cf_no_msg;
+					csv_node_deletion();
+				}
+			}else{
+				$outlet_errors[$outlet_name]['contact_person_mobile_no'] = $y2cf_not_msg;
+			}
+//Contact person alt mobile number
+			$contact_person_alt_mobile_no = $offer_value['contact_person_alt_mobile_no'];
+			$contact_person_alt_mobile_no_length = strlen($contact_person_alt_mobile_no);
+			if(!empty($contact_person_alt_mobile_no)) {
+				if (is_numeric($contact_person_alt_mobile_no) && ($contact_person_alt_mobile_no_length >= 10 && $contact_person_alt_mobile_no_length <= 11)) {
+          $node->field_hop_con_per_alt_mobno[0]['number'] = $contact_person_alt_mobile_no;
+					$outlet_errors[$outlet_name]['contact_person_alt_mobile_no'] = $y2cf_yes_msg;
+				}
+				else {
+					$outlet_errors[$outlet_name]['contact_person_alt_mobile_no'] = $y2cf_no_msg;
+					csv_node_deletion();
+				}
+			}else{
+				$outlet_errors[$outlet_name]['contact_person_alt_mobile_no'] = $y2cf_not_msg;
+			}
+//Coupon detail to be recieved on
+			$contact_detail_to_be_recieved_on = $offer_value['contact_detail_to_be_recieved_on'];
+			$contact_detail_to_be_recieved_on_length = strlen($contact_detail_to_be_recieved_on);
+			if(!empty($contact_detail_to_be_recieved_on)) {
+				if (is_numeric($contact_detail_to_be_recieved_on) && ($contact_detail_to_be_recieved_on_length >= 10 && $contact_detail_to_be_recieved_on_length <= 11)) {
+          $node->field_mo_cou_det_rec_mob[0]['number'] = $contact_detail_to_be_recieved_on;
+					$outlet_errors[$outlet_name]['contact_detail_to_be_recieved_on'] = $y2cf_yes_msg;
+				}
+				else {
+					$outlet_errors[$outlet_name]['contact_detail_to_be_recieved_on'] = $y2cf_no_msg;
+					csv_node_deletion();
+				}
+			}else{
+				$outlet_errors[$outlet_name]['contact_detail_to_be_recieved_on'] = $y2cf_not_msg;
+			}
+//Outlet landline no
+			$outlet_landline_no = $offer_value['outlet_landline_no'];
+			$outlet_landline_no_length = strlen($outlet_landline_no);
+			if(!empty($outlet_landline_no)) {
+				if (is_numeric($outlet_landline_no) && ($outlet_landline_no_length >= 10 && $outlet_landline_no_length <= 11)) {
+
+					$node->field_mo_outlet_lnd_no[0]['number'] = $outlet_landline_no;
+					$outlet_errors[$outlet_name]['outlet_landline_no'] = $y2cf_yes_msg;
+				}
+				else {
+					$outlet_errors[$outlet_name]['outlet_landline_no'] = $y2cf_no_msg;
+					csv_node_deletion();
+				}
+			}else{
+				$outlet_errors[$outlet_name]['outlet_landline_no'] = $y2cf_not_msg;
+			}
+//Outlet landline alternate number
+      $outlet_landline_no_2 = $offer_value['outlet_landline_no_2'];
+      $outlet_landline_no_length_alt = strlen($outlet_landline_no_2);
+      if(!empty($outlet_landline_no_2)) {
+        if (is_numeric($outlet_landline_no_2) && ($outlet_landline_no_length_alt >= 10 && $outlet_landline_no_length_alt <= 11)) {
+
+          $node->field_hoppr_new_ll2[0]['number'] = $outlet_landline_no_2;
+          $outlet_errors[$outlet_name]['outlet_landline_no_2'] = $y2cf_yes_msg;
+        }
+        else {
+          $outlet_errors[$outlet_name]['outlet_landline_no_2'] = $y2cf_no_msg;
+          csv_node_deletion();
+        }
+      }else{
+        $outlet_errors[$outlet_name]['outlet_landline_no_2'] = $y2cf_not_msg;
+      }
+//Appointment no
+			$appointment_no = $offer_value['appointment_no'];
+			$appointment_no_length = strlen($appointment_no);
+			if(!empty($appointment_no)) {
+				if (is_numeric($appointment_no) && ($appointment_no_length >= 10 && $appointment_no_length <= 11)) {
+
+					$node->field_mo_app_mon_num[0]['number'] = $appointment_no;
+					$outlet_errors[$outlet_name]['appointment_no'] = $y2cf_yes_msg;
+				}
+				else {
+					$outlet_errors[$outlet_name]['appointment_no'] = $y2cf_no_msg;
+					csv_node_deletion();
+				}
+			}else{
+				$outlet_errors[$outlet_name]['appointment_no'] = $y2cf_not_msg;
+			}
+//Appointment alt no
+			$alt_appointment_no = $offer_value['alt_appointment_no'];
+			$alt_appointment_no_length = strlen($alt_appointment_no);
+			if(!empty($alt_appointment_no)) {
+				if (is_numeric($alt_appointment_no) && ($alt_appointment_no_length >= 10 && $alt_appointment_no_length <= 11)) {
+
+					$node->field_hop_alt_enq_app_num[0]['number'] = $alt_appointment_no;
+					$outlet_errors[$outlet_name]['alt_appointment_no'] = $y2cf_yes_msg;
+				}
+				else {
+					$outlet_errors[$outlet_name]['alt_appointment_no'] = $y2cf_no_msg;
+					csv_node_deletion();
+				}
+			}else{
+				$outlet_errors[$outlet_name]['alt_appointment_no'] = $y2cf_not_msg;
+			}
+      //Appointment number
+			$node->field_mo_appointmengt[0]['value'] = $offer_value['appointment'];
+      //Operation timings
+      if (!empty($offer_value['operation_timings_from'])) {
+	      $opt_from = $offer_value['operation_timings_from'];
+	      $opt_exp = explode(":", $opt_from);
+	      $node->field_hop_ops_frm_hrs[0]['value'] = $opt_exp[0];
+	      $node->field_hop_ops_ot_mm_frm[0]['value'] = $opt_exp[1];
+      }
+      if (!empty($offer_value['operation_timings_to'])) {
+	      $opt_to = $offer_value['operation_timings_to'];
+	      $opt_to_exp = explode(":", $opt_to);
+	      $node->field_hop_ops_to_hrs[0]['value'] = $opt_to_exp[0];
+	      $node->field_hop_ops_ot_mm_to[0]['value'] = $opt_to_exp[1];
+      }
+      if (!empty($offer_value['offer_spec_timing_from'])) {
+          $spe_opt_from = $offer_value['offer_spec_timing_from'];
+          $spe_opt_exp = explode(":", $spe_opt_from);
+          $node->field_hop_ops_frm_hrs_op2[0]['value'] = $spe_opt_exp[0];
+          $node->field_hop_ops_ot_mm_frm_op2[0]['value'] = $spe_opt_exp[1];
+      }
+		  if (!empty($offer_value['offer_spec_timing_to'])) {
+          $spe_opt_to = $offer_value['offer_spec_timing_to'];
+          $spe_opt_to_exp = explode(":", $spe_opt_to);
+          $node->field_hop_ops_to_hrs_op2[0]['value'] = $spe_opt_to_exp[0];
+          $node->field_hop_ops_ot_mm_to_op2[0]['value'] = $spe_opt_to_exp[1];
+      }
+      if(!empty($offer_value['weekly_off'])) {
+		      $weekly_off_new = $offer_value['weekly_off'];
+		      $woexp = explode(",", $weekly_off_new);
+		      $delta = 0;
+		      $wocnt = count($woexp);
+		   if($wocnt > 1) {
+		      foreach($woexp as $value) {
+		      	if($value=='Monday' || $value=='monday' || $value=='MON' || $value=='mon') {
+		      		$wkly_off = 'Monday';
+		      	}
+		        if($value=='Tuesday' || $value=='tuesday' || $value=='TUE' || $value=='tue') {
+              $wkly_off = 'Tuesday';
+            }
+		        if($value=='Wednesday' || $value=='wednesday' || $value=='WED' || $value=='wed') {
+              $wkly_off = 'Wednesday';
+            }
+            if($value=='Thursday' || $value=='thursday' || $value=='THU' || $value=='thu') {
+              $wkly_off = 'Thursday';
+            }
+		        if($value=='Friday' || $value=='friday' || $value=='FRI' || $value=='fri') {
+              $wkly_off = 'Friday';
+            }
+		        if($value=='Saturday' || $value=='saturday' || $value=='SAT' || $value=='sat') {
+              $wkly_off = 'Saturday';
+            }
+		        if($value=='Sunday' || $value=='sunday' || $value=='SUN' || $value=='sun') {
+              $wkly_off = 'Sunday';
+            }
+		        if($value=='All days open (No weekly OFF)' || $value=='all' || $value=='all day open' || $value=='no off') {
+              $wkly_off = 'All days open (No weekly OFF)';
+            }
+
+		        $node->field_mo_weekly_off[$delta++]['value'] = $wkly_off;
+		      }
+		    }else{
+		      	$node->field_mo_weekly_off[0]['value'] = $weekly_off_new;
+		      }
+      }
+//NOT Valid on
+        $node->field_hop_outlet_nvon[0]['value'] = $offer_value['not_valid_on'];
+//no_of_tables_seats_beds
+			$no_of_tables_seats_beds = $offer_value['no_of_tables_seats_beds'];
+			if(!empty($no_of_tables_seats_beds)) {
+				if (is_numeric($no_of_tables_seats_beds)) {
+					$node->field_hop_no_tbls_bed_mo[0]['value'] = trim($no_of_tables_seats_beds);
+					$outlet_errors[$outlet_name]['no_of_tables_seats_beds'] = $y2cf_yes_msg;
+				}
+				else {
+					$outlet_errors[$outlet_name]['no_of_tables_seats_beds'] = $y2cf_no_msg;
+					csv_node_deletion();
+				}
+			}else {
+				$outlet_errors[$outlet_name]['no_of_tables_seats_beds'] = $y2cf_not_msg;
+			}
+//poster_required
+			$poster_required = $offer_value['poster_required'];
+			if(!empty($poster_required)) {
+				if (is_numeric($poster_required)) {
+					$node->field_hop_poster_requir_mo[0]['value'] = trim($poster_required);
+					$outlet_errors[$outlet_name]['poster_required'] = $y2cf_yes_msg;
+				}
+				else {
+					$outlet_errors[$outlet_name][] = $poster_error;
+					$outlet_errors[$outlet_name]['poster_required'] = $y2cf_no_msg;
+					csv_node_deletion();
+				}
+			}else {
+				$outlet_errors[$outlet_name]['poster_required'] = $y2cf_not_msg;
+			}
+//danglers
+			$danglers = $offer_value['danglers'];
+			if(!empty($danglers)) {
+				if (is_numeric($danglers)) {
+					$node->field_hop_danglers_mo[0]['value'] = trim($danglers);
+					$outlet_errors[$outlet_name]['danglers'] = $y2cf_yes_msg;
+				}
+				else {
+					$outlet_errors[$outlet_name]['danglers'] = $y2cf_no_msg;
+					csv_node_deletion();
+				}
+			}else {
+				$outlet_errors[$outlet_name]['danglers'] = $y2cf_not_msg;
+			}
+//tent_card_required
+			$tent_card_required = $offer_value['tent_card_required'];
+			if(!empty($tent_card_required)) {
+				if (is_numeric($tent_card_required)) {
+					$node->field_hop_tent_card_requ_mo[0]['value'] = trim($tent_card_required);
+					$outlet_errors[$outlet_name]['tent_card_required'] = $y2cf_yes_msg;
+				}
+				else {
+					$outlet_errors[$outlet_name]['tent_card_required'] = $y2cf_no_msg;
+					csv_node_deletion();
+				}
+			}else {
+				$outlet_errors[$outlet_name]['tent_card_required'] = $y2cf_not_msg;
+			}
+//standees
+			$standees = $offer_value['standees'];
+			if(!empty($standees)) {
+				if (is_numeric($standees)) {
+					$node->field_hop_standees_mo[0]['value'] = trim($standees);
+					$outlet_errors[$outlet_name]['standees'] = $y2cf_yes_msg;
+				}
+				else {
+					$outlet_errors[$outlet_name]['standees'] = $y2cf_no_msg;
+					csv_node_deletion();
+				}
+			}else {
+				$outlet_errors[$outlet_name]['standees'] = $y2cf_not_msg;
+			}
+//stickers
+			$stickers = $offer_value['stickers'];
+			if(!empty($stickers)) {
+				if (is_numeric($stickers)) {
+					$node->field_hop_stickers_mo[0]['value'] = trim($stickers);
+					$outlet_errors[$outlet_name]['stickers'] = $y2cf_yes_msg;
+				}
+				else {
+					$node->field_hop_stickers_mo[0]['value'] = trim($stickers);
+					$outlet_errors[$outlet_name]['stickers'] = $y2cf_no_msg;
+					csv_node_deletion();
+				}
+			}else {
+				$node->field_hop_stickers_mo[0]['value'] = trim($stickers);
+				$outlet_errors[$outlet_name]['stickers'] = $y2cf_not_msg;
+			}
+			//Other promotional meterials
+      $node->field_hopper_other_promo_mat[0]['value'] = $offer_value['other_promotional_meterial'];
+      $node->field_hop_mnfwsmssend_mo[0]['number'] = $offer_value['mobile_no_frm_which_loc_sms_send'];
+			$node->field_mo_hop_sms_thathas[0]['value'] = $offer_value['sms_that_has_been_send'];
+//Latitude
+			$latitude = $offer_value['latitude'];
+			if(!empty($latitude)) {
+				if (is_numeric($latitude) || is_float($latitude) ||($latitude > '8.05923' && $latitude < '37.09024')) {
+					$node->field_hop_out_latitude_mo[0]['value'] = trim($latitude);
+					$outlet_errors[$outlet_name]['latitude'] = $y2cf_yes_msg;
+				}
+				else {
+					$outlet_errors[$outlet_name]['latitude'] = $y2cf_no_msg;
+					csv_node_deletion();
+				}
+			}else {
+				$outlet_errors[$outlet_name]['latitude'] = $y2cf_not_msg;
+			}
+//Longitude
+			$longitude = $offer_value['longitude'];
+			if(!empty($latitude)) {
+				if (is_numeric($longitude) || is_float($longitude) || ($latitude > '74.480713' && $latitude < '97.024658')) {
+					$node->field_hop_mer_longitude_mo[0]['value'] = trim($longitude);
+					$outlet_errors[$outlet_name]['longitude'] = $y2cf_yes_msg;
+				}
+				else {
+					$outlet_errors[$outlet_name]['longitude'] = $y2cf_no_msg;
+					csv_node_deletion();
+				}
+			}else{
+				$outlet_errors[$outlet_name]['longitude'] = $y2cf_not_msg;
+			}
+//Remarks
+			$node->field_hop_mer_remarks_mo[0]['value'] = $offer_value['remarks'];
+      $node = node_submit($node);
+			node_save($node);
+			db_query("UPDATE `content_type_merchant_outlet` SET `field_hopper_merchant_olt_nid` = '".$offer_value['merchant_code']."' WHERE `nid` = '".$node->nid."' ");
+			$allmerchant_outlet_arr[] = $node->nid;
+      drupal_flush_all_caches();
+  }
+    // CSV Error report
+		$imgsrc = $base_url.'/sites/all/themes/y2cfprod/images/OK.png';
+		$crossimgsrc = $base_url.'/sites/all/themes/y2cfprod/images/delete.png';
+		$notmandatoryimgsrc = $base_url.'/sites/all/themes/y2cfprod/images/alerts.png';
+  print '<a href='.$base_url.'/node/add/csv-merchant-outlet-upload target="_blank	">Go to Outlet-CSV</a><br />
+	Some Indications<br />
+	<img src="'.$imgsrc.'" width="20px" height="20px"> - data in corresponding field is OK ,
+	<img src="'.$crossimgsrc.'" width="20px" height="20px"> - data in corresponding field is NOT OK and this field data not inserted into portal until you fix it but remaining data inserted,
+	<img src="'.$notmandatoryimgsrc.'" width="20px" height="20px"> - Blank field <br />
+
+	<span style="color:red;">CP-MOB:</span>Contact person mobile number,
+	<span style="color:red;">CP-ALT-MOB:</span>Contact person alternate mobile number,
+	<span style="color:red;">CD-RCV:</span>Coupon detail to be recieved on ,
+	<span style="color:red;">OLLNO:</span>outlet Landline number,
+	<span style="color:red;">APTNO:</span>Appointment Number,
+	<span style="color:red;">ALT-APTNO:</span>Alternate Appointment Number,
+
+	<br /><br />Some Validation rule:<br />
+<span style="color:red;">City:</span>It should be exact name or city ID
+<span style="color:red;">HFA:</span>It should be exact name or HFA ID
+<span style="color:red;">State:</span>It should be exact name or State ID
+<span style="color:red;">Zip Code:</span>It should be numeric value
+<span style="color:red;">Outlet Type:</span>It should be numeric value
+<span style="color:red;">No of tables:</span>It should be numeric value
+<span style="color:red;">Posters:</span>It should be numeric value
+<span style="color:red;">Danglers:</span>It should be numeric value
+<span style="color:red;">Tent Card:</span>It should be numeric value
+<span style="color:red;">Standees:</span>It should be numeric value
+<span style="color:red;">Stickers:</span>It should be numeric value
+<span style="color:red;">Latitude:</span>It should be numeric or floating value
+<span style="color:red;">Longitude:</span>It should be numeric or floating value
+<br /><br />';
+		print '<table style="background-color: #f5f5f5;padding: 5px;border-radius: 5px;-moz-border-radius: 5px;-webkit-border-radius: 5px;border: 1px solid #ebebeb;">
+			<tr style="border: 1px solid #ebebeb;">
+			  <td>Outlet Name</td>
+				<td style="border: 1px solid #ebebeb;">City</td>
+				<td style="border: 1px solid #ebebeb;">HFA</td>
+				<td style="border: 1px solid #ebebeb;">Outlet Type</td>
+        <td style="border: 1px solid #ebebeb;">State</td>
+				<td style="border: 1px solid #ebebeb;">Zip Code</td>
+        <td style="border: 1px solid #ebebeb;">CP-MOB</td>
+				<td style="border: 1px solid #ebebeb;">CP-ALT-MOB</td>
+				<td style="border: 1px solid #ebebeb;">CD-RCV</td>
+				<td style="border: 1px solid #ebebeb;">OLLNO</td>
+				<td style="border: 1px solid #ebebeb;">ALT-OLLNO</td>
+				<td style="border: 1px solid #ebebeb;">APTNO</td>
+				<td style="border: 1px solid #ebebeb;">ALT-APTNO</td>
+        <td style="border: 1px solid #ebebeb;">No of tables</td>
+				<td style="border: 1px solid #ebebeb;">Posters</td>
+				<td style="border: 1px solid #ebebeb;">Danglers</td>
+				<td style="border: 1px solid #ebebeb;">Tent Card</td>
+				<td style="border: 1px solid #ebebeb;">Standees</td>
+				<td style="border: 1px solid #ebebeb;">Stickers</td>
+				<td style="border: 1px solid #ebebeb;">Latitude</td>
+				<td style="border: 1px solid #ebebeb;">Longitude</td>
+			</tr>';
+    foreach($outlet_errors as $key => $error_val_arr) {
+			print '<tr><td style="border: 1px solid #ebebeb;"><span style="color:red;">'.$key.'</span></td>';
+			foreach($error_val_arr as $error_val) {
+				if($error_val == 'YES' ){
+					$error_msg = '<img src="'.$imgsrc.'" width="20px" height="20px">';
+				}elseif($error_val == 'NO'){
+					$error_msg = '<img src="'.$crossimgsrc.'" width="20px" height="20px">';
+        }elseif($error_val == 'NOTM') {
+            $error_msg = '<img src="'.$notmandatoryimgsrc.'" width="20px" height="20px">';
+				}
+				print '<td style="border: 1px solid #ebebeb;" align="center">'.$error_msg.'</td>';
+
+			}
+    print '</tr>';
+		}
+		print '</table>';
+
+		//delete the csv uploaded file node
+		$nid = db_query("SELECT nid from {node} where type ='csv_merchant_outlet_upload' ");
+		while($rs = db_fetch_array($nid)){
+			node_delete($rs['nid']);
+		}
+    $mer_nids = implode(",", $allmerchant_outlet_arr);
+		$merchantoffer_redirect_url = $base_url.'/y2cf/outletwelcomemsg/'.$mer_nids;
+		drupal_goto($merchantoffer_redirect_url);
+		return $output;
+	}
+}
+function csv_node_deletion() {
+	//delete the csv uploaded file node
+	$nid = db_query("SELECT nid from {node} where type ='csv_merchant_outlet_upload' ");
+	while($rs = db_fetch_array($nid)){
+		node_delete($rs['nid']);
+	}
+}
+function csv_node_deletion_for_merchant_offers() {
+	$nid = db_query("SELECT nid from {node} where type ='csv_upload' ");
+	while($rs = db_fetch_array($nid)){
+		node_delete($rs['nid']);
+	}
+}
+function isValidEmail($email){
+	return eregi("^[_a-z0-9-]+(\.[_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,3})$", $email);
+}
+function isValidURL($url) {
+	return preg_match('|^http(s)?://[a-z0-9-]+(.[a-z0-9-]+)*(:[0-9]+)?(/.*)?$|i', $url);
+}
+function get_city_list() {
+	$sql_city = db_query("select * from {term_data} where vid='4' ");
+	$city_arr = array();
+	while($rs = db_fetch_array($sql_city)) {
+		$city_arr[] = $rs;
+	}
+	$city_list = '';
+	$city_list .= '<span class="qtip-link">
+            <div class="qtip-tooltip">
+			<table><tr>';
+	$i = 1;
+	foreach($city_arr as $item) {
+		if ($i % 2 === 0) {
+			$city_list .="</tr>\n<tr>";
+		}
+		$city_list .="<td>".$item['name']."(" . $item['tid'] .")</td>\n";
+		$i++;
+	}
+	$city_list .='</tr></table></div>
+            City-List
+          </span>';
+  return $city_list;
+}
+function get_state_list() {
+	//state list
+  $sql_state = db_query("select * from {term_data} where vid='12' ");
+	$state_arr = array();
+	while($rs = db_fetch_array($sql_state)) {
+		$state_arr[] = $rs;
+	}
+	$state_list = '';
+	$state_list .= '<span class="qtip-link">
+            <div class="qtip-tooltip">
+			<table><tr>';
+	$i = 1;
+	foreach($state_arr as $item) {
+		if ($i % 2 === 0) {
+			$state_list .="</tr>\n<tr>";
+		}
+		$state_list .="<td>".$item['name']."(" . $item['tid'] .")</td>\n";
+		$i++;
+	}
+	$state_list .='</tr></table></div>
+            State-List
+          </span>';
+	return $state_list;
+}
+function somevalidationrule_formerchantoffers() {
+	$string = '<span style="color:red;">Genre:</span>
+A Mismatched data in genre found for the merchant<br />
+<span style="color:red;">offer signed date:</span>
+This should be in format as mm/dd/YYYY format
+<span style="color:red;">Tie-up Type:</span>It should be as ( Single, single, Mid Size, mid size, National, national<br />
+<span style="color:red;">participating outlet:</span>
+It should be numeric value<br />
+<span style="color:red;">participating city:</span>
+It should be numeric value<br />
+<span style="color:red;">offer coupon validity:</span>
+It should be numeric value<br />
+<span style="color:red;">signatory Title:</span>
+It should be as ( Mr, mr, Mrs, mrs, Ms, ms, Dr, dr, Prof, prof, Engg, engg<br />
+<span style="color:red;">signatory Mobile no:</span>It should be 10 or 11 digits<br />
+<span style="color:red;">signatory landline no:</span>It should be 10 or 11 digits<br />
+<span style="color:red;">signatory Email:</span>It should be in format as xyz@gmail.com<br />
+<span style="color:red;">signatory Alt-Email:</span>It should be in format as xyz@gmail.com<br />
+<span style="color:red;">Merchant category:</span>It should be any one out of  A, a, B, b, C, c, D, d<br />
+<span style="color:red;">Actual price:</span>It should be numeric value<br />
+<span style="color:red;">Offer price:</span>It should be numeric value<br />
+<span style="color:red;">Marketing Fee:</span>It should be numeric value<br />
+<span style="color:red;">Inclusive of taxes:</span>It should be as ( Yes, YES, yes, No, NO, no)<br />
+<span style="color:red;">Fine print2:Number of people voucher valid for :</span>It should be as ( Single Person, single person, Double, double, Triple, triple, Multiple, multiple)<br />
+<span style="color:red;">Fine print2:Multiple vouchers:</span>It should be as ( Can, CAN, can, Cannot, CANNOT, cannot)<br />
+<span style="color:red;">Website Address:</span>It should be in format as http://www.example.com<br />
+<span style="color:red;">Facebook URL:</span>It should be in format as http://www.example.com<br />
+<span style="color:red;">Twitter URL:</span>It should be in format as http://www.example.com';
+	return $string;
+}
+function somevalidationrule_formerchant_outlets() {
+	$string = 'Some Validation rule to write merchant Outlet CSV:<br />
+<span style="color:red;">City:</span>It should be exact name or city ID<br />
+<span style="color:red;">HFA:</span>It should be exact name or HFA ID<br />
+<span style="color:red;">State:</span>It should be exact name or State ID<br />
+<span style="color:red;">Zip Code:</span>It should be numeric value<br />
+<span style="color:red;">Outlet Type:</span>It should be numeric value<br />
+<span style="color:red;">No of tables:</span>It should be numeric value<br />
+<span style="color:red;">Posters:</span>It should be numeric value<br />
+<span style="color:red;">Danglers:</span>It should be numeric value<br />
+<span style="color:red;">Tent Card:</span>It should be numeric value<br />
+<span style="color:red;">Standees:</span>It should be numeric value<br />
+<span style="color:red;">Stickers:</span>It should be numeric value<br />
+<span style="color:red;">Latitude:</span>It should be numeric or floating value<br />
+<span style="color:red;">Longitude:</span>It should be numeric or floating value';
+	return $string;
+}
+function validate_mobile_numbers($cp_mobile_no,$node_arr,$keyword) {
+  $mobile_no_length = strlen($cp_mobile_no);
+	if(!empty($cp_mobile_no)) {
+		if (is_numeric($cp_mobile_no) && ($mobile_no_length >= 10 && $mobile_no_length <= 11)) {
+			$node_arr = $cp_mobile_no;
+			$outlet_errors[$outlet_name][$keyword] = 'YES';
+		}
+		else {
+			$outlet_errors[$outlet_name][$keyword] = 'NO';
+			csv_node_deletion();
+		}
+	}else{
+		$outlet_errors[$outlet_name][$keyword] = 'NOT';
+	}
+	return $node_arr;
+}

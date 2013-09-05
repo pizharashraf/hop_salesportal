@@ -1,0 +1,343 @@
+<?php
+
+function y2cf_hrmanager_perm() {
+	return array('Administer apply Leaves', 'Financial configuration');
+
+}
+function y2cf_hrmanager_form_alter(&$form, $form_state, $form_id) {
+	global $base_url;
+	global $user;
+
+	if($form_id == 'hr_leave_management_node_form') {
+		$form['path']['#access'] = FALSE;
+		$form['menu']['#access'] = FALSE;
+		$form['author']['#access'] = FALSE;
+		$form['options']['#access'] = FALSE;
+		$form['comment_settings']['#access'] = FALSE;
+		$form['revision_information']['#access'] = FALSE;
+		//$form['title']['#access'] = FALSE;
+
+		$form['hrm'] = array(
+			'#type' => 'item',
+			'#weight' => -31,
+			'#description' => header_menu_strr().'<br /><br />'
+			);
+	}
+	if($form_id == 'leave_type_conf_node_form') {
+		$form['path']['#access'] = FALSE;
+		$form['menu']['#access'] = FALSE;
+		$form['author']['#access'] = FALSE;
+		$form['options']['#access'] = FALSE;
+		$form['comment_settings']['#access'] = FALSE;
+		$form['revision_information']['#access'] = FALSE;
+		//$form['title']['#access'] = FALSE;
+		$form['hrm2'] = array(
+			'#type' => 'item',
+			'#weight' => -31,
+			'#description' => header_menu_strr().'<br /><br />'
+			);
+	}
+}
+
+function y2cf_hrmanager_menu() {
+	$items = array();
+
+	$items['y2cf/leaveapply'] = array(
+    'title' => 'Leave apply',
+    'page callback' => 'y2cf_leave_apply_management',
+	'access arguments' => array('Administer apply Leaves'),
+    'description' => 'Administer apply Leaves.',
+    'weight' => -4,
+	'type' => MENU_LOCAL_TASK,
+
+	);
+
+	$items['y2cf/myremainingleaves'] = array(
+    'title' => 'Remaining Leaves',
+    'page callback' => 'y2cf_remaining_leaves',
+	'access arguments' => array('Administer Remaining Leaves'),
+    'description' => 'Administer Remaining Leaves.',
+    'weight' => -4,
+	'type' => MENU_LOCAL_TASK,
+
+	);
+
+	$items['y2cf/financialconf'] = array(
+    'title' => 'Financial configuration',
+    'page callback' => 'y2cf_financial_configuration_year',
+	'access arguments' => array('Administer Financial configuration'),
+    'description' => 'Administer Financial configuration.',
+    'weight' => -4,
+	'type' => MENU_LOCAL_TASK,
+
+	);
+
+
+
+	return $items;
+}
+
+
+
+function header_menu_strr() {
+	global $base_url;
+	global $user;
+	$leave_history =  $base_url.'/y2cf/leaveapply';
+	$leave_apply = $base_url.'/node/add/hr-leave-management';
+	$leave_conf = $base_url.'/y2cf/financialconf';
+	$remaining_leaves = $base_url.'/y2cf/myremainingleaves';
+	$header_menyu = '';
+	$header_menyu .= '<ul class="sf-menu">
+  <li><a href="'.$leave_history.'">Leave History</a></li>
+			<li class="current"><a href="'.$leave_apply.'">Leave apply</a></li>
+			<li><a href="'.$leave_conf.'">Configuration</a></li>
+			<li><a href="#">Pending Leaves</a></li>
+			<li><a href="'.$remaining_leaves.'">Remaining Leaves</a></li>
+				</ul>';
+
+	$rs_join_date = db_result(db_query("SELECT ctp.field_hrm_joiningdate_value  from {content_type_profile} ctp inner join {node} nn on ctp.nid=nn.nid where nn.uid='".$user->uid."' "));
+
+	$rs_fin_nid = db_result(db_query("SELECT max(nid) as currentfin  from {node} where type = 'leave_type_conf' "));
+
+	$rs_conf_date = db_fetch_array(db_query("SELECT *  from {content_type_leave_type_conf} where nid = '".$rs_fin_nid."' "));
+
+	if($rs_join_date > $rs_conf_date['field_hrm_financial_year_value'] && $rs_join_date < $rs_conf_date['field_hrm_financial_year_value2']) {
+		//current fin emp
+		//calculate total no of months from joining date to end financial date
+	 $no_of_months_since_join = get_number_of_months_between_dates($rs_join_date, $rs_conf_date['field_hrm_financial_year_value2']);
+	 //and after that calculate all leave slots
+		$casual = 'YYYY';
+		$seek = 'YYYY';
+		$earn = 'YYYY';
+		//print 'cur';
+	}else{
+		// old employee.....all 21 leave slots applicable as seek,casual and others......
+		$casual = 7;
+		$seek = 5;
+		$earn = 9;
+		//print 'old';
+	}
+
+
+	//date_calc_date_to_days($day, $month, $year)   2011-10-23T18:30:00
+	$header_menyu .= '<table><tr><td>Total no of days since join</td></tr></table>';
+
+	return $header_menyu;
+}
+function y2cf_remaining_leaves() {
+
+	global $base_url;
+	global $user;
+
+	$output = '<br />';
+	$output .= header_menu_strr();
+
+
+
+
+	$output .= '<table><tr><td>Remaining Leaves</td></tr>
+  <tr><td>Casual Leave :&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 5</tr>
+  <tr><td>Sick Leave : &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;5</td></tr>
+  <tr><td>Earn Leave : &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;5</td></tr>
+  </table>';
+
+	return $output;
+}
+
+
+
+
+
+
+
+function y2cf_leave_apply_management() {
+	global $base_url;
+	global $user;
+	$rs_rid  = get_user_role_id($user->uid);
+	$leave_apply = $base_url.'/node/add/hr-leave-management';
+	$leave_conf = $base_url.'/node/add/leave-type-conf';
+	$remaining_leaves = $base_url.'/y2cf/myremainingleaves';
+	$output = '<br /><br />';
+	$output .= header_menu_strr();
+
+
+
+	//subject  from date   To date   comments   File   Action  (List Header Labels)
+
+	//once leave form submitted a mail send to TL/PM(if any)/HR
+	//Leave will automatically shows to everyone higher than his position.
+	//TL can see only concern department leave....means....saleshead can see only own salesperson leave and heirarchy.
+	//TL can approve/not approve/forward.....to PM/HR or admin
+
+
+	//External database connection when on same server
+
+
+
+
+
+
+
+	$header = array(
+	array('data' => 'S.No', 'field' => 'id',),
+	array('data' => 'Employee name'),
+	array('data' => 'Subject', 'field' => 'name'),
+	array('data' => 'Leave type', 'field' => 'name'),
+	array('data' => 'From Date', 'field' => 'msisdn'),
+	array('data' => 'To Date', 'field' => 'lat'),
+	array('data' => 'No. of Days'),
+	array('data' => 'Comments', 'field' => 'lon'),
+	array('data' => 'File', 'field' => 'no_of_days'),
+	array('data' => 'Created on', 'field' => 'created',  'sort' => 'desc'),
+	array('data' => 'Status'),
+	array('data' => 'Actions'),
+	);
+
+	$data = array();
+	//$sql_offer = "SELECT cthm.*,nn.* FROM {content_type_hr_leave_management} cthm inner join {node} nn on cthm.nid=nn.nid where nn.uid='".$user->uid."' ";
+
+	$sql_offer = "SELECT cthm.*,nn.* FROM {content_type_hr_leave_management} cthm inner join {node} nn on cthm.nid=nn.nid  ";
+
+	if($rs_rid == 'y2cfhrmanual' || $rs_rid == 'y2cfoperations' || $rs_rid == 'y2cfemployee' || $rs_rid == 'salesperson' || $rs_rid == 'reporting manager' || $rs_rid == 'operationmngr' || $rs_rid == 'operationhead') {
+		$sql_offer .= " and nn.uid='".$user->uid."' ";
+	}
+	//Total Count
+
+	//$sql_tipscount .= "SELECT count(nn.nid) as leavecount FROM {content_type_hr_leave_management} cthm inner join {node} nn on cthm.nid=nn.nid where nn.uid='".$user->uid."' ";
+
+	$sql_tipscount .= "SELECT count(nn.nid) as leavecount FROM {content_type_hr_leave_management} cthm inner join {node} nn on cthm.nid=nn.nid  ";
+	if($rs_rid == 'y2cfhrmanual' || $rs_rid == 'y2cfoperations' || $rs_rid == 'y2cfemployee' || $rs_rid == 'salesperson' || $rs_rid == 'reporting manager' || $rs_rid == 'operationmngr' || $rs_rid == 'operationhead') {
+		$sql_tipscount .= " and nn.uid='".$user->uid."' ";
+	}
+
+
+
+	$rs_tips = db_fetch_array(db_query($sql_tipscount));
+
+
+	$res_offer = pager_query($sql_offer . tablesort_sql($header), $limit = 50);
+	$serial_number = get_list_serial_number();
+
+
+	//date_calc_date_to_days($day, $month, $year)
+
+
+
+	while ($rsleave = db_fetch_array($res_offer)) {
+		$date_st = displat_date_in_dash_format($rsleave['field_hrm_from_to_date_value']);
+		$date_end = displat_date_in_dash_format($rsleave['field_hrm_from_to_date_value2']);
+		$daysArray = getNumberOfDays($date_st,$date_end);
+		$leave_days = count($daysArray);
+
+
+		$edit_url = l("Edit", $base_url.'/node/'.$rsleave['nid'].'/edit?destination=y2cf/leaveapply');
+		$leave_status = ($rsleave['field_hrm_leave_approved_value'] == 1) ? '<span style="color:red;">Approved</span>' : '--';
+		$data[] = array(
+		$serial_number++,
+		get_salesperson_name($rsleave['uid']),
+		$rsleave['title'],
+		$rsleave['field_hrm_leavetypei_value'],
+		displat_date_in_excel_format($rsleave['field_hrm_from_to_date_value']),
+		displat_date_in_excel_format($rsleave['field_hrm_from_to_date_value2']),
+		$leave_days,
+		$rsleave['field_hrm_comments_value'],
+		$rsleave['field_hrm_fileattach_fid'],
+		date("m-d-Y", $rsleave['created']),
+		$leave_status,
+		$edit_url,
+		);
+	}
+
+
+
+
+	$output .= theme('table', $header, $data);
+	$output .= theme('pager');
+	$output .= get_custom_pager_request($rs_tips['leavecount']);
+
+
+
+	return $output;
+}
+
+
+
+
+function y2cf_financial_configuration_year() {
+	global $base_url;
+	global $user;
+	$leave_apply = $base_url.'/node/add/hr-leave-management';
+	$leave_conf = $base_url.'/node/add/leave-type-conf';
+	$remaining_leaves = $base_url.'/y2cf/myremainingleaves';
+	$output = '<br /><br />';
+	$output .= header_menu_strr();
+
+	$header = array(
+	array('data' => 'S.No', 'field' => 'id',),
+	array('data' => 'Title'),
+	array('data' => 'From Date', 'field' => 'msisdn'),
+	array('data' => 'To Date', 'field' => 'lat'),
+	array('data' => 'Created on', 'field' => 'created',  'sort' => 'desc'),
+	array('data' => 'Actions'),
+	);
+
+	$data = array();
+	$sql_offer = "SELECT cthm.*,nn.* FROM {content_type_leave_type_conf} cthm inner join {node} nn on cthm.nid=nn.nid  ";
+
+	//Total Count
+	$sql_tipscount .= "SELECT count(nn.nid) as leavecount FROM {content_type_leave_type_conf} cthm inner join {node} nn on cthm.nid=nn.nid  ";
+
+	$rs_tips = db_fetch_array(db_query($sql_tipscount));
+
+
+	$res_offer = pager_query($sql_offer . tablesort_sql($header), $limit = 50);
+	$serial_number = get_list_serial_number();
+
+
+	//date_calc_date_to_days($day, $month, $year)
+
+
+
+	while ($rsleave = db_fetch_array($res_offer)) {
+		$edit_url = l("Edit", $base_url.'/node/'.$rsleave['nid'].'/edit?destination=y2cf/financialconf');
+		$data[] = array(
+		$serial_number++,
+		$rsleave['title'],
+		date("Y-m-d", $rsleave['field_hrm_financial_year_value']),
+		date("Y-m-d", $rsleave['field_hrm_financial_year_value2']),
+		date("Y-m-d", $rsleave['created']),
+		$edit_url,
+		);
+	}
+
+
+
+
+	$output .= theme('table', $header, $data);
+	$output .= theme('pager');
+	$output .= get_custom_pager_request($rs_tips['leavecount']);
+
+
+
+	return $output;
+}
+/*
+ function superfish_menudisplay() {
+ global $base_url;
+ $url = $base_url.'/node/add/y2cf-tips-addplaces';
+ $strings = '<ul class="sf-menu">
+ <li class="current">
+ '.l('ADD Group',$url).'
+
+ </li>
+ <li>
+ <a href="#">Tagged Msisdn</a>
+ </li>
+
+
+ </ul>';
+ return $strings;
+
+ }
+ */
+

@@ -1,0 +1,29 @@
+<?php
+function dsr_report_perm() {
+  return array('Administer DSR Report');
+}
+
+function dsr_report_menu() {
+  $items = array();
+
+  $items['y2cf/dsrreport'] = array(
+    'title' => 'DSR Report',
+    'page callback' => 'y2cf_dsr_reports',
+	'access arguments' => array('Administer DSR Report'),
+    'description' => 'Manage DSR Report.',
+    'weight' => -4,
+	'type' => MENU_LOCAL_TASK,
+
+  );
+
+	return $items;
+}
+
+function y2cf_dsr_reports(){
+	global $user;
+	$output = 'Last Login--';
+	$output .= date("m-d-Y",$user->login);
+  
+  return $output;
+
+}

@@ -1,0 +1,194 @@
+
+/*RESET STYLES*/
+body {
+	line-height: 1;
+}
+ol, ul {
+	list-style: none;
+}
+blockquote, q {
+	quotes: none;
+}
+blockquote:before, blockquote:after,
+q:before, q:after {
+	content: '';
+	content: none;
+}
+
+/* remember to define focus styles! */
+:focus {
+	outline: 0;
+}
+
+/* remember to highlight inserts somehow! */
+ins {
+	text-decoration: none;
+}
+del {
+	text-decoration: line-through;
+}
+
+/* tables still need 'cellspacing="0"' in the markup */
+table {
+	border-collapse: collapse;
+	border-spacing: 0;
+}
+/*END RESET STYLES*/
+
+
+
+
+#body {background:#f4f4f4;}
+#browse-content {width:100%;font-family:'Myriad Pro','Trebuchet MS',Arial;position:relative;}
+#browse-content {padding-bottom:15px;}
+#browse-content-wrap {padding:15px;}
+
+#browse-content-wrap h1 {font-size:18px;margin-bottom:13px;}
+
+#pane {
+	box-shadow:0 1px 4px rgba(0, 0, 0, 0.5);
+	-moz-box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+	-webkit-box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+	-moz-border-radius: 4px; 
+	-webkit-border-radius: 4px; 
+	border-radius: 4px; 
+	-moz-background-clip: padding; -webkit-background-clip: padding-box; background-clip: padding-box; 
+	padding:4px;
+}
+
+
+#left-pane {width:25%;background:#fff;float:left;overflow-y:auto;overflow-x:hidden;}
+#right-pane {width:74%;float:left;background:#fff;border-left:1px #eee solid;overflow-y:auto;overflow-x:hidden;}
+
+
+#left-pane-content {padding:10px;}
+#right-pane-content {padding:10px;}
+
+
+.selected {background:#a8d8f5;}
+
+
+.folder-content li:nth-child(odd) a {background:#f4f4f4;}
+.folder-content li a {display:block;text-decoration:none;font-size:13px;color:#0077c0; padding: 6px;}
+.folder-content li a:hover {color:#0077c0; padding: 6px;}
+.folder-content li#item-new a:hover {color:#333;}
+.folder-content li a b {padding:8px 4px 8px 32px;display:block;font-weight:normal;}
+
+#loader {margin:100px auto;width:150px;}
+
+
+.empty-folder {width:500px;text-align:center;margin:100px auto;color:#777;font-size:17px;}
+
+.clear {clear:both;}
+
+
+#btnset {position:absolute;bottom:-15px;right:10px;}
+
+/*using a css3 approach to target ff3, safari3, while serving IE less stylish unrounded corners*/
+html > body a.de-btn, .de-btn {
+	-moz-border-radius:5px;
+	-webkit-border-radius:5px;
+	border-radius:5px;
+}
+
+a.de-btn, .de-btn {
+	border:1px #cecece solid;
+	text-decoration:none;
+	cursor:pointer;
+	display:inline-block;
+	padding:0 11px;
+	text-decoration:none;
+	white-space:nowrap;
+	font-size:13px;
+	background:url(/global/images/de-global-els.jpg) 0 -491px repeat-x;
+}
+
+a.de-btn:hover, .de-btn:hover {
+	border:1px #CCC solid;
+	text-decoration:none;
+	background:url(/global/images/de-global-els.jpg) 0 -519px repeat-x;
+}
+
+a.de-btn:active, .de-btn:active {
+	border:1px #CCC solid;
+	text-decoration:none;
+	background:url(/global/images/de-global-els.jpg) 0 -546px repeat-x;
+}
+
+a.de-btn:active span, .de-btn:active span {
+	color:#f1f1f1;
+}
+
+a.de-btn span, .de-btn span {
+	line-height:24px;
+	padding-top:5px 0;
+	white-space:normal;
+}
+
+
+a.player-btn {
+	background:#000000;
+}
+
+
+/*Styles for smaller blue buttons 18px*/
+a.blue-btn {padding:0 8px;color:#FFFFFF !important;border:1px #585858 solid;background:#0a5c99 url(/global/images/btn-grad-blue.jpg) repeat-x;}
+a.blue-btn:hover {color:#FFF;border:1px #414141 solid;background-image:none;background:#3682af;}
+a.blue-btn:active {color:#FFF;border:1px #000 solid;background-image:none;background:#0a5c99;}
+
+/*Styles for smaller gray buttons 18px*/
+a.gray-btn {padding:0 8px;border:1px #585858 solid;background:#bdbcbc url(/global/images/btn-grad-gray.jpg) repeat-x;color:#555;}
+a.gray-btn:hover {border:1px #414141 solid;background-image:none;background:#e0dfdf;}
+a.gray-btn:active {border:1px #000 solid;background-image:none;background:#aaaaaa;}
+
+
+
+
+/*#add-folder {position:absolute;left:10px;bottom:-15px;}*/
+#add-folder {
+    bottom: -15px;
+    float: left;
+    left: 10px;
+    margin-left: 20px;
+}
+
+
+#item-new input,#item-new b span {float:left;}
+#item-new b span {
+	display:block;
+	padding:3px 6px 3px 6px;
+	background:#0077c0;
+	color:#fff;
+	-moz-border-radius: 4px; 
+	-webkit-border-radius: 4px; 
+	border-radius: 4px; 
+	-moz-background-clip: padding; -webkit-background-clip: padding-box; background-clip: padding-box; 
+	margin-left:6px;
+
+
+}
+
+/*Second Tree*/
+#banner { padding: 15px; background-color: #06b; color: white; font-size: large; border-bottom: 1px solid #ccc;
+    background: url(bg.gif) repeat-x; text-align: center }
+#banner a { color: white; }
+
+#main { padding: 1em; }
+
+
+#right-pane-content span.save-new-folder {
+    background: #0077C0;
+    border-radius: 4px 4px 4px 4px;
+    color: #FFFFFF;
+    margin-left: 6px;
+    padding: 3px 6px;
+	border: solid 1px #ccc;
+}
+#right-pane-content span.cancel-new-folder {
+    background: #0077C0;
+    border-radius: 4px 4px 4px 4px;
+    color: #FFFFFF;
+    margin-left: 6px;
+    padding: 3px 6px;
+	border: solid 1px #ccc;
+}

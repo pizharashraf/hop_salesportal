@@ -1,0 +1,5 @@
+name = DSR Checkins
+description = Hopper DSR Checkins
+core = 6.x
+
+package = Y2CF

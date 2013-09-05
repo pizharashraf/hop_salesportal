@@ -1,0 +1,5 @@
+name = Hoppr Excel download
+description = Hoppr Excel download 
+core = 6.x
+
+package = Y2CF

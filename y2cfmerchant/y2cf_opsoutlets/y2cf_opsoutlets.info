@@ -1,0 +1,5 @@
+name = Y2CF OPS outlets
+description = Hopper OPS outlets 
+core = 6.x
+
+package = Y2CF

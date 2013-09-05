@@ -1,0 +1,3203 @@
+<?php
+/*
+error_reporting(E_ALL);
+ini_set('display_errors', TRUE);
+ini_set('display_startup_errors', TRUE);
+*/
+//Ops permission for different roles
+function y2cf_operation_perm() {
+	return array('Administer Merchant operation',  'Administer welcome message ops', 'Administer welcome outlet message ops','Administer merchant mail communication','Administer Outlet delete');
+}
+//Ops menu
+function y2cf_operation_menu() {
+	$items = array();
+  $items['y2cf/merchantsoperation'] = array(
+    'title' => 'Merchants Offers',
+    'page callback' => 'y2cf_merchants_operations',
+    'access arguments' => array('Administer Merchant operation'),
+    'description' => 'Administer Merchant operation.',
+    'weight' => -4,
+  'type' => MENU_LOCAL_TASK,
+  );
+  $items['y2cf/offerwelcomemsg_ops'] = array(
+    'title' => 'Welcome',
+    'page callback' => 'y2cf_offerwelcomemsg_ops',
+  'access arguments' => array('Administer welcome message ops'),
+    'description' => 'Administer welcome message ops.',
+    'weight' => -2,
+  'type' => MENU_LOCAL_TASK,
+  );
+  $items['y2cf/outletwelcomemsg_ops'] = array(
+    'title' => 'Welcome',
+    'page callback' => 'y2cf_outletwelcomemsg_ops',
+  'access arguments' => array('Administer welcome outlet message ops'),
+    'description' => 'Administer welcome outlet message ops.',
+    'weight' => -2,
+  'type' => MENU_LOCAL_TASK,
+  );
+
+  $items['hoppr/mailcommunication'] = array(
+    'title' => 'Welcome',
+    'page callback' => 'hoppr_mail_mailcommunication',
+  'access arguments' => array('Administer merchant mail communication'),
+    'description' => 'Administer merchant mail communication.',
+    'weight' => -2,
+  'type' => MENU_LOCAL_TASK,
+  );
+    $items['hoppr/outletdelete'] = array(
+    'title' => 'Delete',
+    'page callback' => 'hoppr_outlet_delete',
+  'access arguments' => array('Administer Outlet delete'),
+    'description' => 'Administer Outlet delete.',
+    'weight' => -4,
+  'type' => MENU_LOCAL_TASK,
+
+  );
+  return $items;
+}
+function hoppr_outlet_delete() {
+    global $base_url;
+  global $user;
+  $nid = arg(2);
+  $rs_rid  = get_user_role_id($user->uid);
+//Chech This offer/node creator salesperson is under that RM/SM
+    if($user->uid == 1 || $rs_rid == 'operationhead'){
+	  if(arg(1)=='outletdelete') {
+	    node_delete($nid);
+    }
+	  drupal_set_message("Outlet deleted successfully");
+	  drupal_goto($base_url.'/y2cf/merchantsoperation');
+	}
+	else{
+		drupal_set_message("Oops! You are not authorized to delete this outlet");
+	  drupal_goto($base_url.'/y2cf/merchantsoperation');
+	}
+    }
+function get_general_query_for_merchants($mnid) {
+	$general_sql = "select min(nr.vid) as vid from {node_revisions} nr inner join {content_type_merchant_outlet} ctmo on nr.vid=ctmo.vid inner join {users} u on nr.uid=u.uid inner join {users_roles} ur on u.uid=ur.uid inner join {role} r on ur.rid=r.rid where nr.nid='" . $mnid . "'  ";
+	return $general_sql;
+}
+function get_general_query_for_outlets($onid) {
+  $rm_general_sql = "select max(nr.vid) as vid from {node_revisions} nr inner join {content_type_offer_detail} ctmo on nr.vid=ctmo.vid inner join {users} u on nr.uid=u.uid inner join {users_roles} ur on u.uid=ur.uid inner join {role} r on ur.rid=r.rid where nr.nid='" . $onid . "'  ";
+  return $rm_general_sql;
+}
+function get_merchant_offer_query_ops($offer_user_id) {
+	global $user;
+  $rs_rid  = get_user_role_id($user->uid);
+  $sql_offer .= "SELECT DISTINCT  n.title as merchantname,n.vid as offervid, ctmd.nid as merchantid, coutlet.nid as hop_outletid, nn.uid as salesperson,nn.created as creationdate,nn.changed as changeddate, ctmd.*, coutlet.*,n.* FROM {content_type_offer_detail} ctmd inner join {node} nn on ctmd.vid = nn.vid left outer join {content_type_merchant_outlet} coutlet on ctmd.nid = coutlet.field_hopper_merchant_olt_nid inner join {node} n on coutlet.vid = n.vid inner join {node_revisions} nr on n.vid=nr.vid ";
+  $sql_offer .= get_mer_offer_filter_conditions_ops($offer_user_id);
+  
+	return $sql_offer;
+}
+function get_merchant_offers_count_query_ops($offer_user_id) {
+	$sql_count_offer = "SELECT count(n.nid) as total_mer_offer FROM {content_type_offer_detail} ctmd inner join {node} nn on ctmd.vid = nn.vid left outer join {content_type_merchant_outlet} coutlet on ctmd.nid = coutlet.field_hopper_merchant_olt_nid inner join {node} n on coutlet.vid = n.vid inner join {node_revisions} nr on n.vid=nr.vid ";
+  $sql_count_offer .= get_mer_offer_filter_conditions_ops($offer_user_id);
+	$dsr_mer_offer = db_fetch_array(db_query($sql_count_offer));
+	$dsr_offer_count = $dsr_mer_offer['total_mer_offer'];
+	return $dsr_offer_count;
+}
+
+function get_mer_offer_filter_conditions_ops($offer_user_id) {
+	if (isset($_GET['rm']) && $_GET['rm']!= "" ) {
+		$sql_offer .= " inner join {users} uu on nn.uid = uu.uid  and uu.rm_id = '" . $_GET['rm'] . "' ";
+	}
+  if (isset($_GET['salesperson']) && $_GET['salesperson']!= "" ) {
+		$sql_offer .= " and nn.uid = '" . $_GET['salesperson'] . "' ";
+	}
+	
+  if (isset($_GET['city']) && $_GET['city']!= "" && $_GET['city']!= "DNCR") {//field_hopprs_city
+    
+  	$sql_offer .= " and coutlet.field_hopprs_city_value = '" . $_GET['city'] . "' ";
+  }elseif ($_GET['city']== "DNCR" ) {//field_hopprs_city
+  	$sql_offer .= " and (coutlet.field_hopprs_city_value = '28' or coutlet.field_hopprs_city_value = '291' or coutlet.field_hopprs_city_value = '290' or coutlet.field_hopprs_city_value = '292' or coutlet.field_hopprs_city_value = '293') ";
+  }
+//Keyword filteration
+  if (isset($_GET['hop_kw']) && $_GET['hop_kw']!= "" ) {
+  	$sql_offer .= " and (trim(coutlet.field_hop_ops_pro_kwds_mo_value) LIKE '" . trim($_GET['hop_kw']) . "%' or ctmd.field_hop_ops_pro_keywords_value LIKE '" . trim($_GET['hop_kw']) . "%' )";
+  }
+  
+  if (isset($_GET['merchant']) && $_GET['merchant']!= "" ) {
+		$sql_offer .= " and trim(nn.title) LIKE '" . trim($_GET['merchant']) . "%' ";
+}
+    if (isset($_GET['merchant_code']) && $_GET['merchant_code']!= "" ) {
+		$sql_offer .= " and coutlet.nid = '" . $_GET['merchant_code'] . "'  ";
+	}
+	//App Status  app_val_status
+	if (isset($_GET['app_val_status']) && $_GET['app_val_status']!= "" ) {
+		$sql_offer .= " and coutlet.field_hop_revalidation_appval_value LIKE '" . $_GET['app_val_status'] . "%'  ";
+	}
+	//RE-validation status
+	
+	if (isset($_GET['revalsts']) && $_GET['revalsts']!= "" ) {
+		$sql_offer .= " and coutlet.field_hop_revalidation_value LIKE '" . $_GET['revalsts'] . "%'  ";
+	}
+	
+//All ops status filter
+  if(isset($_GET['rm_or_sm_status']) && $_GET['rm_or_sm_status']!= "" ) {
+    if($_GET['rm_or_sm_status']=="pending") {
+        $sql_offer .= " and (ctmd.field_hoppr_new_rmsmsts_value IS NULL or ctmd.field_hoppr_new_rmsmsts_value = 'Rejected') ";
+    }else{
+       $sql_offer .= " and ctmd.field_hoppr_new_rmsmsts_value LIKE '".trim($_GET['rm_or_sm_status'])."%' ";
+    }
+  }
+
+  if(isset($_GET['drs']) && $_GET['drs']!= "" ) {
+    if($_GET['drs']=="pending") {
+        $sql_offer .= " and (coutlet.field_hop_ops_oh_ds_sts_mo_value IS NULL or coutlet.field_hop_ops_oh_ds_sts_mo_value = 'Rejected') ";
+    }else{
+       $sql_offer .= " and  coutlet.field_hop_ops_oh_ds_sts_mo_value LIKE '" . trim($_GET['drs']) . "%' ";
+    }
+  }
+
+  //OE and TC status
+  if (isset($_GET['oes']) && $_GET['oes']!= "" ) {
+  	if($_GET['oes']!='pending') { 
+  		$sql_offer .= " and (ctmd.field_hop_offer_ops_status_value LIKE '" . trim($_GET['oes']) . "%'  or ctmd.field_hop_ops_all_remark_value LIKE '" . trim($_GET['oes']) . "%' or coutlet.field_hop_ops_all_remrk_mo_value LIKE '" . trim($_GET['oes']) . "%' or coutlet.field_hop_offer_ops_status_mo_value LIKE '" . trim($_GET['oes']) . "%') ";
+  	}else{ 
+  		$sql_offer .= " and ((coutlet.field_hop_ops_all_remrk_mo_value IS NULL AND coutlet.field_hop_offer_ops_status_mo_value IS NULL) AND (ctmd.field_hop_offer_ops_status_value IS NULL AND ctmd.field_hop_ops_all_remark_value IS NULL) ) ";
+  		$sql_offer .= " and ctmd.field_hop_tieup_type_value != 'National' ";
+  		}
+	}
+
+	//Docs status
+
+	
+	if (isset($_GET['oms']) && $_GET['oms']!= "" ) {
+		if($_GET['oms']!='pending') {
+			$sql_offer .= " and ctmd.field_hop_ops_agr_sta_value LIKE '" . trim($_GET['oms']) . "%' ";
+		}else{
+			$sql_offer .= " and ctmd.field_hop_ops_agr_sta_value IS NULL ";
+		}
+		
+	}
+	
+	
+  if (isset($_GET['omdrcv']) && $_GET['omdrcv']!= "" ) {
+    $sql_offer .= " and ctmd.field_flag_agree_upload_value LIKE '" . trim($_GET['omdrcv']) . "%' ";
+  }
+  if (isset($_GET['tcs']) && $_GET['tcs']!= "" ) {
+    $sql_offer .= " and (ctmd.field_hop_ops_all_remark_value LIKE '" . trim($_GET['tcs']) . "%' or coutlet.field_hop_ops_all_remrk_mo_value LIKE '" . trim($_GET['tcs']) . "%') ";
+  }
+//Product keywords
+  if ($_GET['pros'] == 'empty' || $_GET['pros'] == 'null' || $_GET['pros'] == 'no' || $_GET['pros'] == 'NULL' || $_GET['pros'] == 'NO' || $_GET['pros'] == 'pen' || $_GET['pros'] == 'pending') {
+    $sql_offer .= " and (ctmd.field_hop_ops_pro_keywords_value IS NULL and coutlet.field_hop_pro_eval_status_value IS NULL) ";
+  }elseif ($_GET['pros'] == 'yes' || $_GET['pros'] == 'Yes' ) {
+    $sql_offer .= " and (ctmd.field_hop_pro_evaluation_status_value IS NOT NULL or coutlet.field_hop_pro_eval_status_value IS NOT NULL) ";
+  }
+
+  //Keyword status
+  
+  if (isset($_GET['proops']) && $_GET['proops']!= "" ) {
+  	if($_GET['proops']!='pending') {
+  		$sql_offer .= " and (coutlet.field_hop_pro_eval_status_value LIKE '" . trim($_GET['proops']) . "%' or ctmd.field_hop_pro_evaluation_status_value LIKE '" . trim($_GET['proops']) . "%') ";
+  	}else{
+  		$sql_offer .= " and (coutlet.field_hop_pro_eval_status_value IS NULL AND ctmd.field_hop_pro_evaluation_status_value IS NULL) ";
+  	}
+  	
+  }
+  
+  
+  
+//Go LIVE
+
+  
+  if (isset($_GET['goliveops']) && $_GET['goliveops']!= "" ) {
+  	if($_GET['goliveops']!='pending') {
+  		$sql_offer .= " and (coutlet.field_hop_ops_glivsts_mo_value LIKE '" . trim($_GET['goliveops']) . "%' or coutlet.field_sales_hop_ops_glivsts_mo_value LIKE '" . trim($_GET['goliveops']) . "%' or ctmd.field_hop_ops_glivsts_value LIKE '" . trim($_GET['goliveops']) . "%') ";
+  	}else{
+  		$sql_offer .= " and (coutlet.field_hop_ops_glivsts_mo_value IS NULL AND coutlet.field_sales_hop_ops_glivsts_mo_value IS NULL AND ctmd.field_hop_ops_glivsts_value IS NULL) ";
+  	}
+  	
+  }
+  
+  
+
+  if (isset($_GET['pos']) && $_GET['pos']!= "") {
+  	if($_GET['pos']!='pending') {
+  		$sql_offer .= " and ctmd.field_hop_pos_oa_status_value LIKE '" . trim($_GET['pos']) . "%' ";
+  	}else{
+  		$sql_offer .= " and ctmd.field_hop_pos_oa_status_value IS NULL ";
+  	}
+  	
+  }
+  
+  
+//Creative status
+  if (isset($_GET['gls']) && $_GET['gls']!= "" && ($_GET['gls']=='yes' || $_GET['gls']=='Yes' || $_GET['gls']=='YES' || $_GET['gls']=='y' || $_GET['gls']=='ye')) {
+    $sql_offer .= " and (coutlet.field_hoppr_creativedsgnab_out_value LIKE '" . trim($_GET['gls']) . "%' or ctmd.field_hoppr_creativedsgnabu_value LIKE '" . trim($_GET['gls']) . "%') ";
+  }
+  if ($_GET['gls'] == 'empty' || $_GET['gls'] == 'null' || $_GET['gls'] == 'no' || $_GET['gls'] == 'NULL' || $_GET['gls'] == 'NO' || $_GET['gls'] == 'pending') {
+    $sql_offer .= " and (ctmd.field_hoppr_creativedsgnabu_value IS NULL and coutlet.field_hoppr_creativedsgnab_out_value IS NULL) ";
+  }
+
+
+//offer testing and offer upload
+  if (isset($_GET['ofrtsting']) && $_GET['ofrtsting']!= "" ) {
+    $sql_offer .= " and coutlet.field_hoppr_offr_test_value LIKE '" . trim($_GET['ofrtsting']) . "%'  ";
+  }
+  
+  if (isset($_GET['ofrupld']) && $_GET['ofrupld']!= "" ) {
+  	if($_GET['ofrupld']!='pending') {
+  		$sql_offer .= " and coutlet.field_hoppr_ofr_upld_value LIKE '" . trim($_GET['ofrupld']) . "%'  ";
+  	}else{
+  		$sql_offer .= " and coutlet.field_hoppr_ofr_upld_value IS NULL  ";
+  	}
+  	
+  }
+  
+  
+
+	if (isset($_GET['genre']) && $_GET['genre']!="") {
+		$sql_offer .= " inner join {term_data} td on ctmd.field_genre_value = td.tid  and td.tid = '" . $_GET['genre'] . "' ";
+	}
+	if (isset($_GET['merchant_category']) && $_GET['merchant_category']!="") {
+		$sql_offer .= " inner join {term_data} td on ctmd.field_hop_merch_type_value = td.tid  and td.tid = '" . $_GET['merchant_category'] . "' ";
+	}
+  if (isset($_GET['entry_date']) && $_GET['entry_date']!="") {
+		$curdate_1 = explode("/", $_GET['entry_date']);
+		$entry_date = mktime(0, 0, 1, $curdate_1[0], $curdate_1[1], $curdate_1[2]);
+		$sql_offer .= " and nn.created >= '" . $entry_date . "' ";
+	}
+	if (isset($_GET['exit_date']) && $_GET['exit_date']!="") {
+		$curdate_1 = explode("/", $_GET['exit_date']);
+		$entry_date = mktime(23, 59, 59, $curdate_1[0], $curdate_1[1], $curdate_1[2]);
+		$sql_offer .= " and nn.created <= '" . $entry_date . "' ";
+	}
+	return $sql_offer;
+}
+function merchant_operation_save_excel_form() {
+	$form['ops_make_excel']['ops_contract_excl'] = array('#type' => 'submit', '#value' => t('Save Excel'));
+	return $form;
+}
+function merchant_operation_small_report_form() {
+  $form['ops_make_excel']['ops_summary_report'] = array('#type' => 'submit', '#value' => t('Summary Report'));
+  return $form;
+}
+function get_all_y2cf_merchant_offers_and_outlets_for_ops() {
+	global $user;
+	$rs_rid  = get_user_role_id($user->uid);
+  $sql_merchants .= "SELECT DISTINCT  nn.title as merchantname,n.title as merchant_outlet_name, nn.vid as offervid, ctmo.nid as merchantid, coutlet.nid as hop_outletid, coutlet.vid as merout_vid, nn.uid as salesperson,nn.created as creationdate,nn.changed as changeddate, ctmo.*, coutlet.* FROM {content_type_offer_detail} ctmo inner join {node} nn on ctmo.vid = nn.vid left outer join {content_type_merchant_outlet} coutlet on ctmo.nid = coutlet.field_hopper_merchant_olt_nid inner join {node} n on coutlet.vid = n.vid and n.type='merchant_outlet'  where 1=1 ";
+
+	if (isset($_GET['rm']) && $_GET['rm']!= "" ) {
+		$sql_merchants .= " inner join {users} uu on nn.uid = uu.uid  and uu.rm_id = '" . $_GET['rm'] . "' ";
+	}
+  if(isset($_GET['rm_or_sm_status']) && $_GET['rm_or_sm_status']!= "" ) {
+  	if($_GET['rm_or_sm_status']=="pending") {
+  		  $sql_merchants .= " and (ctmo.field_hoppr_new_rmsmsts_value IS NULL or ctmo.field_hoppr_new_rmsmsts_value = 'Rejected')";
+  	}else{
+  	   $sql_merchants .= " and ctmo.field_hoppr_new_rmsmsts_value LIKE '".trim($_GET['rm_or_sm_status'])."%' ";
+  	}
+  }
+
+  if (isset($_GET['salesperson']) && $_GET['salesperson']!= "" ) {
+		$sql_merchants .= " and nn.uid = '" . $_GET['salesperson'] . "' ";
+	}
+	if (isset($_GET['city']) && $_GET['city']!= "" && $_GET['city']!= "DNCR") {//field_hopprs_city
+    
+  	$sql_merchants .= " and coutlet.field_hopprs_city_value = '" . $_GET['city'] . "' ";
+  }elseif ($_GET['city']== "DNCR" ) {//field_hopprs_city
+  	$sql_merchants .= " and (coutlet.field_hopprs_city_value = '28' or coutlet.field_hopprs_city_value = '291' or coutlet.field_hopprs_city_value = '290' or coutlet.field_hopprs_city_value = '292' or coutlet.field_hopprs_city_value = '293') ";
+  }
+  if (isset($_GET['merchant']) && $_GET['merchant']!= "" ) {
+		$sql_merchants .= " and nn.title LIKE '" . trim($_GET['merchant']) . "%' ";
+}
+    if (isset($_GET['merchant_code']) && $_GET['merchant_code']!= "" ) {
+		$sql_merchants .= " and coutlet.nid = '" . $_GET['merchant_code'] . "'  ";
+	}
+	//App Status  app_val_status
+	if (isset($_GET['app_val_status']) && $_GET['app_val_status']!= "" ) {
+		$sql_merchants .= " and coutlet.field_hop_revalidation_appval_value LIKE '" . $_GET['app_val_status'] . "%'  ";
+	}
+	//Re-validation status
+	if (isset($_GET['revalsts']) && $_GET['revalsts']!= "" ) {
+		$sql_merchants .= " and coutlet.field_hop_revalidation_value LIKE '" . $_GET['revalsts'] . "%'  ";
+	}
+//Keyword filteration
+	if (isset($_GET['hop_kw']) && $_GET['hop_kw']!= "" ) {
+		$sql_merchants .= " and (trim(coutlet.field_hop_ops_pro_kwds_mo_value) LIKE '" . trim($_GET['hop_kw']) . "%' or ctmo.field_hop_ops_pro_keywords_value LIKE '" . trim($_GET['hop_kw']) . "%' )";
+	}
+	
+	
+	//All ops status filter
+
+  if(isset($_GET['drs']) && $_GET['drs']!= "" ) {
+    if($_GET['drs']=="pending") {
+        $sql_merchants .= " and (coutlet.field_hop_ops_oh_ds_sts_mo_value IS NULL or coutlet.field_hop_ops_oh_ds_sts_mo_value = 'Rejected' )";
+    }else{
+       $sql_merchants .= " and  coutlet.field_hop_ops_oh_ds_sts_mo_value LIKE '" . trim($_GET['drs']) . "%' ";
+    }
+  }
+
+  
+  
+  if (isset($_GET['oes']) && $_GET['oes']!= "" ) {
+  	if($_GET['oes']!='pending') {
+  		$sql_merchants .= " and (ctmo.field_hop_offer_ops_status_value LIKE '" . trim($_GET['oes']) . "%'  or ctmo.field_hop_ops_all_remark_value LIKE '" . trim($_GET['oes']) . "%' or coutlet.field_hop_ops_all_remrk_mo_value LIKE '" . trim($_GET['oes']) . "%' or coutlet.field_hop_offer_ops_status_mo_value LIKE '" . trim($_GET['oes']) . "%') ";
+  	}else{
+  		$sql_merchants .= " and ((coutlet.field_hop_ops_all_remrk_mo_value IS NULL AND coutlet.field_hop_offer_ops_status_mo_value IS NULL) AND (ctmo.field_hop_offer_ops_status_value IS NULL AND ctmo.field_hop_ops_all_remark_value IS NULL) ) ";
+  		$sql_merchants .= " and ctmo.field_hop_tieup_type_value != 'National' ";
+  	}
+  }
+  
+  
+
+  
+  
+  //Docs
+  if (isset($_GET['oms']) && $_GET['oms']!= "" ) {
+  	if($_GET['oms']!='pending') {
+  		$sql_merchants .= " and ctmo.field_hop_ops_agr_sta_value LIKE '" . trim($_GET['oms']) . "%' ";
+  	}else{
+  		$sql_merchants .= " and ctmo.field_hop_ops_agr_sta_value IS NULL ";
+  	}
+  
+  }
+  
+  if (isset($_GET['omdrcv']) && $_GET['omdrcv']!= "" ) {
+    $sql_merchants .= " and ctmo.field_flag_agree_upload_value LIKE '" . trim($_GET['omdrcv']) . "%' ";
+  }
+  if (isset($_GET['tcs']) && $_GET['tcs']!= "" ) {
+    $sql_merchants .= " and ctmo.field_hop_ops_all_remark_value LIKE '" . trim($_GET['tcs']) . "%' ";
+  }
+  if ($_GET['pros'] == 'empty' || $_GET['pros'] == 'null' || $_GET['pros'] == 'no' || $_GET['pros'] == 'NULL' || $_GET['pros'] == 'NO') {
+    
+    $sql_merchants .= " and (ctmo.field_hop_ops_pro_keywords_value IS NULL and coutlet.field_hop_pro_eval_status_value IS NULL)";
+  }elseif ($_GET['pros'] == 'yes' || $_GET['pros'] == 'Yes' ) {
+    $sql_merchants .= " and (ctmo.field_hop_ops_pro_keywords_value IS NOT NULL or coutlet.field_hop_pro_eval_status_value IS NOT NULL)";
+  }
+  
+  
+  if (isset($_GET['pos']) && $_GET['pos']!= "") {
+  	if($_GET['pos']!='pending') {
+  		$sql_merchants .= " and ctmd.field_hop_pos_oa_status_value LIKE '" . trim($_GET['pos']) . "%' ";
+  	}else{
+  		$sql_merchants .= " and ctmd.field_hop_pos_oa_status_value IS NULL ";
+  	}
+  	 
+  }
+  
+  
+//Creative design status
+  if (isset($_GET['gls']) && $_GET['gls']!= ""  && ($_GET['gls']=='yes' || $_GET['gls']=='Yes' || $_GET['gls']=='YES' || $_GET['gls']=='y' || $_GET['gls']=='ye')) {
+    $sql_merchants .= " and (coutlet.field_hoppr_creativedsgnab_out_value LIKE '" . trim($_GET['gls']) . "%' or ctmo.field_hoppr_creativedsgnabu_value LIKE '" . trim($_GET['gls']) . "%') ";
+  }
+  if ($_GET['gls'] == 'empty' || $_GET['gls'] == 'null' || $_GET['gls'] == 'no' || $_GET['gls'] == 'NULL' || $_GET['gls'] == 'NO' || $_GET['gls'] == 'pending') {
+    $sql_merchants .= " and (ctmo.field_hoppr_creativedsgnabu_value IS NULL and coutlet.field_hoppr_creativedsgnab_out_value IS NULL) ";
+  }
+  
+
+  
+  if (isset($_GET['proops']) && $_GET['proops']!= "" ) {
+  	if($_GET['proops']!='pending') {
+  		$sql_merchants .= " and (coutlet.field_hop_pro_eval_status_value LIKE '" . trim($_GET['proops']) . "%' or ctmd.field_hop_pro_evaluation_status_value LIKE '" . trim($_GET['proops']) . "%') ";
+  	}else{
+  		$sql_merchants .= " and (coutlet.field_hop_pro_eval_status_value IS NULL or ctmd.field_hop_pro_evaluation_status_value IS NULL) ";
+  	}
+  }
+//Go LIVE
+
+  
+  if (isset($_GET['goliveops']) && $_GET['goliveops']!= "" ) {
+  	if($_GET['goliveops']!='pending') {
+  		$sql_merchants .= " and (coutlet.field_hop_ops_glivsts_mo_value LIKE '" . trim($_GET['goliveops']) . "%' or coutlet.field_sales_hop_ops_glivsts_mo_value LIKE '" . trim($_GET['goliveops']) . "%' or ctmo.field_hop_ops_glivsts_value LIKE '" . trim($_GET['goliveops']) . "%') ";
+  	}else{
+  		$sql_merchants .= " and (coutlet.field_hop_ops_glivsts_mo_value IS NULL AND coutlet.field_sales_hop_ops_glivsts_mo_value IS NULL AND ctmo.field_hop_ops_glivsts_value IS NULL) ";
+  	}
+  	 
+  }
+  
+  
+//offer testing and offer upload
+  if (isset($_GET['ofrtsting']) && $_GET['ofrtsting']!= "" ) {
+    $sql_merchants .= " and coutlet.field_hoppr_offr_test_value LIKE '" . trim($_GET['ofrtsting']) . "%'  ";
+  }
+
+  
+  if (isset($_GET['ofrupld']) && $_GET['ofrupld']!= "" ) {
+  	if($_GET['ofrupld']!='pending') {
+  		$sql_merchants .= " and coutlet.field_hoppr_ofr_upld_value LIKE '" . trim($_GET['ofrupld']) . "%'  ";
+  	}else{
+  		$sql_merchants .= " and coutlet.field_hoppr_ofr_upld_value IS NULL  ";
+  	}
+  	 
+  }
+
+  if (isset($_GET['entry_date']) && $_GET['entry_date']!="") {
+		$curdate_1 = explode("/", $_GET['entry_date']);
+		$entry_date = mktime(0, 0, 1, $curdate_1[0], $curdate_1[1], $curdate_1[2]);
+		$sql_merchants .= " and nn.created >= '" . $entry_date . "'  ";
+	}
+	if (isset($_GET['exit_date']) && $_GET['exit_date']!="") {
+		$curdate_1 = explode("/", $_GET['exit_date']);
+		$entry_date = mktime(23, 59, 59, $curdate_1[0], $curdate_1[1], $curdate_1[2]);
+		$sql_merchants .= " and nn.created <= '" . $entry_date . "'  ";
+	}
+	$sql_merchants .= " order by nn.created desc";
+	return $sql_merchants;
+}
+function merchant_operation_small_report_form_submit($form, &$form_state) {
+	module_load_include('inc', 'phpexcel', 'phpexcel.api');
+	global $user;
+  global $base_url;
+  $main_path = drupal_get_path('module', 'merchants');
+  include_once($main_path . '/xls-writer.php');
+  $header = array("Merchant Name", "Contract Entry Date", "Approval from RM/SM", "Approval from Vibhuti", "Completion - Prayrak", "Completion - POS Delivery", "Go Live");
+  $sql_merchants = get_all_y2cf_merchant_offers_and_outlets_for_ops();
+
+  $obj_merchants = db_query($sql_merchants);
+  $data = array();
+  $serial_number = get_list_serial_number();
+  while ($row = db_fetch_array($obj_merchants)) {
+  	$salesperson_name = db_result(db_query("SELECT name FROM {users} WHERE uid = %d", $row['salesperson']));
+    $rm_id = db_result(db_query("SELECT rm_id FROM {users} WHERE uid = %d", $row['salesperson']));
+    $rm_name = db_result(db_query("SELECT name FROM {users} WHERE uid = %d", $rm_id));
+    $outname = db_result(db_query("SELECT title FROM {node} where nid = '" . $row['nid'] . "' "));
+
+      $general_sql = get_general_query_for_merchants($row['nid']);
+      $rm_general_sql = get_general_query_for_outlets($row['merchantid']);
+
+
+
+      $rm_sql = $rm_general_sql." and (r.name='reporting manager' or r.name='salesmanager' or r.name='operationhead' or r.name='salesperson')  ";
+
+
+      $rm_ops_vid = db_fetch_array(db_query($rm_sql));
+      $ops_start_date = db_fetch_array(db_query("select nr.timestamp as ops_date from {node_revisions} nr where nr.vid='" . $rm_ops_vid['vid'] . "'  "));
+      if (!empty($ops_start_date['ops_date'])) {
+      $rm_ops_start = date("m-d-Y", $ops_start_date['ops_date']);
+      $rm_ops_month = date("F", $ops_start_date['ops_date']);
+    }else{
+      $rm_ops_start = "-";
+      $rm_ops_month = "-";
+}
+
+//OH DATES
+
+    $oh_general_sql = "select vid from {node} where nid='" . $row['nid'] . "'  ";
+    $ohh_ops_vid = db_fetch_array(db_query($oh_general_sql));
+    $oh_str_dt = db_fetch_array(db_query("select field_hop_oh_csvlmd_value from {content_type_merchant_outlet} where vid='" . $ohh_ops_vid['vid'] . "'  "));
+    if (!empty($oh_str_dt['field_hop_oh_csvlmd_value'])) {
+      $oh_ops_start = date("Y-m-d H:i:s", $oh_str_dt['field_hop_oh_csvlmd_value']);
+    }else{
+      $oh_ops_start = "-";
+    }
+//Documentation
+      $docs_sql = $rm_general_sql." and (r.name='operationmngr' or r.name='operationhead') ";
+      $docs_ops_vid = db_fetch_array(db_query($docs_sql));
+      $docs_start_date = db_fetch_array(db_query("select nr.timestamp as ops_date from {node_revisions} nr where nr.vid='" . $docs_ops_vid['vid'] . "'  "));
+    if (!empty($docs_start_date['ops_date'])) {
+      $docs_ops_start = date("Y-m-d H:i:s", $docs_start_date['ops_date']);
+    }else{
+      $docs_ops_start = "-";
+    }
+//Keyword completion
+    $pro_sql = $general_sql." and (r.name='y2cfproducts' or r.name='operationhead')  ";
+    $pro_sql_1 = $rm_general_sql." and (r.name='y2cfproducts' or r.name='operationhead')  ";
+    $pro_ops_vid = db_fetch_array(db_query($pro_sql));
+    $pro_ops_vid_1 = db_fetch_array(db_query($pro_sql_1));
+
+    $pro_start_date = db_fetch_array(db_query("select nr.timestamp as ops_date from {node_revisions} nr where nr.vid='" . $pro_ops_vid['vid'] . "'  "));
+    $pro_start_date_1 = db_fetch_array(db_query("select nr.timestamp as ops_date from {node_revisions} nr where nr.vid='" . $pro_ops_vid_1['vid'] . "'  "));
+
+      if (!empty($pro_start_date['ops_date'])) {
+        $pro_ops_start = date("Y-m-d H:i:s", $pro_start_date['ops_date']);
+      }elseif(!empty($pro_start_date_1['ops_date'])){
+      	$pro_ops_start = date("Y-m-d H:i:s", $pro_start_date_1['ops_date']);
+      }else{
+        $pro_ops_start = "-";
+    }
+//POS Delivery
+      $pos_sql = $general_sql." and (r.name='posbrand') ";
+      $pos_sql_1 = $rm_general_sql." and (r.name='posbrand') ";
+
+      $pro_ops_vid = db_fetch_array(db_query($pos_sql));
+      $pro_ops_vid_1 = db_fetch_array(db_query($pos_sql_1));
+      $pos_start_date = db_fetch_array(db_query("select nr.timestamp as ops_date from {node_revisions} nr where nr.vid='" . $pro_ops_vid['vid'] . "'  "));
+      $pos_start_date_1 = db_fetch_array(db_query("select nr.timestamp as ops_date from {node_revisions} nr where nr.vid='" . $pro_ops_vid_1['vid'] . "'  "));
+      if (!empty($pos_start_date['ops_date'])) {
+      $pos_ops_start = date("Y-m-d H:i:s", $pos_start_date['ops_date']);
+    }elseif (!empty($pos_start_date_1['ops_date'])){
+    	$pos_ops_start = date("Y-m-d H:i:s", $pos_start_date_1['ops_date']);
+    }else{
+      $pos_ops_start = "-";
+    }
+
+  //Go Live
+      $gl_sql = $general_sql." and (r.name='y2cfoperations' or r.name='hopsales opsgolive')  ";
+      $gl_sql_1 = $rm_general_sql." and (r.name='y2cfoperations' or r.name='hopsales opsgolive')  ";
+      $gl_ops_vid = db_fetch_array(db_query($gl_sql));
+      $gl_ops_vid_1 = db_fetch_array(db_query($gl_sql_1));
+      $gl_start_date = db_fetch_array(db_query("select nr.timestamp as ops_date from {node_revisions} nr where nr.vid='" . $gl_ops_vid['vid'] . "'  "));
+      $gl_start_date_1 = db_fetch_array(db_query("select nr.timestamp as ops_date from {node_revisions} nr where nr.vid='" . $gl_ops_vid_1['vid'] . "'  "));
+      if (!empty($gl_start_date['ops_date'])) {
+      $gl_ops_start = date("m-d-Y", $gl_start_date['ops_date']);
+      $gl_ops_start_month = date("F", $gl_start_date['ops_date']);
+    }elseif (!empty($gl_start_date['ops_date'])) {
+    	$gl_ops_start = date("m-d-Y", $gl_start_date_1['ops_date']);
+        $gl_ops_start_month = date("F", $gl_start_date_1['ops_date']);
+    }else{
+      $gl_ops_start = "-";
+      $gl_ops_start_month = "-";
+    }
+
+  //Go live end date
+      if(!empty($row['field_hop_ops_glendat_mo_value'])) {
+        $hop_gl_del_date = displat_date_in_excel_format_for_go_live_dt($row['field_hop_ops_glendat_mo_value']);
+        $gl_date_mor = displat_date_in_excel_format_for_go_live_dt_intimestamp($row['field_hop_ops_glendat_mo_value']);
+        $hop_gl_del_month = date("F", $gl_date_mor);
+      }elseif(!empty($row['field_hop_ops_glendat_value'])) {
+        $hop_gl_del_date = displat_date_in_excel_format_for_go_live_dt($row['field_hop_ops_glendat_value']);
+        $gl_date_m = displat_date_in_excel_format_for_go_live_dt_intimestamp($row['field_hop_ops_glendat_value']);
+        $hop_gl_del_month = date("F", $gl_date_m);
+        
+      }elseif(!empty($row['field_sales_hop_ops_glendat_mo_value'])) {
+        $hop_gl_del_date = displat_date_in_excel_format_for_go_live_dt($row['field_sales_hop_ops_glendat_mo_value']);
+        $gl_date_mnp = displat_date_in_excel_format_for_go_live_dt_intimestamp($row['field_sales_hop_ops_glendat_mo_value']);
+        $hop_gl_del_month = date("F", $gl_date_mnp);
+        
+      }elseif(!empty($gl_ops_start)) {
+        $hop_gl_del_date = $gl_ops_start;
+        $hop_gl_del_month = $gl_ops_start_month;
+      }else{
+        $hop_gl_del_date = '-';
+        $hop_gl_del_month = '-';
+      }
+
+  $data[] = array(
+        $row['merchantname'],
+        date("m/d/Y", $row['creationdate']),
+        $rm_ops_start,
+        //$oh_ops_start,
+        $docs_ops_start,
+        $pro_ops_start,
+        $pos_ops_start,
+        $hop_gl_del_date,
+    );
+  }
+    
+$path = file_directory_path() . '/export.xls';
+  
+  
+  $options = array('format' => 'xls');
+  
+  if (phpexcel_export($header, $data, $path, $options)) {
+  	drupal_set_message(t("We did it !"));
+  }
+  else {
+  	drupal_set_message(t("Oops ! An error occured !"), 'error');
+  }
+}
+
+function merchant_operation_save_excel_form_submit($form, &$form_state) {
+	if (!ini_get('safe_mode')) {
+		set_time_limit(0);
+	}
+	ini_set('display_errors', 1);
+	ini_set('memory_limit', '-1');
+	module_load_include('inc', 'phpexcel', 'phpexcel.api');
+	global $user;
+	global $base_url;
+	$main_path = drupal_get_path('module', 'merchants');
+	include_once($main_path . '/xls-writer.php');
+	
+	
+	$header = array(
+			"Sr.No",
+			"App Validated data",
+			"Re-Validation: Date",
+			"Re-Validation: Status",
+			"Re-Validation: Offer accepted at the outlet but changes require",
+			"Re-Validation: Offer Not excepted at the outlet", 
+			"Re-Validation: Remarks", 
+			"Re-Validation: Changes updated by product OPS team", 
+			"Re-Validation: Product ops remarks", 
+			"Final Status", 
+			"Offer Code", 
+//OH Status
+			"latitude", 
+			"longitude",
+			"merchant_code",
+			"offer_upload_status", 
+			"offer_upload_comments",
+			"Merchant Tie-up Type", 
+			"Merchant Code", 
+			"RM Action Month",
+			"RM Action Date",
+			"RM/Salesmanager Status",
+			"RM/Salesmanager Status Comment",
+			"Overall Status:Ops Month",
+			"Overall Status:Ops & TC date",
+			"Overall Status:OE & TC -Name",
+			"Overall Status:Ops & TC",
+			"Overall Remarks:Ops & TC",
+//Documentation status //
+			"Documentation: Stamp on agreement available or not",
+			"Documentation: Is merchant mailer sent to merchants@hoppr.com",
+			"Documentation: Agreement Status Month",
+			"Documentation: Agreement Status Date",
+			"Documentation: Agreement status",
+			"Documentation: Reason of Agreement Rejection",
+//Keyword status //
+			"Product OPS - Evaluation Status",
+			"Product OPS - Keywords Date",
+			"Product OPS - Keywords",
+			"Product OPS - Script for IRA",
+//Pos status //
+			"POS: Delivery month",
+			"POS: Delivery date",
+			"POS: Overall POS Status",
+			"POS: Reason for not delivery",
+//Go live
+			"Merchant OPS: Go Live month",
+			"Merchant OPS: Go Live date",
+			"Merchant OPS: Go Live done by",
+			"Merchant OPS: Go Live Final status",
+			"Merchant OPS: Reason For go-live Not Done",
+//Merchant details        
+			"Sign up City",
+			"Merchant tie-up type",
+			"Offer Signed date",
+			"Offer Actual Entry Month",
+			"Offer Actual Entry date",
+			"Offer Modified date",
+			"RM",
+			"Sales Person Name",
+			"Sales Person Mobile No.",
+			"Sales Person City",
+			"Signatory Title",
+			"Signatory First Name",
+			"Signatory last Name",
+			"Signatory Designation",
+			"Signatory Mobile Number",
+			"Signatory landline Number",
+			"Signatory Email ID",
+			"HFA",
+			"Location / Area",
+			"Merchant Type A/B/C/D",
+			"Genre",
+			"Merchant",
+			"Merchant outlet name",
+			"Complete Address",
+			"Landmark",
+			"City",
+			"Zip Code",
+			"Outlet Number - Mobile",
+			"Outlet Number - Landline",
+			"Website",
+			"Offer Description for D Category / Checkin offer for C Category",
+			"%age of discount incase of flat discount",
+			"Menu / Rate card cost of individual service offered (will not be applicable on flat discount offers)",
+			"Time taken for every service mentioned in the offer (only incase of Get Pampered)",
+			"Actual Cost of offer",
+			"Hoppr Offer",
+			"Prior Appointment",
+			"Appointment number",
+			"Taxes",
+			"Redemption of voucher per person",
+			"Weekly Off",
+			"Operation Timings",
+			"Validity",
+			"Validity as per Agreement",
+			"Valid From",
+			"Valid to",
+			"Black Days",
+			"Highlights / Fineprints",
+			"Stickers requirement",
+			"Poster requirement",
+			"Tent Card requirement",
+			"Standee requirement",
+			"Others",
+			"Remarks",
+			"Merchant OPS: Outlet Status: Location: Easy to find?",
+			"Merchant OPS: Cleanliness & Hygienic status",
+			"Merchant OPS: Ambience status",
+			"Merchant OPS: Merchant Behaviour:",
+			"Merchant OPS: Overall Changes Done Status",
+			"Documentation: Overall Changes Done Status",
+			"Documentation: Agreement Available or not",
+			"Documentation: Agreement Overall Remarks",
+			"Documentation: Mail Communication Sent",
+			"Documentation: Mail Communication Sent On",
+//TC status
+			"TC - Verification Call Date",
+			"TC - Person name spoken to",
+			"TC - Person designation spoken to",
+			"TC - Person mobile number spoken to",
+			"TC: Change Status",
+			"TC: Overall Status: Modified Date",
+//Keyword status //
+			"Merchant OPS: Go Live POS Deployed",
+			"docs_mail_communication",
+			"docs_mail_comm_on",
+			"docs_agreement_hard_copy_received_status",
+			"creative_merchant_name",
+			"creative_merchant_code",
+			"creative_status"
+	);
+	
+	$sql_merchants = get_all_y2cf_merchant_offers_and_outlets_for_ops();
+  	$obj_merchants = db_query($sql_merchants);
+	$data = array();
+	$serial_number = get_list_serial_number();
+	while ($row = db_fetch_array($obj_merchants)) {
+		$salesperson_name = db_result(db_query("SELECT name FROM {users} WHERE uid = %d", $row['salesperson']));
+    	$rm_id = db_result(db_query("SELECT rm_id FROM {users} WHERE uid = %d", $row['salesperson']));
+		$rm_name = db_result(db_query("SELECT name FROM {users} WHERE uid = %d", $rm_id));
+		$outname = db_result(db_query("SELECT title FROM {node} where nid = '" . $row['nid'] . "' "));
+//Sales person mobile number
+		$users_nid = db_result(db_query("select nid from {node} where uid='".$row['salesperson']."' and type='profile' "));
+    	$spusers_det = db_fetch_array(db_query("select * from {content_type_profile} where nid='".$users_nid."'  "));
+		//TC varification call date
+		if(!empty($row['field_hop_ops_vari_date_value'])) {
+	      $tc_var_cd = displat_date_in_excel_format($row['field_hop_ops_vari_date_value']);
+	    }elseif(!empty($row['field_hop_ops_vari_date_mo_value'])) {
+	      $tc_var_cd = displat_date_in_excel_format($row['field_hop_ops_vari_date_mo_value']);
+	    }else{
+	      $tc_var_cd = '';
+	    }
+
+    	//$ops_vid = db_fetch_array(db_query("select min(nr.vid) as vid from {node_revisions} nr inner join {users} u on nr.uid=u.uid inner join {users_roles} ur on u.uid=ur.uid inner join {role} r on ur.rid=r.rid where (r.name='y2cfoperations' or r.name='hoppertelecallingops' or r.name='operationhead') and nr.nid='" . $row['merchantid'] . "'  "));
+	    $ops_vid = db_fetch_array(db_query("select max(nr.vid) as vid from {node_revisions} nr inner join {users} u on nr.uid=u.uid inner join {users_roles} ur on u.uid=ur.uid inner join {role} r on ur.rid=r.rid where (r.name='y2cfoperations' or r.name='hoppertelecallingops' or r.name='operationhead') and nr.nid='" . $row['hop_outletid'] . "'  "));
+	    
+    	$ops_start_date = db_fetch_array(db_query("select nr.timestamp as ops_date, nr.uid from {node_revisions} nr where nr.vid='" . $ops_vid['vid'] . "'  "));
+
+    	//$ops_vid_outw = db_fetch_array(db_query("select min(nr.vid) as vid from {node_revisions} nr inner join {users} u on nr.uid=u.uid inner join {users_roles} ur on u.uid=ur.uid inner join {role} r on ur.rid=r.rid where (r.name='y2cfoperations' or r.name='hoppertelecallingops' or r.name='operationhead') and nr.nid='" . $row['hop_outletid'] . "'  "));
+    	$ops_vid_outw = db_fetch_array(db_query("select max(nr.vid) as vid from {node_revisions} nr inner join {users} u on nr.uid=u.uid inner join {users_roles} ur on u.uid=ur.uid inner join {role} r on ur.rid=r.rid where (r.name='y2cfoperations' or r.name='hoppertelecallingops' or r.name='operationhead') and nr.nid='" . $row['hop_outletid'] . "'  "));
+    	$ops_start_date_outw = db_fetch_array(db_query("select nr.timestamp as ops_date, nr.uid from {node_revisions} nr where nr.vid='" . $ops_vid_outw['vid'] . "'  "));
+    
+		if($row['field_hop_tieup_type_value']!='National') {
+			if (!empty($ops_start_date_outw['ops_date'])) {
+		    	$ops_start = date("m-d-Y", $ops_start_date_outw['ops_date']);
+		        $ops_start_month = date("F", $ops_start_date_outw['ops_date']);
+		        $oetc_name = $ops_start_date_outw['uid'];
+		    }elseif (!empty($ops_start_date['ops_date'])) {
+		    	$ops_start = date("m-d-Y", $ops_start_date['ops_date']);
+		      	$ops_start_month = date("F", $ops_start_date['ops_date']);
+		      	$oetc_name = $ops_start_date['uid'];
+		    }else{
+		    	$ops_start = "";
+		    }
+		}else{
+		    $ops_start = date("m-d-Y", $row['creationdate']);
+		    $ops_start_month = date("F", $row['creationdate']);
+		}
+		
+		
+//Files URL path
+   		$hop_image_path = db_result(db_query("select filepath from {files} where fid='" . $row['field_image_upload_fid'] . "'  "));
+   		$image_path = (!empty($hop_image_path)) ? $hop_image_path : "-";
+   		 /*
+   		if(!empty($hop_image_path)) {
+    		$image_path = $hop_image_path;
+    	}else {
+    		$image_path = "-";
+    	}
+    	*/
+   		$hop_web_image_path = db_result(db_query("select filepath from {files} where fid='" . $row['field_images_website_fid'] . "'  "));
+   		$web_image_path = (!empty($hop_web_image_path)) ? $base_url.'/'.$hop_web_image_path : "";
+   		 /*
+	 	if(!empty($hop_web_image_path)) {
+      		$web_image_path = $base_url.'/'.$hop_web_image_path;
+   		}else {
+      		$web_image_path = "-";
+   		}*/
+
+   		$hop_menucard_path = db_result(db_query("select filepath from {files} where fid='" . $row['field_hop_menu_rate_card_filup_fid'] . "'  "));
+   		$menucard_path = (!empty($hop_menucard_path)) ? $base_url.'/'.$hop_menucard_path : "";
+   		/*
+	 	if(!empty($hop_menucard_path)) {
+      		$menucard_path = $base_url.'/'.$hop_menucard_path;
+    	}else {
+      		$menucard_path = "-";
+    	}*/
+//Merchant code implementation
+    $usr_profile = db_result(db_query("Select nid from {node} where uid='".$row['salesperson']."' and type='profile' "));
+    $usr_city = db_result(db_query("Select field_hrm_city_value from {content_type_profile} where nid='".$usr_profile."'  "));
+
+    if(!empty($row['field_hop_signup_city_value'])) {
+    	$cityname = get_only_term_name($row['field_hop_signup_city_value']);
+    }elseif(!empty($row['field_hopprs_city_value'])){
+    	$cityname = get_only_term_name($row['field_hopprs_city_value']);
+    }elseif(!empty($row['field_hopper_city_hfa_value'])){
+    	$cityname = get_only_term_name(get_parent_tid_by_tid($row['field_hopper_city_hfa_value']));
+    }else{
+    	$cityname = get_only_term_name($usr_city);
+    }
+
+    $merchant_code = merchant_code_defined($cityname);
+
+    $rs_ops_exe = (!empty($mo_agr_ror1)) ? get_ops_exe_ror($row['nid']) : get_ops_exe_ror_dummy($row['nid']);
+     /*
+    if(!empty($mo_agr_ror1)) {
+    	$rs_ops_exe = get_ops_exe_ror($row['nid']);
+    }else{
+    	$rs_ops_exe = get_ops_exe_ror_dummy($row['nid']);
+    }
+    */
+    $rs_ops_manager_docs = get_ops_manager_ror($row['merchantid']);
+    $rs_ops_manager_ror = "";
+    
+    
+
+	  $rs_pro_ror_od = get_pro_mngr_ror($row['nid']);
+    $rs_pro_ror_mo = get_pro_mngr_ror_mo($row['nid']);
+    $rs_pro_ror = (!empty($rs_pro_ror_od)) ? $rs_pro_ror_od : $rs_pro_ror_mo;
+/*     
+    if(!empty($rs_pro_ror_od)) {
+      $rs_pro_ror = $rs_pro_ror_od;
+    }else{
+      $rs_pro_ror = $rs_pro_ror_mo;
+    }
+*/
+    $rs_mer_ops_changes1 = get_mer_ops_change($row['nid']);
+    $rs_mer_ops_changes2 = get_mer_ops_change_dummy($row['nid']);
+    if(!empty($rs_mer_ops_changes1)) {
+      $rs_mer_ops_changes = $rs_mer_ops_changes1;
+    }elseif(!empty($rs_mer_ops_changes2)){
+    	$rs_mer_ops_changes = $rs_mer_ops_changes2;
+    }else{
+    	 $rs_mer_ops_changes = '';
+    }
+
+    $rs_mer_ops_changes_by_mngr = get_mer_ops_change_by_opsmngr($row['nid']);
+
+    $rs_tc_chges1 = get_mer_ops_change_by_tc($row['nid']);
+    $rs_tc_chges2 = get_mer_ops_change_by_tc_outlet($row['nid']);
+    if(!empty($rs_tc_chges1)) {
+    	$rs_mer_ops_changes_by_tc = $rs_tc_chges1;
+    }elseif(!empty($rs_tc_chges2)) {
+    	$rs_mer_ops_changes_by_tc = $rs_tc_chges2;
+    }else{
+    	$rs_mer_ops_changes_by_tc = '';
+    }
+
+
+    $opspp = get_all_ops_person_name($row['nid']);
+    
+
+//Offer description for merchant category A C and D
+    $offer_detail = (!empty($row['field_hopper_checkin1_value'])) ? $row['field_hopper_checkin1_value'] : $row['field_offer_description_value'];
+
+//Operational Timings
+    $frm_min = (!empty($row['field_hop_ops_ot_mm_frm_value'])) ? $row['field_hop_ops_ot_mm_frm_value'] : '00';
+    $to_min = (!empty($row['field_hop_ops_ot_mm_to_value'])) ? $row['field_hop_ops_ot_mm_to_value'] : '00'; 
+  /*  
+		if(!empty($row['field_hop_ops_ot_mm_frm_value'])) {
+			$frm_min = $row['field_hop_ops_ot_mm_frm_value'];
+		}else{
+			$frm_min = '00';
+		}
+
+	  if(!empty($row['field_hop_ops_ot_mm_to_value'])) {
+      $to_min = $row['field_hop_ops_ot_mm_to_value'];
+    }else{
+      $to_min = '00';
+    }
+    */
+
+    if(!empty($row['field_mo_oprational_timings_value'])) {
+    	$ops_timings = $row['field_mo_oprational_timings_value'];
+    }elseif(!empty($row['field_hop_ops_frm_hrs_value'])) {
+    	$ops_timings = $row['field_hop_ops_frm_hrs_value'].':'.$frm_min.' Hrs To '. $row['field_hop_ops_to_hrs_value'].':'.$to_min.' Hrs ';
+    }else{
+    	$ops_timings = "";
+    }
+//POS: delivery communication mail to OPS team in respective cities
+    if($row['field_hop_pos_dcmtopstinrcty_value'] == 1) {
+  	 $mail_sts = 'YES';
+    }elseif($row['field_hop_pos_dcmtopstinrcty_value'] == 0) {
+  	 $mail_sts = 'NO';
+    }
+//Ops easy to find
+    if(!empty($row['field_hop_offer_ops_easyfind_value'])) {
+	     $ops_etf = $row['field_hop_offer_ops_easyfind_value'];
+    }elseif(!empty($row['field_hop_offer_ops_easyfind_mo_value'])) {
+    	$ops_etf = $row['field_hop_offer_ops_easyfind_mo_value'];
+    }else{
+    	$ops_etf = '';
+    }
+
+    if($ops_etf == 1){
+    	$etf_label = 'Poor';
+    }elseif($ops_etf == 2) {
+    	$etf_label = 'Average';
+    }elseif($ops_etf == 3) {
+      $etf_label = 'Satisfactory';
+    }elseif($ops_etf == 4) {
+      $etf_label = 'Good';
+    }elseif($ops_etf == 5) {
+      $etf_label = 'Excellent';
+    }
+//Ops cleaness and Hygiene
+    if(!empty($row['field_hop_offer_clean_in_out_value'])) {
+       $ops_cah = $row['field_hop_offer_clean_in_out_value'];
+    }elseif(!empty($row['field_hop_offer_clean_in_out_mo_value'])) {
+      $ops_cah = $row['field_hop_offer_clean_in_out_mo_value'];
+    }else{
+    	$ops_cah = '';
+    }
+
+    if($ops_cah == 1){
+      $cah_label = 'Poor';
+    }elseif($ops_cah == 2) {
+      $cah_label = 'Average';
+    }elseif($ops_cah == 3) {
+      $cah_label = 'Satisfactory';
+    }elseif($ops_cah == 4) {
+      $cah_label = 'Good';
+    }elseif($ops_cah == 5) {
+      $cah_label = 'Excellent';
+    }
+//Ops Ambiance
+    if(!empty($row['field_hop_offer_ambiance_value'])) {
+       $ops_amb = $row['field_hop_offer_ambiance_value'];
+    }elseif(!empty($row['field_hop_offer_ambiance_mo_value'])) {
+      $ops_amb = $row['field_hop_offer_ambiance_mo_value'];
+    }else{
+    	 $ops_amb = '';
+    }
+
+    if($ops_amb == 1){
+      $amb_label = 'Poor';
+    }elseif($ops_amb == 2) {
+      $amb_label = 'Average';
+    }elseif($ops_amb == 3) {
+      $amb_label = 'Satisfactory';
+    }elseif($ops_amb == 4) {
+      $amb_label = 'Good';
+    }elseif($ops_amb == 5) {
+      $amb_label = 'Excellent';
+    }
+//Ops Ambiance
+    if(!empty($row['field_hop_offer_beh_chk_value'])) {
+       $ops_bchk = $row['field_hop_offer_beh_chk_value'];
+    }elseif(!empty($row['field_hop_offer_beh_chk_mo_value'])) {
+      $ops_bchk = $row['field_hop_offer_beh_chk_mo_value'];
+    }
+
+    if($ops_bchk == 1){
+      $bchk_label = 'Poor';
+    }elseif($ops_bchk == 2) {
+      $bchk_label = 'Average';
+    }elseif($ops_bchk == 3) {
+      $bchk_label = 'Satisfactory';
+    }elseif($ops_bchk == 4) {
+      $bchk_label = 'Good';
+    }elseif($ops_bchk == 5) {
+      $bchk_label = 'Excellent';
+    }
+
+
+//Total score for merchant ratings
+
+    $total_score = $ops_etf  + $ops_etf + $ops_amb + $ops_bchk;
+
+//Get all Modified date and time for all operations
+    
+//
+    $rej_sts = (!empty($row['field_hop_ops_oh_ds_sts']) && $row['field_hop_ops_oh_ds_sts']== 'Rejected' ) ? $row['field_hop_ops_oh_ds_sts'] : '';
+     /*
+    if(!empty($row['field_hop_ops_oh_ds_sts']) && $row['field_hop_ops_oh_ds_sts']== 'Rejected' ) {
+    	$rej_sts = $row['field_hop_ops_oh_ds_sts'];
+    }else{
+    	$rej_sts = '';
+    }
+    */
+    //Acceptence
+    $acc_sts = (!empty($row['field_hop_ops_oh_ds_sts']) && $row['field_hop_ops_oh_ds_sts']== 'Accepted' ) ? $row['field_hop_ops_oh_ds_sts'] : '';
+     /*
+	  if(!empty($row['field_hop_ops_oh_ds_sts']) && $row['field_hop_ops_oh_ds_sts']== 'Accepted' ) {
+      $acc_sts = $row['field_hop_ops_oh_ds_sts'];
+    }else{
+      $acc_sts = '';
+    }
+    */
+    //Last modified date.......outlet modify
+    $sp_mod_dt = get_sp_lst_mod_dt($row['hop_outletid']);
+    //Last modified date.......offer modify
+    $sp_offer_mod_dt = get_sp_lst_mod_dt($row['merchantid']);
+    
+    
+    $docs_mod_dt = get_docs_exe_modsts_dt($row['merchantid']);
+    $docs_mod_month = get_docs_exe_modsts_month($row['merchantid']);
+    
+    $tc_mod_dt = get_tc_exe_modsts_dt($row['nid']);
+    
+    $pro_ops_mod_dt_por = get_proops_exe_modsts_dt($row['hop_outletid']);
+    $pro_bulk_upl_dt_csv = $row['field_hop_pro_lmdate_value']; 
+    //keyword date for national brand is outlet created date
+    if(!empty($row['field_hop_pro_lmdate_value'])) {
+    	$pro_ops_mod_dt = date("m-d-Y", $row['field_hop_pro_lmdate_value']); 
+    }elseif(!empty($pro_ops_mod_dt_por)){
+    	$pro_ops_mod_dt = $pro_ops_mod_dt_por;
+    }else{
+    	$pro_ops_mod_dt = date("m-d-Y", $row['creationdate']);
+    }
+    
+    
+
+
+    $pos_sts = get_pos_exe_modsts_dt($row['merchantid']);
+
+//Outlet offer valid from--valid To
+    $mo_valid_frm = (!empty($row['field_hop_sp_valid_from_value'])) ? displat_date_in_excel_format($row['field_hop_sp_valid_from_value']) : '';
+    $mo_valid_to = (!empty($row['field_hop_sp_valid_from_value2'])) ? displat_date_in_excel_format($row['field_hop_sp_valid_from_value2']) : '';
+
+//Go Live date
+    $goliv_ddt = (!empty($row['field_hop_ops_glendat_value'])) ? displat_date_in_excel_format($row['field_hop_ops_glendat_value']) : '';
+//Merchant source
+    $merch_id =  db_result(db_query("select field_hop_ops_chfamsrc_value from {content_field_hop_ops_chfamsrc} where delta='0' and vid='".$row['offervid']."' and field_hop_ops_chfamsrc_value!='NULL' "));
+    if(!empty($merch_id)){
+      $mer_bank_merchant_name =  db_result(db_query("select name from {term_data} where tid='".$merch_id."' "));
+      $mer_src_tid = db_result(db_query("select tid from {term_hierarchy} where parent='".$merch_id."' "));
+      if(!empty($mer_src_tid)) {
+        $mer_act_db =  db_result(db_query("select name from {term_data} where tid='".$mer_src_tid."' "));
+      }else{
+      	$mer_act_db =  '';
+      }
+   }else{
+    	$mer_bank_merchant_name =  '';
+    	$mer_act_db = '';
+    }
+//Agreement available on offer or not
+    $docs_agr = db_result(db_query("Select count(field_docs_upload_fid) as agr_cnt from {content_field_docs_upload} where nid='".$row['merchantid']."' "));
+    
+    $agr_cnt = ($docs_agr['agr_cnt'] !=0 ) ? 'Yes' : 'No';
+//validity as per agreement
+		if(!empty($row['field_hoppr_new_valaspragr'])) {
+			$val_asper_agr = $row['field_hoppr_new_valaspragr'];
+		}elseif(!empty($row['field_offer_coupon_validity_value'])){
+		    $val_asper_agr = $row['field_offer_coupon_validity_value'];
+		}else{
+			$val_asper_agr = '';
+		}
+//overall status -- ops and TC
+    if(!empty($row['field_hop_offer_ops_status_value'])) {
+      $overall_sts_opstc = $row['field_hop_offer_ops_status_value'];
+    }elseif(!empty($row['field_hop_offer_ops_status_mo_value'])){
+      $overall_sts_opstc = $row['field_hop_offer_ops_status_mo_value'];
+    }elseif(!empty($row['field_hop_ops_all_remark_value'])){
+    	$overall_sts_opstc = $row['field_hop_ops_all_remark_value'];
+    }elseif(!empty($row['field_hop_ops_all_remrk_mo_value'])){
+      $overall_sts_opstc = $row['field_hop_ops_all_remrk_mo_value'];
+    }else{
+    	$overall_sts_opstc = '';
+    }
+
+//Complete
+//overall remarks -- ops and TC........//field_hop_gl_remrks
+     if(!empty($row['field_hop_offer_ops_comments_value'])) {
+     	  $opstc_rmks = $row['field_hop_offer_ops_comments_value'];
+     }elseif(!empty($row['field_hop_offer_ops_comments_mo_value'])){
+        $opstc_rmks = $row['field_hop_offer_ops_comments_mo_value'];
+    }elseif(!empty($row['field_hop_ops_tc_rmks_value'])){
+        $opstc_rmks = $row['field_hop_ops_tc_rmks_value'];
+    }elseif(!empty($row['field_hop_ops_tc_hglts_sta_value'])){
+     	  $opstc_rmks = $row['field_hop_ops_tc_hglts_sta_value'];
+     }else{
+     	  $opstc_rmks = '';
+     }
+
+//Products operation
+     if(!empty($row['field_hop_ops_pro_keywords_value'])) {
+     	$pro_kwrds = $row['field_hop_ops_pro_keywords_value'];
+     }elseif(!empty($row['field_hop_ops_pro_kwds_mo_value'])){
+     	$pro_kwrds = $row['field_hop_ops_pro_kwds_mo_value'];
+     }else{
+     	  $pro_kwrds = '';
+     }
+
+     if(!empty($row['field_hop_pro_evaluation_status_value'])) {
+     	$evalsts = $row['field_hop_pro_evaluation_status_value'];
+     }elseif(!empty($row['field_hop_pro_eval_status_value'])) {
+     	$evalsts = $row['field_hop_pro_eval_status_value'];
+     }else{
+        $evalsts = '';
+     }
+
+     if(!empty($row['field_hop_pro_otherscom_value'])) {
+     	$procmts = $row['field_hop_pro_otherscom_value'];
+     }elseif(!empty($row['field_hop_pro_cmt_mo_value'])){
+     	$procmts = $row['field_hop_pro_cmt_mo_value'];
+     }else{
+     	  $procmts = '';
+     }
+
+    
+//POS
+    if(!empty($row['field_hop_pos_oa_status_value'])) {
+    	$pos_sts = $row['field_hop_pos_oa_status_value'];
+    }elseif(!empty($row['field_hop_pos_oa_status_mo_value'])){
+    	$pos_sts = $row['field_hop_pos_oa_status_mo_value'];
+    }else{
+    	$pos_sts = '';
+    }
+
+    if(!empty($row['field_hop_pos_nt_del_value'])) {
+    	$pos_rndl = $row['field_hop_pos_nt_del_value'];
+    }elseif(!empty($row['field_hop_pos_nt_del_mo_value'])) {
+    	$pos_rndl = $row['field_hop_pos_nt_del_mo_value'];
+    }else{
+    	$pos_rndl = '';
+    }
+
+    //POS delivery date-----m/d/Y
+    if(!empty($row['field_hop_pos_del_dt_value'])) {
+    	$pos_ddt = displat_date_in_excel_format($row['field_hop_pos_del_dt_value']);
+    	$pos_month = date("F", displat_date_in_excel_format_for_pos_delivered_intimestamp($row['field_hop_pos_del_dt_value']));
+    }elseif(!empty($row['field_hop_pos_del_dt_mo_value'])){
+    	$pos_ddt = displat_date_in_excel_format($row['field_hop_pos_del_dt_mo_value']);
+    	$pos_month = date("F", displat_date_in_excel_format_for_pos_delivered_intimestamp($row['field_hop_pos_del_dt_mo_value']));
+    }else{
+    	$pos_ddt = '';
+    	$pos_month = '';
+    }
+    
+
+//Pos Courier date
+	if(!empty($row['field_hop_pos_cou_dt_value'])) {
+      $pos_ctdt = displat_date_in_excel_format($row['field_hop_pos_cou_dt_value']);
+    }elseif(!empty($row['field_hop_pos_cou_dt_mo_value'])){
+      $pos_ctdt = displat_date_in_excel_format($row['field_hop_pos_cou_dt_mo_value']);
+    }else{
+      $pos_ctdt = '';
+    }
+
+//OE Status and comments
+	if(!empty($row['field_hop_offer_ops_status_value'])) {
+      $mo_ops_sts = $row['field_hop_offer_ops_status_value'];
+    }elseif(!empty($row['field_hop_offer_ops_status_mo_value'])){
+      $mo_ops_sts = $row['field_hop_offer_ops_status_mo_value'];
+    }else{
+      $mo_ops_sts = '';
+    }
+//Ops Comments
+    if(!empty($row['field_hop_offer_ops_comments_value'])) {
+      $mo_ops_cmnts = $row['field_hop_offer_ops_comments_value'];
+    }elseif(!empty($row['field_hop_offer_ops_comments_mo_value'])){
+      $mo_ops_cmnts = $row['field_hop_offer_ops_comments_mo_value'];
+    }else{
+      $mo_ops_cmnts = '';
+    }
+//Latitude
+	if(!empty($row['field_hopp_ops_latitude_value'])) {
+      $latitude = $row['field_hopp_ops_latitude_value'];
+    }elseif(!empty($row['field_hop_out_latitude_mo_value'])) {
+       $latitude = $row['field_hop_out_latitude_mo_value'];
+    }else{
+      $latitude = '';
+    }
+//Longitude
+	if(!empty($row['field_hopp_ops_longitude_value'])) {
+      $longitude = $row['field_hopp_ops_longitude_value'];
+    }elseif(!empty($row['field_hop_mer_longitude_mo_value'])) {
+       $longitude = $row['field_hop_mer_longitude_mo_value'];
+    }else{
+      $longitude = '';
+    }
+//Merchant ops agreement sts
+	if(!empty($row['field_hop_ops_exe_sta_value'])) {
+      $mo_agrsts = $row['field_hop_ops_exe_sta_value'];
+    }elseif(!empty($row['field_hop_ops_exe_sta_mo_value'])) {
+       $mo_agrsts = $row['field_hop_ops_exe_sta_mo_value'];
+    }else{
+      $mo_agrsts = '';
+    }
+
+//TC Status
+        if(!empty($row['field_hop_ops_all_remark_value'])) {
+        	$tc_oall_sts = $row['field_hop_ops_all_remark_value'];
+        }elseif(!empty($row['field_hop_ops_all_remrk_mo_value'])) {
+        	$tc_oall_sts = $row['field_hop_ops_all_remrk_mo_value'];
+        }else{
+        	$tc_oall_sts = '';
+        }
+//TC remarks
+	     if(!empty($row['field_hop_ops_tc_hglts_sta_value'])) {
+          $tc_rmrks = $row['field_hop_ops_tc_hglts_sta_value'];
+        }elseif(!empty($row['field_hop_ops_tc_rmks_value'])) {
+          $tc_rmrks = $row['field_hop_ops_tc_rmks_value'];
+        }else{
+          $tc_rmrks = '';
+        }
+
+//TC Person name spoken to
+       if(!empty($row['field_hop_ops_pnspoken_value'])) {
+          $tc_pnst = $row['field_hop_ops_pnspoken_value'];
+        }elseif(!empty($row['field_hop_ops_pnspoken_mo_value'])) {
+          $tc_pnst = $row['field_hop_ops_pnspoken_mo_value'];
+        }else{
+          $tc_pnst = '';
+        }
+
+//TC Person name spoken to
+       if(!empty($row['field_hop_ops_designation_value'])) {
+          $tc_cpdesgn = $row['field_hop_ops_designation_value'];
+        }elseif(!empty($row['field_hop_ops_desg_mo_value'])) {
+          $tc_cpdesgn = $row['field_hop_ops_desg_mo_value'];
+        }else{
+          $tc_cpdesgn = '';
+        }
+
+//TC Person name spoken to
+       if(!empty($row['field_hop_ops_tc_mobileno_number'])) {
+          $tc_cpmobno = $row['field_hop_ops_tc_mobileno_number'];
+        }elseif(!empty($row['field_hop_ops_tc_mobno_mo_number'])) {
+          $tc_cpmobno = $row['field_hop_ops_tc_mobno_mo_number'];
+        }else{
+          $tc_cpmobno = '';
+        }
+
+//OPs Head Status
+        $opsheadsts = (!empty($row['field_hop_ops_oh_ds_sts_mo_value'])) ? $row['field_hop_ops_oh_ds_sts_mo_value'] : '';
+/*        
+      if(!empty($row['field_hop_ops_oh_ds_sts_mo_value'])) {
+        $opsheadsts = $row['field_hop_ops_oh_ds_sts_mo_value'];
+      }else{
+      	$opsheadsts = '-';
+      }
+*/
+//Ops Head Remarks
+        $opsheadrmks = (!empty($row['field_hop_ops_acc_rmrks_mo_value'])) ? $row['field_hop_ops_acc_rmrks_mo_value'] : '';
+       /* 
+	  if(!empty($row['field_hop_ops_acc_rmrks_mo_value'])) {
+        $opsheadrmks = $row['field_hop_ops_acc_rmrks_mo_value'];
+      }else{
+        $opsheadrmks = '-';
+      }
+      */
+//Offer upload
+      $offer_upld_sts = (!empty($row['field_hoppr_ofr_upld_value'])) ? $row['field_hoppr_ofr_upld_value'] : '-';
+      $offer_upld_cmnts = (!empty($row['field_hop_ofr_upld_cmnts_value'])) ? $row['field_hop_ofr_upld_cmnts_value'] : '';
+      $ofr_upld_dt = get_proops_exe_modsts_dt_hopprofferupload($row['nid']);
+//offer testing
+        $offr_test_sts = (!empty($row['field_hoppr_offr_test_value'])) ? $row['field_hoppr_offr_test_value'] : '';
+        $offr_test_cmnts = (!empty($row['field_hop_off_test_cmnts_value'])) ? $row['field_hop_off_test_cmnts_value'] : '';
+        $ofr_tst_upld = get_proops_exe_modsts_dt_hopproffertesting($row['nid']);
+
+        if(!empty($row['field_hoppr_creativedsgnabu_value'])) {
+        	$creative = $row['field_hoppr_creativedsgnabu_value'];
+        }elseif(!empty($row['field_hoppr_creativedsgnab_out_value'])) {
+        	 $creative = $row['field_hoppr_creativedsgnab_out_value'];
+        }else{
+        	$creative = '';
+        }
+
+//GO LIVE Status
+      if(!empty($row['field_hop_ops_goliv_oth_cmts_value'])) {
+      	$pos_sts_oth = $row['field_hop_ops_goliv_oth_cmts_value'];
+      }elseif($row['field_hop_gl_pos_othrs_mo_value']) {
+      	$pos_sts_oth = $row['field_hop_gl_pos_othrs_mo_value'];
+      }else{
+      	$pos_sts_oth = '';
+      }
+
+//Go Live POS sts
+      if(!empty($row['field_hop_ops_glivsts_mo_value'])) {
+      	$go_live_pos_status = $row['field_hop_ops_glivsts_mo_value'];
+      }elseif(!empty($row['field_hop_ops_glivsts_value'])) {
+      	$go_live_pos_status = $row['field_hop_ops_glivsts_value'];
+      }else{
+      	$go_live_pos_status = '';
+      }
+//GO LIVE overall
+      if(!empty($row['field_hop_ops_glivsts_value'])) {
+        $go_live_overall_status = $row['field_hop_ops_glivsts_value'];
+      }elseif(!empty($row['field_hop_ops_glivsts_mo_value'])) {
+        $go_live_overall_status = $row['field_hop_ops_glivsts_mo_value'];
+      }elseif(!empty($row['field_sales_hop_ops_glivsts_mo_value'])) {
+        $go_live_overall_status = $row['field_sales_hop_ops_glivsts_mo_value'];
+      }else{
+        $go_live_overall_status = '';
+      }
+//Go live reason of rejection
+      $go_live_reason_ntdone = get_mer_go_live_ops_pos_for_not_done($row['nid']);
+	  $gl_ntdone_ror1 = get_mer_go_live_ops_pos_for_not_done($row['merchantid']);
+      $gl_ntdone_ror2 = get_golive_ror_notdone($row['nid']);
+      $gl_ntdone_ror3 = get_golive_ror_notdone_for_salesoe($row['nid']);
+      if(!empty($gl_ntdone_ror1)) {
+      	$go_live_reason_ntdone = $gl_ntdone_ror1;
+      }elseif(!empty($gl_ntdone_ror2)) {
+      	$go_live_reason_ntdone = $gl_ntdone_ror2;
+      }elseif(!empty($gl_ntdone_ror3)) {
+      	$go_live_reason_ntdone = $gl_ntdone_ror3;
+      }elseif(!empty($row['field_hop_gl_remrks_value'])){
+     	  $go_live_reason_ntdone = $row['field_hop_gl_remrks_value'];
+     }else{
+      	$go_live_reason_ntdone = '';
+      }
+
+
+      $ror_pos_nd_1 = get_goliveposstatus_notdone_ror($row['nid']);
+      $ror_pos_nd_2 = get_goliveposstatus_notdone_ror_outletwise($row['nid']);
+      if(!empty($ror_pos_nd_1)) {
+      	$ror_pos_sts = $ror_pos_nd_1;
+      }elseif(!empty($ror_pos_nd_2)) {
+      	$ror_pos_sts = $ror_pos_nd_2;
+      }else{
+      	$ror_pos_sts = '';
+      }
+//Full address for merchant outlets
+	$complete_address = $row['field_mo_loc_address_1_value'] ." ". $row['field_mo_loc_address_2_value'] ." ". $row['field_mo_loc_landmark_value'] ." ". $row['field_mo_landmark2_value'] ." ". get_only_term_name($row['field_hopprs_city_value']) ." ". $row['field_mo_hop_zipcode_value'];
+
+//Weekly off
+  	$weekly_off1 = $row['field_mo_holidays_value'];
+  	$weekly_off2 = get_ops_weekly_off($row['merout_vid']);
+  if(!empty($weekly_off1)) {
+  	$wklyoff = $weekly_off1;
+  }elseif(!empty($weekly_off2)) {
+  	$wklyoff = $weekly_off2;
+  }else{
+  	$wklyoff = '';
+  }
+//Go live end date
+  
+  if(!empty($row['field_hop_ops_glivsts_mo_value']) || !empty($row['field_sales_hop_ops_glivsts_mo_value']) || !empty($row['field_hop_ops_glivsts_value'])) {
+  	$gl_outlet_vid=db_result(db_query("Select vid from node where nid='".$row['hop_outletid']."' "));
+  	$gl_date_ops_name = db_fetch_array(db_query("select * from node_revisions where vid='".$gl_outlet_vid."' "));
+  }
+  
+  if(!empty($row['field_hop_ops_glendat_mo_value'])) {
+        $hop_gl_del_date = displat_date_in_excel_format_for_go_live_dt($row['field_hop_ops_glendat_mo_value']);
+        $gl_date_mor = displat_date_in_excel_format_for_go_live_dt_intimestamp($row['field_hop_ops_glendat_mo_value']);
+        $hop_gl_del_month = date("F", $gl_date_mor);
+      }elseif(!empty($row['field_hop_ops_glendat_value'])) {
+        
+      	$hop_gl_del_con = date_convert($row['field_hop_ops_glendat_value'], DATE_DATETIME, DATE_UNIX);
+      	$hop_gl_del_date = date('m-d-Y', $hop_gl_del_con);
+        $gl_date_m = displat_date_in_excel_format_for_go_live_dt_intimestamp($row['field_hop_ops_glendat_value']);
+        $hop_gl_del_month = date("F", $gl_date_m);
+        }elseif(!empty($row['field_sales_hop_ops_glendat_mo_value'])) {
+        $hop_gl_del_date = displat_date_in_excel_format_for_go_live_dt($row['field_sales_hop_ops_glendat_mo_value']);
+        $gl_date_mnp = displat_date_in_excel_format_for_go_live_dt_intimestamp($row['field_sales_hop_ops_glendat_mo_value']);
+        $hop_gl_del_month = date("F", $gl_date_mnp);
+        }elseif(!empty($row['field_hop_ops_glivsts_mo_value']) || !empty($row['field_sales_hop_ops_glivsts_mo_value']) || !empty($row['field_hop_ops_glivsts_value'])) {
+        $hop_gl_del_date = date("m-d-Y", $gl_date_ops_name['timestamp']);
+        $hop_gl_del_month = date("F", $gl_date_ops_name['timestamp']);
+  		}else{
+  			$hop_gl_del_date = '';
+  			$hop_gl_del_month = '';
+  		}
+  
+  
+  
+  
+  		$hop_gl_del_date_sp = (!empty($row['field_sales_hop_ops_glendat_mo_value'])) ? displat_date_in_excel_format($row['field_sales_hop_ops_glendat_mo_value']) : '';
+  	/* 
+      if(!empty($row['field_sales_hop_ops_glendat_mo_value'])) {
+        $hop_gl_del_date_sp = displat_date_in_excel_format($row['field_sales_hop_ops_glendat_mo_value']);
+      }else{
+      	$hop_gl_del_date_sp = "-";
+      }
+      */
+//mail_communication
+  		$mail_coomm_on = (!empty($row['field_hop_mal_com_snt_on_value'])) ? displat_date_in_excel_format($row['field_hop_mal_com_snt_on_value']) : ''; 
+/*		
+      if(!empty($row['field_hop_mal_com_snt_on_value'])) {
+          $mail_coomm_on = displat_date_in_excel_format($row['field_hop_mal_com_snt_on_value']);
+      }else{
+      	$mail_coomm_on = "-";
+      }
+*/
+  		$mail_communication = ($row['field_hoppr_new_mail_comm_value']=='1') ? "Yes" : "No";
+  		/* 
+      if($row['field_hoppr_new_mail_comm_value']=='1') {
+      	$mail_communication = "Yes";
+      }else{
+      	$mail_communication = "No";
+      }
+	*/
+//Go live status
+  		$hoppr_go_live_sign_date = (!empty($row['field_offer_sign_date_value'])) ? displat_date_in_excel_format($row['field_offer_sign_date_value']) : "";
+/*		 
+      if(!empty($row['field_offer_sign_date_value'])) {
+        $hoppr_go_live_sign_date = displat_date_in_excel_format($row['field_offer_sign_date_value']);
+      }else{
+      	$hoppr_go_live_sign_date = "-";
+      }
+*/
+//Mail Communication sent
+      if($row['field_hoppr_new_mail_comm_value'] ==1) {
+      	$hop_mail_comm_sent = "Yes";
+      }elseif($row['field_hoppr_new_mail_comm_value']==0) {
+      	$hop_mail_comm_sent = "No";
+      }
+//POS METERIAL SENT
+      $met_sent = get_pos_meterial($row['hop_outletid']);
+//Offer Testing
+
+      $mer_vid = db_result(db_query("Select vid from {node} where nid='".$row['hop_outletid']."' "));
+      $oprts_arr_sts = hoppr_show_all_operators($mer_vid);
+      $tstnum_arr = hoppr_show_all_testing_numbers($mer_vid);
+
+      $fblinks_arr = hoppr_show_all_testing_fblinks($mer_vid);
+      $point_sms = hoppr_show_all_testing_pointsms($mer_vid);
+      $offer_sms = hoppr_show_all_testing_offersms($mer_vid);
+      $coupon_code_sms = hoppr_show_all_testing_couponcodesms($mer_vid);
+      $merchant_sms = hoppr_show_all_testing_merchantsms($mer_vid);
+      $testing_res_time = hoppr_show_all_testing_res_time($mer_vid);
+      $testing_final_sts = hoppr_show_all_testing_tststs($mer_vid);
+
+      //OE NAME
+      $oe1 = get_oename_for_outlet($row['hop_outletid']);
+      $oe2 = get_oename_for_outlet($row['merchantid']);
+    if($row['field_hop_tieup_type_value']!='National') {
+      if(!empty($oe1)) {
+      	$oe_name = $oe1;
+      }else{
+      	$oe_name = $oe2;
+      }
+     }else{
+      $oe_name  = 'Rakhshi Khan';
+      }
+      
+      
+     
+
+
+      if(!empty($row['field_hop_rej_cs_sts_rmks_value'])) {
+      	$ror_rmks = $row['field_hop_rej_cs_sts_rmks_value'];
+      }elseif(!empty($row['field_hop_ror_oth_cmnts_value'])){
+      	$ror_rmks = $row['field_hop_ror_oth_cmnts_value'];
+      }else{
+      	$ror_rmks = '';
+      }
+
+	//RM DATES
+	   $rm_general_sql = get_general_query_for_outlets($row['merchantid']);
+    $rm_sql = $rm_general_sql." and (r.name='reporting manager' or r.name='salesmanager')  ";
+    $rm_ops_vid = db_fetch_array(db_query($rm_sql));
+    $rm_ops_start_date = db_fetch_array(db_query("select nr.timestamp as ops_date from {node_revisions} nr where nr.vid='" . $rm_ops_vid['vid'] . "'  "));
+      if (!empty($rm_ops_start_date['ops_date'])) {
+      $rm_ops_start = date("m-d-Y", $rm_ops_start_date['ops_date']);
+      $rm_ops_month = date("F", $rm_ops_start_date['ops_date']);
+    }else{
+      $rm_ops_start = "";
+      $rm_ops_month = "";
+    }
+
+
+	//OH DATES
+
+    $oh_general_sql = "select vid from {node} where nid='" . $row['hop_outletid'] . "'  ";
+    $ohh_ops_vid = db_fetch_array(db_query($oh_general_sql));
+    $oh_str_dt = db_fetch_array(db_query("select field_hop_oh_csvlmd_value from {content_type_merchant_outlet} where vid='" . $ohh_ops_vid['vid'] . "'  "));
+    
+    $oh_ops_start = (!empty($oh_str_dt['field_hop_oh_csvlmd_value'])) ? date("m-d-Y", $oh_str_dt['field_hop_oh_csvlmd_value']) : "";
+/*   
+    if (!empty($oh_str_dt['field_hop_oh_csvlmd_value'])) {
+      $oh_ops_start = date("m-d-Y", $oh_str_dt['field_hop_oh_csvlmd_value']);
+    }else{
+      $oh_ops_start = "-";
+    }
+*/
+//Final Status
+    $final_status = ($pos_sts=='Delivered' && $offer_upld_sts=='Complete') ? "Active" : "";
+/*   
+                if($pos_sts=='Delivered' && $offer_upld_sts=='Complete') {
+                    $final_status = "Active";
+                    }else{
+                        $final_status = "";
+                        }
+*/
+		$rej_meroffer_vid = db_result(db_query("Select vid from {node} where nid='".$row['merchantid']."' "));
+		$rej_cas_sts = get_rm_rejected_case_details($rej_meroffer_vid);
+		$rm_rej_max_vid = db_fetch_array(db_query("select max(vid) as vid from {content_type_mo_rm_rej_cases} where field_hoprc_rm_rej_mn_nid= '".$row['merchantid']."' "));
+		$rm_rej_lmd = db_result(db_query("Select changed from {node} where vid='".$rm_rej_max_vid['vid']."' "));
+		
+		$oe_rej_cas_sts = get_oe_rejected_cases($row['hop_outletid']);
+		$max_vid_oe = db_fetch_array(db_query("select max(vid) as vid from {content_type_hoppr_oe_rej_cases} where field_hoprc_oe_rej_mn_nid= '".$row['hop_outletid']."' "));
+		$oe_rej_lmd = db_result(db_query("Select changed from {node} where vid='".$max_vid_oe['vid']."' "));
+		
+		$docs_rej_cas_sts = get_docs_rejected_cases($rej_meroffer_vid);
+		$docs_rej_max_vid = db_fetch_array(db_query("select max(vid) as vid from {content_type_hoppr_docs_rej_cases} where field_hoprc_docs_rej_mn_nid= '".$row['merchantid']."' "));
+		$docs_rej_lmd = db_result(db_query("Select changed from {node} where vid='".$docs_rej_max_vid['vid']."' "));
+		
+		$oe_gl_rej_cas_sts = get_oe_golive_rejected_cases($row['hop_outletid']);
+		$max_vid_gl_oe = db_fetch_array(db_query("select max(vid) as vid from {content_type_hoppr_gl_rej_cases} where field_hoprc_gl_rej_mn_nid= '".$row['hop_outletid']."' "));
+		$gl_rej_lmd = db_result(db_query("Select changed from {node} where vid='".$max_vid_gl_oe['vid']."' "));
+//GL PERSON NAME
+		$gl_person_name_fs = get_hoppr_emp_name_for_golive($row['hop_outletid']);		
+		$gl_person_name_ss = get_hoppr_emp_name_for_golive_from_first_phase($row['merchantid']);
+		
+		if(!empty($row['field_hop_gldoneby_uid'])) {
+			$gl_person_name = ucwords(get_salesperson_name($row['field_hop_gldoneby_uid']));
+		}elseif(!empty($gl_person_name_fs)) {
+			$gl_person_name = $gl_person_name_fs; 
+		}else{
+			$gl_person_name = $gl_person_name_ss;
+		}
+		
+//REVALIDATION
+		$re_validation_acc_bc = get_revalidation_accepted_but_changes($mer_vid);
+		$re_validation_not_acc = get_revalidation_not_accepted_outlet($mer_vid);
+		$validation_date = (!empty($row['field_hop_revalidation_dis_dt_value'])) ? date("m-d-Y",$row['field_hop_revalidation_dis_dt_value']) : "";
+		 /*
+		if(!empty($row['field_hop_revalidation_dis_dt_value'])) {
+			$validation_date = date("m-d-Y",$row['field_hop_revalidation_dis_dt_value']);
+		}else{
+			$validation_date = '-';
+		}
+		*/
+		
+		$data[] = array(
+				$serial_number++,
+				$row['field_hop_revalidation_appval_value'],
+				$validation_date,
+				$row['field_hop_revalidation_value'],
+				$re_validation_acc_bc,
+				$re_validation_not_acc,
+				$row['field_hop_revalidation_remarks_value'],
+				$row['field_hop_revalidation_cdbpotm_value'],
+				$row['field_hop_revalidation_popdrmks_value'],
+				$final_status,
+				$row['merchantid'],
+				$latitude,
+				$longitude,
+				$row['hop_outletid'],
+//Offer upload and testing status
+				$row['field_hoppr_ofr_upld_value'],
+				$row['field_hop_ofr_upld_cmnts_value'],
+//Merchant Tie-up type
+				$row['field_hop_tieup_type_value'],
+//Merchant code
+				$merchant_code.$row['hop_outletid'],
+//RM status
+				$rm_ops_month,
+				$rm_ops_start,
+				$row['field_hoppr_new_rmsmsts_value'],
+				$row['field_hoppr_new_rmsm_cmnts_value'],
+//Overall-status Ops & TC
+				$ops_start_month,
+				$ops_start,
+				get_salesperson_name($oetc_name),
+				$overall_sts_opstc,
+				$opstc_rmks,
+//Docs status
+				$row['field_hopdocs_sopaon_value'],
+				$row['field_hopdocs_immstmahdc_value'],
+				$docs_mod_month,
+				$docs_mod_dt,
+				$row['field_hop_ops_agr_sta_value'],
+				$rs_ops_manager_ror,
+//Product ops status
+				$evalsts,
+				$pro_ops_mod_dt,
+				$pro_kwrds,
+				$row['field_pro_script_value_value'],
+//Creative design
+//pos status
+				$pos_month,
+				$pos_ddt,
+				$pos_sts,
+				$pos_rndl,
+//Go live status
+				$hop_gl_del_month,
+				$hop_gl_del_date,
+				$gl_person_name,
+				$go_live_overall_status,
+				$go_live_reason_ntdone,
+//Merchant outlet info
+				$cityname,
+				$row['field_hop_merchant_exi_new_value'],
+				$hoppr_go_live_sign_date,
+				date("F", $row['creationdate']),
+				date("m-d-Y", $row['creationdate']),
+				$cnt_modified_date,
+				$rm_name,
+				$salesperson_name,
+				$spusers_det['field_hopemp_mobileno_number'],
+				get_only_term_name($spusers_det['field_hrm_city_value']),
+				$row['field_merchant_title_value'],
+				$row['field_merchant_f_name_value'],
+				$row['field_merchant_last_name_value'],
+				$row['field_hop_sig_designation_value'],
+				$row['field_mer_auth_mobile_no_number'],
+				$row['field_merchant_ll_number_number'],
+				$row['field_merchant_email_id_email'],
+				get_only_term_name($row['field_hopper_city_hfa_value']),
+				$row['field_hop_hfa_ar_loc_value'],
+				get_only_term_name($row['field_hop_merch_type_value']),
+				get_only_term_name($row['field_genre_value']),
+				$row['merchantname'],
+				$row['merchant_outlet_name'],
+				$complete_address,
+				$row['field_mo_landmark2_value'],
+				get_only_term_name($row['field_hopprs_city_value']),
+				$row['field_mo_hop_zipcode_value'],
+				$row['field_con_per_mon_mo_number'],
+				$row['field_mo_outlet_lnd_no_number'],
+				$row['field_mer_website_add_url'],
+				$offer_detail,
+				$row['field_offer_discount_value'],
+				$row['field_hop_cost_ser_inclu_value'],
+				$row['field_hop_dur_each_ser_value'],
+				$row['field_merchant_offer_price_value'],
+				$row['field_mer_offer_price_value'],
+				$row['field_mo_appointmengt_value'],
+				$row['field_mo_app_mon_num_number'],
+				$row['field_inclusive_of_taxes_value'],
+				$row['field_no_of_plp_voucher_value'],
+				$wklyoff,
+				$ops_timings,
+				$row['field_offer_coupon_validity_value'] . " days",
+				$val_asper_agr . " days",
+				$mo_valid_frm,
+				$mo_valid_to,
+				$row['field_hop_outlet_nvon_value'],
+				$row['field_highlights1_value'] . $row['field_highlight_2_value'] . $row['field_hop_highlights3_value'] . '/' .    $row['field_other_fine_point_one_value'] . $row['field_hop_fine_print_5_value'],
+				$row['field_hop_stickers_mo_value'],
+				$row['field_hop_poster_requir_mo_value'],
+				$row['field_hop_tent_card_requ_mo_value'],
+				$row['field_hop_standees_mo_value'],
+				$row['field_hopper_other_promo_mat_value'],
+				$row['field_hop_mer_remarks_mo_value'],
+				$etf_label,
+				$cah_label,
+				$amb_label,
+				$bchk_label,
+				$rs_mer_ops_changes,
+//Documentation
+				$rs_mer_ops_changes_by_mngr,
+				$agr_cnt,
+				$row['field_hop_mo_om_comments_value'],
+				$hop_mail_comm_sent,
+				$mail_coomm_on,
+				$tc_var_cd,
+				$tc_pnst,
+				$tc_cpdesgn,
+				$tc_cpmobno,
+				$rs_mer_ops_changes_by_tc,
+				$tc_mod_dt,
+				$ror_pos_sts,
+				$row['field_hoppr_new_mail_comm_value'],
+				$mail_coomm_on,
+				$row['field_hop_ag_hrd_rcv_sts_value'],
+//Creative design
+				$row['merchantname'],
+				$row['hop_outletid'],
+				$row['field_hoppr_creativedsgnab_out_value'],
+			);
+		}
+	
+	$cur_time= date("m-d-Y H:i:s").')-'.$user->name;
+	$path = file_directory_path() . '/offersdump/merchant_offers-('.$cur_time.'.xls';
+	$options = array('format' => 'xls');
+	if (phpexcel_export($header, $data, $path, $options)) {
+		header("Content-Type: application/vnd.ms-excel");
+		header("Content-Disposition: attachment; filename=\"merchant_offers-(".$cur_time.".xls\"");
+		header("Cache-Control: max-age=0");
+		readfile($path);
+		unlink($path);
+		exit();
+		
+	}
+	else {
+		drupal_set_message(t("Oops ! An error occured !"), 'error');
+	}
+}
+function y2cf_merchants_operations($offer_user_id) {
+  global $user;
+	global $base_url;
+	//User roles
+	$rs_all_role = get_all_user_roles($user->uid);
+	$rs_rid  = get_user_role_id($user->uid);
+	$arg_user_id = arg(2);
+	if ($rs_rid == 'y2cfmanager' && arg(0) == 'y2cf' && arg(1) == 'offerhierarchy' && is_numeric(arg(2))) {
+		$offer_user_id = $arg_user_id;
+	}
+	else {
+		$offer_user_id = $user->uid;
+	}
+	if (!empty($offer_user_id)) {
+		$is_rm_or_not = get_user_role_id($offer_user_id);
+		if ($is_rm_or_not == 'reporting manager') {
+			$and_team = ' and Team ';
+		}
+  }
+	$mo_path = drupal_get_path('module', 'y2cf_operation');
+	$my_url = $base_url . '/' . $mo_path . '/mycustom.php';
+	$total_offer_cnt = get_merchant_offers_count_query_ops($offer_user_id);
+
+  $output .= '<table><tr>
+  <td width="10%">' . drupal_get_form('merchant_operation_save_excel_form', $form) . '</td>
+  <td width="10%">' . drupal_get_form('merchant_operation_small_report_form', $form) . '</td>
+<td width="60%">
+<span style="color:red;font-weight:bold;">SP:</span> Sales person,
+<span style="color:red;font-weight:bold;">RM:</span> Reporting Manager,
+<span style="color:red;font-weight:bold;">SM:</span>  Sales Manager,
+<span style="color:red;font-weight:bold;">OH:</span>  Operation Head,
+<span style="color:red;font-weight:bold;">OE:</span>  Operation Executive,
+<span style="color:red;font-weight:bold;">TC:</span>  Telecalling,
+<span style="color:red;font-weight:bold;">PRO:</span>  Product,
+<span style="color:red;font-weight:bold;">GL:</span>  Go Live,
+<span style="color:red;font-weight:bold;">AG:</span>  Agreement received or not,
+<span style="color:red;font-weight:bold;">Docs:</span>  Agreement approved,
+<span style="color:red;font-weight:bold;">KW:</span>  Keyword,
+<span style="color:red;font-weight:bold;">CR:</span>  Creative design
+<span style="color:red;font-weight:bold;">OT:</span>  Offer Testing,
+<span style="color:red;font-weight:bold;">OU:</span>  Offer Upload,
+<span style="color:red;font-weight:bold;">RVS:</span>  Re-validation status,
+<span style="color:red;font-weight:bold;">App Val data:</span>  App Validated data,
+</td>
+<td width="20%">'.get_custom_pager_request($total_offer_cnt).'</td></tr></table>';
+
+
+	$header = array(
+				array('data' => 'S.No', 'field' => 'nid'),
+				array('data' => 'Sales Person Name', 'field' => 'uid'),
+				array('data' => 'HFA/City/Merchant', 'field' => 'title'),
+				array('data' => 'Offer Added on', 'field' => 'nn.created', 'sort' => 'desc'),
+		  		array('data' => 'Overall Status'),
+				array('data' => 'Rec. AG | Docs Sts'),
+		  		array('data' => 'Keyword Sts | Creative Status | POS Sts'),
+		  		array('data' => 'Offer Testing | Offer Upload'),
+		  		array('data' => 'Action to be taken by ops team'),
+	);
+	if (isset($_GET['Search_val'])) {
+		$rm = isset($_GET['rm']) ? $_GET['rm'] : "";
+    $salesperson = isset($_GET['salesperson']) ? $_GET['salesperson'] : "";
+    $merchant = isset($_GET['merchant']) ? $_GET['merchant'] : "";
+    $merchant_code = isset($_GET['merchant_code']) ? $_GET['merchant_code'] : "";
+    $hop_kw = isset($_GET['hop_kw']) ? $_GET['hop_kw'] : "";
+    $app_val_status = isset($_GET['app_val_status']) ? $_GET['app_val_status'] : "";
+    $genre = isset($_GET['genre']) ? $_GET['genre'] : "";
+    $merchant_category = isset($_GET['merchant_category']) ? $_GET['merchant_category'] : "";
+    $entry_date = isset($_GET['entry_date']) ? $_GET['entry_date'] : "";
+    $exit_date = isset($_GET['exit_date']) ? $_GET['exit_date'] : "";
+    $drs = isset($_GET['drs']) ? $_GET['drs'] : "";
+    $oes = isset($_GET['oes']) ? $_GET['oes'] : "";
+    $oms = isset($_GET['oms']) ? $_GET['oms'] : "";
+    $tcs = isset($_GET['tcs']) ? $_GET['tcs'] : "";
+    $pros = isset($_GET['pros']) ? $_GET['pros'] : "";
+    $pos = isset($_GET['pos']) ? $_GET['pos'] : "";
+    $gls = isset($_GET['gls']) ? $_GET['gls'] : "";
+    $revalsts = isset($_GET['revalsts']) ? $_GET['revalsts'] : "";
+    $rm_or_sm_status = isset($_GET['rm_or_sm_status']) ? $_GET['rm_or_sm_status'] : "";
+    $omdrcv = isset($_GET['omdrcv']) ? $_GET['omdrcv'] : "";
+    $proops = isset($_GET['proops']) ? $_GET['proops'] : "";
+    $goliveops = isset($_GET['goliveops']) ? $_GET['goliveops'] : "";
+    $ofrupld = isset($_GET['ofrupld']) ? $_GET['ofrupld'] : "";
+    $ofrtsting = isset($_GET['ofrtsting']) ? $_GET['ofrtsting'] : "";
+
+	}
+	if (isset($_GET['Search_reset']) && $_GET['Search_reset']=="View All") {
+		drupal_goto($base_url."/y2cf/merchantsoperation");
+	}
+
+	if ($rs_rid == 'salesperson') {
+		$rm_select_field = '';
+		$sp_select_field = '';
+	}
+	elseif ($rs_rid == 'reporting manager') {
+		$rm_select_field = '';
+		$sp_select_field = "<SELECT name='salesperson' style='width:60px;'>" . y2cf_list_of_salespersons_for_particular_rm($user->uid) . "</SELECT>";
+	}
+	else {
+		$rm_select_field = "<SELECT name='rm' style='width:auto;'>" . y2cf_list_of_rms() . "</SELECT>";
+		$sp_select_field = "<SELECT name='salesperson' style='width:60px;'>" . y2cf_list_of_all_salespersons() . "</SELECT>";
+	}
+	$data = array();
+	$data[-1] = array(
+    'sn' => "<form name='form2' method='get' action=''>",
+    'salesperson' => $sp_select_field,
+	   'city_zone'=> "<table width='50%'>
+			<tr><td>M-code</td>
+			<td align='left'><input type='text' name='merchant_code' size='10' class='ul_search10 form-text'  value='" . $merchant_code . "'></td></tr>
+			<tr><td>City</td>
+			<td><SELECT name='city' style='width:80px;'  >" . y2cf_all_sales_and_ops_citylist_for_filteration() . "</SELECT></td></tr>
+			<tr><td>M-Name</td>
+			<td><input type='text' name='merchant' size='10' class='ul_search10 form-text'   value='" . $merchant . "'></td></tr>
+			<tr><td>Keyword</td>
+			<td><input type='text' name='hop_kw' size='10' class='ul_search10 form-text'   value='" . $hop_kw . "'></td></tr>
+			<tr><td>App Val data</td>
+			<td><input type='text' name='app_val_status' size='10' value='" . $app_val_status . "'><br /></td></tr>
+			
+			</table>",
+    'entry_date'=> "From <input size='10' id='assign-from' type='text' name='entry_date' readonly='readonly' class='ul_search10 form-text' value='".$entry_date."'>
+    <script type='text/javascript'>
+    jQuery(function() {
+    jQuery('#assign-from').datepicker({
+    changeMonth: true,
+    changeYear: true,
+    yearRange: '1950:2020',
+  });
+  });
+  </script>
+  <br /><br />To&nbsp;&nbsp;&nbsp;&nbsp; <input size='10' id='assign-from_exit' type='text' name='exit_date' readonly='readonly' class='ul_search10 form-text' value='".$exit_date."'>
+    <script type='text/javascript'>
+    jQuery(function() {
+    jQuery('#assign-from_exit').datepicker({
+    changeMonth: true,
+    changeYear: true,
+    yearRange: '1950:2020',
+  });
+  });
+  </script>",
+	   'rmsmsts' => "<table width='50%'>
+			<tr>
+			<td>RM,SM</td>
+			<td><input type='text' name='rm_or_sm_status' size='5' value='" . $rm_or_sm_status . "'></td>
+			</tr>
+			
+			<tr>
+			<td>OE & TC</td>
+			<td><input type='text' name='oes' size='5' value='" . $oes . "'></td>
+			</tr>
+			<tr>
+			<td>Pro</td>
+			<td><input type='text' name='proops' size='5' value='" . $proops . "'></td>
+			</tr>
+			<tr>
+			<td>GL</td>
+			<td><input type='text' name='goliveops' size='5' value='" . $goliveops . "'></td>
+			</tr>
+			<tr>
+			<td>RVS</td>
+			<td><input type='text' name='revalsts' size='5' value='" . $revalsts . "'></td>
+			</tr>
+			
+			</table>",
+    'omdrcv' => "<table width='50%'>
+			<tr>
+			<td>AG</td>
+			<td><input type='text' name='omdrcv' size='5' value='" . $omdrcv . "'></td>
+			</tr>
+			<tr>
+			<td>Docs</td>
+			<td><input type='text' name='oms' size='5' value='" . $oms . "'></td>
+			</tr>
+			</table>",
+	   'pros' => "<table width='50%'>
+			<tr>
+			<td>KW</td>
+			<td><input type='text' name='pros' size='5' value='" . $pros . "'></td>
+			</tr>
+			<tr>
+			<td>CR</td>
+			<td><input type='text' name='gls' size='5' value='" . $gls . "'></td>
+			</tr>
+			<tr>
+			<td>POS</td>
+			<td><input type='text' name='pos' size='5' value='" . $pos . "'></td>
+			</tr>
+			
+			</table>",
+     'ofrup_ofrtst' => "OU:<input type='text' name='ofrupld' size='5' value='" . $ofrupld . "'>",
+     'operations' => "<input type='submit' name='Search_val' value='Filter' class='form-submit'><br /><input type='submit' name='Search_reset' value='View All' class='form-submit'></form>",
+	);
+    $per_page = set_per_page_counts();
+	 $sql_offer = get_merchant_offer_query_ops($offer_user_id);
+
+//offer hirarchy
+	if (arg(0)=='y2cf' && arg(1)=='offerhierarchy' && is_numeric(arg(2))) {
+    $new_rm_id = get_user_role_id($offer_user_id);
+		if ($new_rm_id == 'reporting manager') {
+			$u_arr = get_all_salesman_of_rm($offer_user_id);
+			$new_array = array();
+			foreach ($u_arr as $result_num => $sub_array) {
+		  $new_array[$result_num] = $sub_array['uid'];
+			}
+			$users_uid = implode(",", $new_array);
+			$sql_offer .= " and (nn.uid in (" . $users_uid . ") OR nn.uid='" . $offer_user_id . "') ";
+		}
+		else {
+	  $sql_offer .= " and nn.uid='" . $offer_user_id . "' ";
+		}
+	}
+  $res_offer = pager_query($sql_offer . tablesort_sql($header), $limit = $per_page);
+	$serial_number = get_list_serial_number();
+	while ($row = db_fetch_array($res_offer)) {
+    $sql_ops = "select * from {content_type_profile} ctp inner join {node} nn on ctp.nid=nn.nid where 1=1 ";
+		if ($rs_rid == 'y2cfoperations') {
+			$sql_ops .= " and nn.uid='".$user->uid."' ";
+		}
+    $ops_city = db_fetch_array(db_query($sql_ops));
+    $mainaut_city = db_fetch_array(db_query("select * from {content_type_profile} ctp inner join {node} nn on ctp.nid=nn.nid where nn.uid='".$row['uid']."' "));
+
+      $merchant_add_outlet = $base_url.'/node/add/merchant-outlet/'.$row['nid'];
+
+      
+
+//Detail for outlet and merchant offers
+    $outlet_detail = l('Outlet Detail', $base_url.'/node/'.$row['nid']).'<br />';
+//Edit url for offers
+    $ed_url = $base_url.'/node/'.$row['nid'].'/edit?destination=y2cf/merchantsoperation';
+    $st_date = "6/1/2012";
+    $exp_st_date = explode("/", $st_date);
+    $start_date = mktime(0, 0, 1, $exp_st_date[0], $exp_st_date[1], $exp_st_date[2]);
+    $en_date = "7/31/2012";
+    $exp_en_date = explode("/", $en_date);
+    $end_date = mktime(23, 59, 59, $exp_en_date[0], $exp_en_date[1], $exp_en_date[2]);
+    $offer_created_date = $row['created'];
+
+    
+    
+ if($user->uid != '1') {   
+  foreach($rs_all_role as $role_rid) {  
+    if( ($role_rid == 'y2cfoperations' || $role_rid== 'hoppertelecallingops' || ($role_rid== 'hoppertelecallingops' && $role_rid== 'operationmngr') ) && $row['field_hoppr_new_rmsmsts_value'] == 'Accepted' || !empty($row['field_hop_ops_glivsts_mo_value']) || !empty($row['field_sales_hop_ops_glivsts_mo_value']) ) {
+    	$outlet_edit_url = l('Edit Outlet', $ed_url).'<br />';
+    }elseif ($role_rid== 'operationmngr' && ($row['field_hop_offer_ops_status_mo_value'] == 'Approved' || $row['field_hop_ops_all_remrk_mo_value'] == 'Approved') ) {
+    	$outlet_edit_url = l('Edit Outlet', $ed_url).'<br />';
+    }elseif ($role_rid == 'y2cfproducts' && $row['field_hop_ops_agr_sta_value'] == 'Approved') {
+    	$outlet_edit_url = l('Edit Outlet', $ed_url).'<br />';
+    }elseif ($role_rid == 'hopprofferupload' && $row['field_hop_ops_pro_kwds_mo_value'] != 'NULL') {
+    	$outlet_edit_url = l('Edit Outlet', $ed_url).'<br />';
+    }elseif ($role_rid == 'hopprcreativedesign' && $row['field_hoppr_ofr_upld_value'] == 'Complete') {
+    	$outlet_edit_url = l('Edit Outlet', $ed_url).'<br />';
+    }elseif ($role_rid == 'y2cfmanager' || $role_rid== 'operationhead' || $role_rid == 'posbrand' || $role_rid == 'salesperson' || $role_rid== 'hopsales opsgolive') {
+    	$outlet_edit_url = l('Edit Outlet', $ed_url).'<br />';
+    }else {
+    	$outlet_edit_url = '-<br />';
+    }
+  } 
+ }else{
+ 	$outlet_edit_url = l('Edit Outlet', $ed_url).'<br />';
+ }   
+
+ 
+ 
+ 
+ 
+//Edit offers
+    $ed_url_offers = $base_url.'/node/'.$row['merchantid'].'/edit?destination=y2cf/merchantsoperation';
+    foreach($rs_all_role as $rs_rid) {
+    if($user->uid == 1 || $rs_rid == 'y2cfmanager' || $rs_rid == 'operationhead'  || $rs_rid == 'operationmngr' || $rs_rid == 'hoppertelecallingops' || ($rs_rid== 'hoppertelecallingops' && $rs_rid== 'operationmngr')) {
+      $edit_offers = l('Edit Offers', $ed_url_offers).'<br />';
+    }else{
+    	$edit_offers = '';
+    }
+    }
+
+//History for outlet anf offers
+    $rev_url = l('Outlet History', $base_url.'/node/'.$row['nid'].'/revisions').'<br />';
+    $offer_detail = l('Offer Detail', $base_url.'/node/'.$row['merchantid']).'<br />';
+
+    $rev_url_offers = l('Offer History', $base_url.'/node/'.$row['merchantid'].'/revisions');
+
+  $status_launch = ($row['field_hop_offer_launch_value'] == 1) ? '<span style="color:red;">Launch</span>' : '--';
+//Ops start and end date
+    $maxss_vid = db_result(db_query("select max(vid) from {node_revisions} nr where nid='".$row['nid']."' "));
+		$ops_person = db_result(db_query("select uid from {node_revisions} nr where vid='".$maxss_vid."'  "));
+//Ops Exe.|TC|Document team name
+		$opspp = get_all_ops_person_name($row['nid']);
+//HFA and CITY
+    $outlet_vid = db_fetch_array(db_query("select max(vid) as outvid from {content_type_merchant_outlet} where field_hopper_merchant_olt_nid = '".$row['nid']."' "));
+    $merchant_detl = db_fetch_array(db_query("select * from {content_type_merchant_outlet} where vid='".$outlet_vid['outvid']."' "));
+
+//Users mobile number and other profile details
+    $users_nid = db_result(db_query("select nid from {node} where uid='".$row['uid']."' and type='profile' "));
+    $spusers_det = db_fetch_array(db_query("select * from {content_type_profile} where nid='".$users_nid."'  "));
+//Revision history Link
+//Document status ....that is document as Logo/images/menu card/and agreements are uploaded in the portal or not.
+//Images
+    $docs_imgs = db_result(db_query("Select count(field_images_website_fid) as img_cnt from {content_field_images_website} where nid='".$row['merchantid']."' "));
+    $img_cnt = ($docs_imgs['img_cnt'] !=0 ) ? 'Yes' : 'No';
+//Agreements
+    $docs_agr = db_result(db_query("Select count(field_docs_upload_fid) as agr_cnt from {content_field_docs_upload} where nid='".$row['merchantid']."' "));
+	$agr_cnt = ($docs_agr['agr_cnt'] !=0 ) ? 'Yes' : 'No';
+    
+
+//Product Keyword status
+		if(!empty($row['field_hop_ops_pro_keywords_value']) || !empty($row['field_hop_ops_pro_kwds_mo_value'])) {
+			$kw_sts = 'Yes';
+		}else{
+			$kw_sts = 'No';
+		}
+
+//Creative design Status  field_hoppr_creativedsgnab_out
+		if(!empty($row['field_hoppr_creativedsgnabu_value'])) {
+			$crdesgn = $row['field_hoppr_creativedsgnabu_value'];
+		}elseif(!empty($row['field_hoppr_creativedsgnab_out_value'])){
+			$crdesgn = $row['field_hoppr_creativedsgnab_out_value'];
+		}else{
+			$crdesgn = '-';
+		}
+//POS Status
+		if(!empty($row['field_hop_pos_oa_status_value'])) {
+			$pos_sts = $row['field_hop_pos_oa_status_value'];
+		}elseif(!empty($row['field_hop_pos_oa_status_mo_value'])){
+			$pos_sts = $row['field_hop_pos_oa_status_mo_value'];
+		}else{
+			$pos_sts = '-';
+		}
+
+		$rm_sts = (!empty($row['field_hoppr_new_rmsmsts_value'])) ? $row['field_hoppr_new_rmsmsts_value'] : '-';
+
+
+
+		$ops_oe_sts =  get_oe_status($row['field_hop_offer_ops_status_value'], $row['field_hop_offer_ops_status_mo_value']);
+
+		$ops_hsts = (!empty($row['field_hop_offer_ops_status_value'])) ? $row['field_hop_offer_ops_status_value'] : '-';
+		$ops_rvst = (!empty($row['field_hoppr_revist_sts_value'])) ? $row['field_hoppr_revist_sts_value'] : '-';
+
+//TC sts
+    if(!empty($row['field_hop_ops_all_remark_value'])) {
+    	$tc_sts = $row['field_hop_ops_all_remark_value'];
+    }elseif(!empty($row['field_hop_ops_all_remrk_mo_value'])) {
+    	 $tc_sts = $row['field_hop_ops_all_remrk_mo_value'];
+    }else{
+    	 $tc_sts = '-';
+    }
+
+//Docs sts
+        $docs_sts = (!empty($row['field_hop_ops_agr_sta_value'])) ? $row['field_hop_ops_agr_sta_value'] : '-';
+//Offer upload
+      $offer_upld_sts = (!empty($row['field_hoppr_ofr_upld_value'])) ? $row['field_hoppr_ofr_upld_value'] : '-';
+//offer testing status
+        if($row['field_hop_tststs_value']=='Testing ok' && $row['field_hop_tsts_tata_value']=='Testing ok' && $row['field_hop_tsts_aircel_value']=='Testing ok' && $row['field_hop_tsts_aircel_value']=='Testing ok' && $row['field_hop_tst_idea_value']=='Testing ok' && $row['field_hop_tst_vdfone_value']=='Testing ok') {
+                $ofr_tst_status = 'Complete';
+        }else{
+            $ofr_tst_status = 'In Complete';
+        }
+
+	      $mer_vid = db_result(db_query("Select vid from {node} where nid='".$row['nid']."' "));
+	      $oprts_arr_sts = hoppr_show_all_operators($mer_vid);
+	      $tstnum_arr = hoppr_show_all_testing_numbers($mer_vid);
+	      $fblinks_arr = hoppr_show_all_testing_fblinks($mer_vid);
+	      $point_sms = hoppr_show_all_testing_pointsms($mer_vid);
+	      $offer_sms = hoppr_show_all_testing_offersms($mer_vid);
+	      $coupon_code_sms = hoppr_show_all_testing_couponcodesms($mer_vid);
+	      $merchant_sms = hoppr_show_all_testing_merchantsms($mer_vid);
+	      $testing_res_time = hoppr_show_all_testing_res_time($mer_vid);
+	      $testing_final_sts = hoppr_show_all_testing_tststs($mer_vid);
+
+        $ofr_tst_comments = '<table border="1">';
+
+        $ofr_tst_comments .='<tr><td>'.$oprts_arr_sts.'<br />'.$tstnum_arr.'<br>'.$fblinks_arr.'<br>'.$point_sms.'<br>'.$offer_sms.'<br>'.$coupon_code_sms.'<br>'.$merchant_sms.'<br>'.$testing_res_time.'<td>'.$testing_final_sts.'</tr>';
+
+                            $ofr_tst_comments .='</table>';
+
+
+//All links-- outlet detail,edit outlet, outlet history, offer detail, edit offers, offers history
+        $all_edit_lnks_and_dtl_lnks = $outlet_detail.$final_outlet_edit_url .$rev_url.$offer_detail.$edit_offers  .$rev_url_offers;
+
+
+
+	   if(!empty($row['field_hop_pro_evaluation_status_value'])) {
+      $evalsts = $row['field_hop_pro_evaluation_status_value'];
+     }elseif(!empty($row['field_hop_pro_eval_status_value'])) {
+      $evalsts = $row['field_hop_pro_eval_status_value'];
+     }else{
+        $evalsts = '-';
+     }
+//Go LIVE Status
+      if(!empty($row['field_hop_ops_glivsts_value'])) {
+      $glivsts = $row['field_hop_ops_glivsts_value'];
+     }elseif(!empty($row['field_hop_ops_glivsts_mo_value'])) {
+      $glivsts = $row['field_hop_ops_glivsts_mo_value'];
+     }elseif(!empty($row['field_sales_hop_ops_glivsts_mo_value'])) {
+      $glivsts = $row['field_sales_hop_ops_glivsts_mo_value'];
+     }else{
+        $glivsts = '-';
+     }
+
+
+
+//OH comments
+	if(!empty($row['field_hop_ops_acc_rmrks_mo_value'])) {
+        $opsheadrmks = $row['field_hop_ops_acc_rmrks_mo_value'];
+      }else{
+        $opsheadrmks = '-';
+      }
+//OE
+$ror_opsoe_sts = get_ops_exe_ror($row['merchantid']);
+	  if(!empty($ror_opsoe_sts)) {
+      $rs_ops_exe = get_ops_exe_ror($row['merchantid']);
+    }else{
+      $rs_ops_exe = get_ops_exe_ror_dummy($row['nid']);
+    }
+
+    $oe_ror1 = get_ops_exe_ror_overallrejreson($row['nid']);
+
+    $oe_cmts1 = $row['field_hop_ror_oth_cmnts_value'];
+    $oe_cmts2 = $row['field_hop_offer_ops_comments_value'];
+    if(!empty($oe_cmts1)) {
+    	$oe_fnl_cmnts = $oe_cmts1;
+    }elseif(!empty($oe_cmts2)) {
+    	$oe_fnl_cmnts = $oe_cmts2;
+    }else{
+    	$oe_fnl_cmnts = '-';
+    }
+
+
+
+
+//TC
+    $tc_sts_ofr = get_ops_sts_ror_by_tc($row['merchantid']);
+    $tc_sts_out = get_ops_sts_ror_by_tc_merchant_section($row['nid']);
+    if(!empty($tc_sts_ofr)) {
+      $tc_ofr_sts = $tc_sts_ofr;
+    }elseif(!empty($tc_sts_out)) {
+    	$tc_ofr_sts = $tc_sts_out;
+    }else{
+    	$tc_ofr_sts = '-';
+    }
+
+
+    //remarks
+    $tc_cmts1 = $row['field_hop_ops_tc_hglts_sta_value'];
+    $tc_cmts2 = $row['field_hop_ops_tc_rmks_value'];
+    if(!empty($tc_cmts1)) {
+      $tc_remarks = $tc_cmts1;
+    }elseif(!empty($tc_cmts2)) {
+      $tc_remarks = $tc_cmts2;
+    }else{
+      $tc_remarks = '-';
+    }
+
+
+
+//PRO
+	$rs_pro_ror_od = get_pro_mngr_ror($row['nid']);
+    $rs_pro_ror_mo = get_pro_mngr_ror_mo($row['nid']);
+    if(!empty($rs_pro_ror_od)) {
+      $rs_pro_ror = $rs_pro_ror_od;
+    }else{
+      $rs_pro_ror = $rs_pro_ror_mo;
+    }
+
+    //Comments
+    $pro_cmts1 = $row['field_hop_pro_otherscom_value'];
+    $pro_cmts2 = $row['field_hop_pro_cmt_mo_value'];
+    if(!empty($pro_cmts1)) {
+    	$pro_rmks = $pro_cmts1;
+    }elseif(!empty($pro_cmts2)) {
+    	$pro_rmks = $pro_cmts2;
+    }else{
+    	$pro_rmks ='-';
+    }
+//GO Live
+      $ofr_go_liv_sts = get_golive_ror_notdone($row['nid']);
+      
+      $re_validation_acc_bc = get_revalidation_accepted_but_changes($mer_vid);
+      $re_validation_not_acc = get_revalidation_not_accepted_outlet($mer_vid);
+      
+	//Go live
+    $gl_cmts1 = $row['field_hop_ops_goliv_oth_cmts_value'];
+    $gl_cmts2 = $row['field_hop_gl_remrks_value'];
+    $gl_cmts3 = $row['field_sales_gl_rmks_value'];
+    if(!empty($gl_cmts1)) {
+      $gl_fnl_cmnts = $gl_cmts1;
+    }elseif(!empty($gl_cmts2)) {
+      $gl_fnl_cmnts = $gl_cmts2;
+    }elseif(!empty($gl_cmts3)) {
+      $gl_fnl_cmnts = $gl_cmts3;
+    }else{
+      $gl_fnl_cmnts = '-';
+    }
+
+
+
+//DOCS
+$rs_ops_manager_ror = get_ops_manager_ror($row['merchantid']);
+//POS
+	if(!empty($row['field_hop_pos_nt_del_value'])) {
+      $pos_rndl = $row['field_hop_pos_nt_del_value'];
+    }elseif(!empty($row['field_hop_pos_nt_del_mo_value'])) {
+      $pos_rndl = $row['field_hop_pos_nt_del_mo_value'];
+    }else{
+      $pos_rndl = '-';
+    }
+
+//Merchant HFA,CITY,Merchant name
+      $mer_city_name = get_only_term_name(get_parent_tid_by_tid($row['field_hopper_city_hfa_value']));
+
+         //Delete URL
+    $offer_delete_url = $base_url.'/hoppr/outletdelete/'.$row['nid'];
+    if($rs_rid == 'operationhead' || $user->uid == 1) {
+      $del_url ='<br />'. l('Delete', $offer_delete_url, array('attributes' => array('onclick' => 'return confirm("Are you sure");'))).'<br />';
+    }else {
+    	$del_url = "";
+}
+
+
+//Salesperson status
+	if($row['field_hoppr_new_rmsmsts_value']=='Accepted' && $ops_oe_sts=='Approved'  && $row['field_hop_ops_agr_sta_value']=='Approved' &&  $glivsts=='Done') {
+		$salesperson_status = "Closed";
+	}else{
+		$salesperson_status = "OPEN";
+	}
+	
+	$rej_cas_sts = get_rm_rejected_case_details($row['merchantid']);
+	$docs_rej_cas_sts = get_docs_rejected_cases($row['merchantid']);
+	$oe_rej_cas_sts = get_oe_rejected_cases($row['nid']);
+	$oe_gl_rej_cas_sts = get_oe_golive_rejected_cases($row['nid']);
+	
+	
+	$msg_rm_rej_thr = "RM case- ".$rej_cas_sts['field_hoprc_rm_rc_sts_value']. " : ". $rej_cas_sts['field_hoprc_comments_value']."<br />
+	OE case:".$oe_rej_cas_sts['field_hoprc_oe_rc_sts_value']." : ".$oe_rej_cas_sts['field_hoprc_oe_comments_value']."<br />
+	Docs case: ".$row['field_hoprc_new_docs_rej_mn_value'].": ".$row['field_hoprc_docs_comments_value']."<br />
+	GL case:".$oe_gl_rej_cas_sts['field_hoprc_gl_rc_sts_value'].": ".$oe_gl_rej_cas_sts['field_hoprc_gl_comments_value'];
+
+
+$stamp_or_not = (!empty($row['field_hopdocs_sopaon_value'])) ? $row['field_hopdocs_sopaon_value'] : "-";
+$mm_mailer_or_not = (!empty($row['field_hopdocs_sopaon_value'])) ? $row['field_hopdocs_sopaon_value'] : "-";
+
+//BEAUTY TIPS
+//if outlet is permanently blocked   field_hop_ops_all_remrk_mo_value
+	if($row['field_hop_ops_all_remrk_mo_value']=='Blocked') {
+		$final_outlet_edit_url='';
+		$final_edit_offers = '';
+	}else{ 
+		$final_outlet_edit_url = $outlet_edit_url;
+		$final_edit_offers = $edit_offers;
+	}
+
+$data[] = array(
+				$serial_number++,
+				get_salesperson_name($row['uid']) . '/<br /><span style="color:red;">' . $spusers_det['field_hopemp_mobileno_number'].'</span>',
+
+				'<span style="color:#CC3333;">'.get_only_term_name($row['field_hopper_city_hfa_value']) . '</span>/<br /> <span style="color:#0099FF;">'. $mer_city_name . '</span>/<br /><span style="color:#FF3399;">'.$row['title'].'<br /></span>
+				
+    		<span class="qtip-link">
+            <div class="qtip-tooltip">'.$row['field_hop_hfa_ar_loc_value'].', &nbsp;'.$row['field_mo_loc_address_1_value'].',&nbsp;'.$row['field_mo_loc_address_2_value'].',&nbsp;'.$row['field_mo_loc_landmark_value'].', &nbsp;'.$row['field_mo_landmark2_value'].',&nbsp;'.get_only_term_name($row['field_hopprs_city_value']).',&nbsp;'.get_only_term_name($row['field_mo_hopper_state_value']).',&nbsp;'.$row['field_mo_hop_zipcode_value'].'</div>
+            '.get_only_term_name($row['field_hopprs_city_value']).'
+          </span>',
+				date("Y-m-d H:i:s", $row['created']),
+
+        '<strong>SP:</strong>&nbsp;&nbsp;
+        <span class="qtip-link">
+            <div class="qtip-tooltip">'.$msg_rm_rej_thr.'</div>
+            '.$salesperson_status.'
+          </span>
+          <br />
+    		<strong>RM:</strong>&nbsp;&nbsp;
+        <span class="qtip-link">
+            <div class="qtip-tooltip">'.$row['field_hoppr_new_rmsm_cmnts_value'].'</div>
+            '.$rm_sts.'
+          </span>
+          <br />'.
+        '<strong>OE:</strong>&nbsp;&nbsp;
+        <span class="qtip-link">
+            <div class="qtip-tooltip">'.$rs_ops_exe.' , '.$oe_ror1.'<br>'.$oe_fnl_cmnts.'</div>
+            '.$ops_oe_sts.'
+          </span>
+          <br />'.
+        '<strong>TC:</strong>&nbsp;&nbsp;
+        <span class="qtip-link">
+            <div class="qtip-tooltip">'.$tc_ofr_sts.'<br />'.$tc_remarks.'</div>
+            '.$tc_sts.'
+          </span>
+          <br />'.
+        '<strong>Pro:</strong>&nbsp;&nbsp;
+        <span class="qtip-link">
+            <div class="qtip-tooltip">'.$rs_pro_ror.'<br />'.$pro_rmks.'</div>
+            '.$evalsts.'
+          </span>
+          <br />
+        <strong>GL:</strong>&nbsp;
+        <span class="qtip-link">
+            <div class="qtip-tooltip">'.$ofr_go_liv_sts.'<br />'.$gl_fnl_cmnts.'</div>
+            '.$glivsts.'
+          </span>
+    		<br />
+        <strong>RVS:</strong>&nbsp;
+        <span class="qtip-link">
+            <div class="qtip-tooltip">RV date:-'.date("m-d-Y",$row['field_hop_revalidation_dis_dt_value']).'<br /><br />'.$re_validation_acc_bc.$re_validation_not_acc.'<br />'.$row['field_hop_revalidation_remarks_value'].'Changes updated by product OPS team:'.$row['field_hop_revalidation_cdbpotm_value'].'<br />Product ops remarks:'.$row['field_hop_revalidation_popdrmks_value'].'</div>
+            '.$row['field_hop_revalidation_value'].'
+          </span>',
+
+				'<span style="color:#CC3366;"><strong>AG:</strong>&nbsp;&nbsp;
+    		<span class="qtip-link">
+            <div class="qtip-tooltip">AG Available or not:'.$agr_cnt.'<br />Stamp on agreement available or not?:'.$stamp_or_not.'<br />Is merchant mailer sent to merchants@hoppr.com ?:'.$mm_mailer_or_not.'</div>
+            '.$agr_cnt.','.$stamp_or_not.','.$mm_mailer_or_not.'
+          </span>
+    		<br />
+				<strong>Docs:</strong>&nbsp;&nbsp;
+				<span class="qtip-link">
+            <div class="qtip-tooltip">'.$rs_ops_manager_ror.'<br />'.$row['field_hop_mo_om_comments_value'].'</div>
+            '.$docs_sts.'
+          </span>',
+
+        '<span style="color:#CC3366;align:center;"><strong>KW:</strong>&nbsp;&nbsp;' . $kw_sts . '</span><br />
+        <span style="color:#CC3399;align:center;"><strong>CR:</strong>&nbsp;&nbsp;' . $crdesgn . '</span><br />
+        <span style="color:#33FF66;align:center;"><strong>POS:</strong>&nbsp;&nbsp;</span>
+        <span class="qtip-link">
+            <div class="qtip-tooltip">'.$pos_rndl.'</div>
+            '.$pos_sts.'
+          </span>',
+
+        '<span class="qtip-link">
+            <div class="qtip-tooltip">'.$ofr_tst_comments.'</div>
+            '.$ofr_tst_status.'
+          </span><br />
+          <span class="qtip-link">
+            <div class="qtip-tooltip">'.$row['field_hop_ofr_upld_cmnts_value'].'</div>
+            '.$offer_upld_sts.'
+          </span>
+        ',
+
+        '<span style="color:#33FF66;align:left;">'.$outlet_detail.$final_outlet_edit_url .$rev_url.$offer_detail.$final_edit_offers .$rev_url_offers.$del_url. '</span>',
+    );
+	}
+
+	  $total_offer_count = get_merchant_offers_count_query_ops($offer_user_id);
+	  $output .= theme('table', $header, $data);
+	  $output .= theme('pager');
+	  $output .= get_custom_pager_request($total_offer_count);
+	  return $output;
+}
+function y2cf_offerwelcomemsg_ops() {
+	$output = '';
+	$output .= theme('offerwelcomemsg', 'Welcome message');
+	return $output;
+}
+function y2cf_outletwelcomemsg_ops() {
+	$output = '';
+	$output .= theme('outletwelcomemsg', 'Welcome outlet message');
+	return $output;
+}
+function y2cf_operation_theme() {
+	$path = drupal_get_path('module', 'y2cf_operation');
+	return array(
+    'offerwelcomemsg' => array(
+    'arguments' => array('welcome' => NULL),
+    'template' => 'offerwelcomemsg',
+    'path' => $path,
+	),
+	  'outletwelcomemsg' => array(
+    'arguments' => array('welcome' => NULL),
+    'template' => 'outletwelcomemsg',
+    'path' => $path,
+	),
+);
+}
+
+function merchant_code_defined($cityname) {
+	if($cityname == 'Bangalore') {
+		$merchant_code = 'LBLR';
+	}elseif($cityname == 'Kolkata') {
+		$merchant_code = 'LKOL';
+	}elseif($cityname == 'Delhi' || $cityname == 'Delhi/NCR') {
+    $merchant_code = 'LDEL';
+  }elseif($cityname == 'Gurgaon') {
+    $merchant_code = 'LGGN';
+  }elseif($cityname == 'Noida') {
+    $merchant_code = 'LNOI';
+  }elseif($cityname == 'Ghaziabad') {
+    $merchant_code = 'LGHZ';
+  }elseif($cityname == 'Mumbai') {
+    $merchant_code = 'LMUM';
+  }elseif($cityname == 'Chennai') {
+    $merchant_code = 'LCHE';
+  }elseif($cityname == 'Hyderabad') {
+    $merchant_code = 'LHYD';
+  }elseif($cityname == 'Jaipur') {
+    $merchant_code = 'LJAI';
+  }elseif($cityname == 'Indore') {
+    $merchant_code = 'LIND';
+  }elseif($cityname == 'Ahmedabad') {
+    $merchant_code = 'LAHM';
+  }elseif($cityname == 'Chandigarh') {
+    $merchant_code = 'LCHD';
+  }elseif($cityname == 'Lucknow') {
+    $merchant_code = 'LLUC';
+  }elseif($cityname == 'Coimbatore') {
+    $merchant_code = 'LCBT';
+  }elseif($cityname == 'Cochin') {
+    $merchant_code = 'LCOC';
+  }elseif($cityname == 'Mysore') {
+    $merchant_code = 'LMYS';
+  }elseif($cityname == 'Pune') {
+    $merchant_code = 'LPUN';
+  }elseif($cityname == 'Kochi') {
+    $merchant_code = 'LKOC';
+}elseif($cityname == 'Agra') {
+    $merchant_code = 'LAGR';
+  }elseif($cityname == 'Dehradun') {
+    $merchant_code = 'LDDN';
+  }elseif($cityname == 'Faridabad') {
+    $merchant_code = 'LFBD';
+  }elseif($cityname == 'Hampi') {
+    $merchant_code = 'LHAM';
+  }elseif($cityname == 'Kaziranga') {
+    $merchant_code = 'LKZR';
+  }elseif($cityname == 'Madurai') {
+    $merchant_code = 'LMDU';
+  }elseif($cityname == 'Nagpur') {
+    $merchant_code = 'LNGP';
+  }elseif($cityname == 'Barmer') {
+    $merchant_code = 'LBME';
+  }elseif($cityname == 'Gwalior') {
+    $merchant_code = 'LGWA';
+  }elseif($cityname == 'Panipath') {
+    $merchant_code = 'LPNP';
+  }elseif($cityname == 'Kota') {
+    $merchant_code = 'LKOT';
+  }elseif($cityname == 'Ambala') {
+    $merchant_code = 'LAMB';
+  }elseif($cityname == 'Bhatinda') {
+    $merchant_code = 'LBND';
+  }elseif($cityname == 'Amritsar') {
+    $merchant_code = 'LAMR';
+  }elseif($cityname == 'Kanpur') {
+    $merchant_code = 'LKNP';
+  }
+
+  return $merchant_code;
+}
+//Gwalier---LGWA, Panipath--LPNP, Kota--LKOT,Ambala-LAMB, Bhatinda--LBND, Amriysar--LA
+function get_ops_exe_ror($merchant_nid) {
+  $sql_ror = db_query("select distinct field_hop_ops_reson_rej_exe_value from {content_field_hop_ops_reson_rej_exe} where nid = '". $merchant_nid ."' and field_hop_ops_reson_rej_exe_value != 'NULL'  ");
+  $ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+  	$ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_hop_ops_reson_rej_exe_value'];
+  }
+  $ops_exe_ror_desc = implode(",", $new_array);
+
+  return $ops_exe_ror_desc;
+}
+
+function get_ops_exe_ror_overallrejreson($merchant_nid) {
+  $sql_ror = db_query("select distinct field_hop_oe_ror_mo_value from {content_field_hop_oe_ror_mo} where nid = '". $merchant_nid ."' and field_hop_oe_ror_mo_value != 'NULL'  ");
+  $ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+    $ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_hop_oe_ror_mo_value'];
+  }
+  $ops_exe_ror_desc = implode(",", $new_array);
+
+  return $ops_exe_ror_desc;
+}
+
+function get_ops_exe_ror_dummy($merchant_nid) {
+  $sql_ror = db_query("select distinct field_hop_ops_reson_rej_exe_mo_value from {content_field_hop_ops_reson_rej_exe_mo} where nid = '". $merchant_nid ."' and field_hop_ops_reson_rej_exe_mo_value != 'NULL'  ");
+  $ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+    $ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_hop_ops_reson_rej_exe_mo_value'];
+  }
+  $ops_exe_ror_desc = implode(",", $new_array);
+
+  return $ops_exe_ror_desc;
+}
+
+
+function get_outlet_weekly_off($merchant_nid) {
+  $sql_ror = db_query("select distinct field_mo_weekly_off_value from {content_field_mo_weekly_off} where nid = '". $merchant_nid ."' and field_mo_weekly_off_value != 'NULL'  ");
+  $ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+    $ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_mo_weekly_off_value'];
+  }
+  $ops_exe_ror_desc = implode(",", $new_array);
+
+  return $ops_exe_ror_desc;
+}
+
+function get_ops_manager_ror($merchant_nid) {
+$sql_ror = db_query("select distinct field_hop_ops_reson_rej_value from {content_field_hop_ops_reson_rej} where nid = '" . $merchant_nid . "' and field_hop_ops_reson_rej_value != 'NULL'  ");
+  $ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+    $ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_hop_ops_reson_rej_value'];
+  }
+  $ops_ror_desc = implode(",", $new_array);
+  return $ops_ror_desc;
+}
+//offer Testing
+function hoppr_show_all_operators($merchant_nid) {
+$sql_ror = db_query("select distinct field_hop_mg_oprts_value from {content_field_hop_mg_oprts} where vid = '" . $merchant_nid . "' and field_hop_mg_oprts_value != 'NULL'  ");
+  $ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+    $ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_hop_mg_oprts_value'];
+  }
+  $ops_ror_desc = implode(",", $new_array);
+  return $ops_ror_desc;
+}
+//Numbers
+function hoppr_show_all_testing_numbers($merchant_nid) {
+$sql_ror = db_query("select distinct field_hop_mg_tst2_num_number from {content_field_hop_mg_tst2_num} where vid = '" . $merchant_nid . "' and field_hop_mg_tst2_num_number != 'NULL'  ");
+  $ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+    $ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_hop_mg_tst2_num_number'];
+  }
+  $ops_ror_desc = implode(",", $new_array);
+  return $ops_ror_desc;
+}
+//FB links
+function hoppr_show_all_testing_fblinks($merchant_nid) {
+$sql_ror = db_query("select  field_hop_mg_fb_lnk_value from {content_field_hop_mg_fb_lnk} where vid = '" . $merchant_nid . "' and field_hop_mg_fb_lnk_value != 'NULL'  ");
+  $ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+    $ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_hop_mg_fb_lnk_value'];
+  }
+  $ops_ror_desc = implode(",", $new_array);
+  return $ops_ror_desc;
+}
+//POINT SMS
+function hoppr_show_all_testing_pointsms($merchant_nid) {
+$sql_ror = db_query("select  field_hop_mg_psms_value from {content_field_hop_mg_psms} where vid = '" . $merchant_nid . "' and field_hop_mg_psms_value != 'NULL'  ");
+  $ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+    $ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_hop_mg_psms_value'];
+  }
+  $ops_ror_desc = implode(",", $new_array);
+  return $ops_ror_desc;
+}
+//OFFER SMS
+function hoppr_show_all_testing_offersms($merchant_nid) {
+$sql_ror = db_query("select  field_hop_mg_ofrsms_value from {content_field_hop_mg_ofrsms} where vid = '" . $merchant_nid . "' and field_hop_mg_ofrsms_value != 'NULL'  ");
+  $ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+    $ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_hop_mg_ofrsms_value'];
+  }
+  $ops_ror_desc = implode(",", $new_array);
+  return $ops_ror_desc;
+}
+//Coupon code SMS
+function hoppr_show_all_testing_couponcodesms($merchant_nid) {
+$sql_ror = db_query("select  field_hop_mg_ccsms_value from {content_field_hop_mg_ccsms} where vid = '" . $merchant_nid . "' and field_hop_mg_ccsms_value != 'NULL'  ");
+  $ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+    $ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_hop_mg_ccsms_value'];
+  }
+  $ops_ror_desc = implode(",", $new_array);
+  return $ops_ror_desc;
+}
+//Merchant SMS
+function hoppr_show_all_testing_merchantsms($merchant_nid) {
+$sql_ror = db_query("select  field_hop_mg_mersms_value from {content_field_hop_mg_mersms} where vid = '" . $merchant_nid . "' and field_hop_mg_mersms_value != 'NULL'  ");
+  $ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+    $ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_hop_mg_mersms_value'];
+  }
+  $ops_ror_desc = implode(",", $new_array);
+  return $ops_ror_desc;
+}
+//Response time
+function hoppr_show_all_testing_res_time($merchant_nid) {
+$sql_ror = db_query("select  field_hop_mg_rt_value from {content_field_hop_mg_rt} where vid = '" . $merchant_nid . "' and field_hop_mg_rt_value != 'NULL'  ");
+  $ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+    $ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_hop_mg_rt_value'];
+  }
+  $ops_ror_desc = implode(",", $new_array);
+  return $ops_ror_desc;
+}
+//Testing Status
+function hoppr_show_all_testing_tststs($merchant_nid) {
+$sql_ror = db_query("select  field_hop_mg_tststs_value from {content_field_hop_mg_tststs} where vid = '" . $merchant_nid . "' and field_hop_mg_tststs_value != 'NULL'  ");
+  $ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+    $ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_hop_mg_tststs_value'];
+  }
+  $ops_ror_desc = implode(",", $new_array);
+  return $ops_ror_desc;
+}
+
+
+function offertesting_show_test_oprtors($merchant_nid) {
+$sql_ror = db_query("select distinct field_hop_tst_oprtrs_value from {content_field_hop_tst_oprtrs} where nid = '" . $merchant_nid . "' and field_hop_tst_oprtrs_value != 'NULL'  ");
+  $ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+    $ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_hop_tst_oprtrs_value'];
+  }
+  $ops_ror_desc = implode(",", $new_array);
+  return $ops_ror_desc;
+}
+function offertesting_show_airtel_msg_status($merchant_nid) {
+$sql_ror = db_query("select distinct field_hop_msg_rcv_sts_value from {content_field_hop_msg_rcv_sts} where nid = '" . $merchant_nid . "' and field_hop_msg_rcv_sts_value != 'NULL'  ");
+  $ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+    $ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_hop_msg_rcv_sts_value'];
+  }
+  $ops_ror_desc = implode(",", $new_array);
+  return $ops_ror_desc;
+}
+function offertesting_show_tata_msg_status($merchant_nid) {
+$sql_ror = db_query("select distinct field_hop_t_msg_rcv_value from {content_field_hop_t_msg_rcv} where nid = '" . $merchant_nid . "' and field_hop_t_msg_rcv_value != 'NULL'  ");
+  $ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+    $ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_hop_t_msg_rcv_value'];
+  }
+  $ops_ror_desc = implode(",", $new_array);
+  return $ops_ror_desc;
+}
+
+function offertesting_show_aircel_msg_status($merchant_nid) {
+$sql_ror = db_query("select distinct field_hop_acl_msg_rcvd_value from {content_field_hop_acl_msg_rcvd} where nid = '" . $merchant_nid . "' and field_hop_acl_msg_rcvd_value != 'NULL'  ");
+  $ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+    $ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_hop_acl_msg_rcvd_value'];
+  }
+  $ops_ror_desc = implode(",", $new_array);
+  return $ops_ror_desc;
+}
+function offertesting_show_idea_msg_status($merchant_nid) {
+$sql_ror = db_query("select distinct field_hop_ida_msg_rcv_value from {content_field_hop_ida_msg_rcv} where nid = '" . $merchant_nid . "' and field_hop_ida_msg_rcv_value != 'NULL'  ");
+  $ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+    $ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_hop_ida_msg_rcv_value'];
+  }
+  $ops_ror_desc = implode(",", $new_array);
+  return $ops_ror_desc;
+}
+function offertesting_show_vodafone_msg_status($merchant_nid) {
+$sql_ror = db_query("select distinct field_hop_vdf_msg_rcv_value from {content_field_hop_vdf_msg_rcv} where nid = '" . $merchant_nid . "' and field_hop_vdf_msg_rcv_value != 'NULL'  ");
+  $ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+    $ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_hop_vdf_msg_rcv_value'];
+  }
+  $ops_ror_desc = implode(",", $new_array);
+  return $ops_ror_desc;
+}
+function offertesting_show_rel_msg_status($merchant_nid) {
+$sql_ror = db_query("select distinct field_hop_rel_msg_rcv_value from {content_field_hop_rel_msg_rcv} where nid = '" . $merchant_nid . "' and field_hop_rel_msg_rcv_value != 'NULL'  ");
+  $ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+    $ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_hop_rel_msg_rcv_value'];
+  }
+  $ops_ror_desc = implode(",", $new_array);
+  return $ops_ror_desc;
+}
+
+
+//Weekly off
+function get_ops_weekly_off($merchant_nid) {
+$sql_ror = db_query("select distinct field_mo_weekly_off_value from {content_field_mo_weekly_off} where vid = '" . $merchant_nid . "' and field_mo_weekly_off_value != 'NULL'  ");
+  $ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+    $ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_mo_weekly_off_value'];
+  }
+  $ops_ror_desc = implode(",", $new_array);
+  return $ops_ror_desc;
+}
+
+
+
+//Go live pos status
+function get_goliveposstatus_notdone_ror($merchant_nid) {
+$sql_ror = db_query("select distinct field_hop_ops_gliv_possts_value from {content_field_hop_ops_gliv_possts} where nid = '" . $merchant_nid . "' and field_hop_ops_gliv_possts_value != 'NULL'  ");
+  $ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+    $ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_hop_ops_gliv_possts_value'];
+  }
+  $ops_ror_desc = implode(",", $new_array);
+  return $ops_ror_desc;
+}
+
+function get_goliveposstatus_notdone_ror_outletwise($merchant_nid) {
+$sql_ror = db_query("select distinct field_hop_ops_gliv_possts_mo_value from {content_field_hop_ops_gliv_possts_mo} where nid = '" . $merchant_nid . "' and field_hop_ops_gliv_possts_mo_value != 'NULL'  ");
+  $ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+    $ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_hop_ops_gliv_possts_mo_value'];
+  }
+  $ops_ror_desc = implode(",", $new_array);
+  return $ops_ror_desc;
+}
+
+function get_ops_sts_ror_by_tc($merchant_nid) {
+$sql_ror = db_query("select distinct field_hop_ops_ror_by_tc_value from {content_field_hop_ops_ror_by_tc} where nid = '" . $merchant_nid . "' and field_hop_ops_ror_by_tc_value != 'NULL'  ");
+  $ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+    $ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_hop_ops_ror_by_tc_value'];
+  }
+  $ops_ror_desc = implode(",", $new_array);
+  return $ops_ror_desc;
+}
+
+function get_ops_sts_ror_by_tc_merchant_section($merchant_nid) {
+$sql_ror = db_query("select distinct field_hop_ops_ror_by_tc_value from {content_field_hop_ops_ror_by_tc} where nid = '" . $merchant_nid . "' and field_hop_ops_ror_by_tc_value != 'NULL'  ");
+  $ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+    $ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_hop_ops_ror_by_tc_value'];
+  }
+  $ops_ror_desc = implode(",", $new_array);
+  return $ops_ror_desc;
+}
+
+
+function get_pro_mngr_ror($merchant_nid) {
+	$sql_ror = db_query("select distinct field_hop_pro_ror_value from {content_field_hop_pro_ror} where nid = '" . $merchant_nid . "' and field_hop_pro_ror_value != 'NULL'  ");
+	$ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+    $ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_hop_pro_ror_value'];
+  }
+  $ops_ror_desc = implode(",", $new_array);
+  return $ops_ror_desc;
+}
+function get_pro_mngr_ror_mo($merchant_nid) {
+  $sql_ror = db_query("select distinct field_hop_pro_ror_mo_value from {content_field_hop_pro_ror_mo} where nid = '" . $merchant_nid . "' and field_hop_pro_ror_mo_value != 'NULL'  ");
+  $ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+    $ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_hop_pro_ror_mo_value'];
+  }
+  $ops_ror_desc = implode(",", $new_array);
+  return $ops_ror_desc;
+}
+function get_mer_ops_change($merchant_nid) {
+  $sql_ror = db_query("select distinct field_hop_ops_cng_status_value from {content_field_hop_ops_cng_status} where nid = '" . $merchant_nid . "' and field_hop_ops_cng_status_value != 'NULL'  ");
+  $ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+    $ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_hop_ops_cng_status_value'];
+  }
+  $ops_ror_desc = implode(",", $new_array);
+  return $ops_ror_desc;
+}
+function get_pos_meterial($merchant_nid) {
+  $sql_ror = db_query("select distinct field_hoppr_metral_sent_mo_value from {content_field_hoppr_metral_sent_mo} where nid = '" . $merchant_nid . "' and field_hoppr_metral_sent_mo_value != 'NULL'  ");
+  $ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+    $ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_hoppr_metral_sent_mo_value'];
+  }
+  $ops_ror_desc = implode(",", $new_array);
+  return $ops_ror_desc;
+}
+function get_mer_ops_change_dummy($merchant_nid) {
+  $sql_ror = db_query("select distinct field_hop_ops_cng_status_mo_value from {content_field_hop_ops_cng_status_mo} where nid = '" . $merchant_nid . "' and field_hop_ops_cng_status_mo_value != 'NULL'  ");
+  $ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+    $ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_hop_ops_cng_status_mo_value'];
+  }
+  $ops_ror_desc = implode(",", $new_array);
+  return $ops_ror_desc;
+}
+function get_mer_ops_change_by_opsmngr($merchant_nid) {
+  $sql_ror = db_query("select distinct field_hop_mngr_cng_status_value from {content_field_hop_mngr_cng_status} where nid = '" . $merchant_nid . "' and field_hop_mngr_cng_status_value != 'NULL'  ");
+  $ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+    $ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_hop_mngr_cng_status_value'];
+  }
+  $ops_ror_desc = implode(",", $new_array);
+  return $ops_ror_desc;
+}
+
+function get_mer_ops_change_by_tc($merchant_nid) {
+  $sql_ror = db_query("select distinct field_hop_tc_cng_status_value from {content_field_hop_tc_cng_status} where nid = '" . $merchant_nid . "' and field_hop_tc_cng_status_value != 'NULL'  ");
+  $ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+    $ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_hop_tc_cng_status_value'];
+  }
+  $ops_ror_desc = implode(",", $new_array);
+  return $ops_ror_desc;
+}
+
+function get_mer_ops_change_by_tc_outlet($merchant_nid) {
+  $sql_ror = db_query("select distinct field_hop_tc_cng_status_mo_value from {content_field_hop_tc_cng_status_mo} where nid = '" . $merchant_nid . "' and field_hop_tc_cng_status_mo_value != 'NULL'  ");
+  $ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+    $ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_hop_tc_cng_status_mo_value'];
+  }
+  $ops_ror_desc = implode(",", $new_array);
+  return $ops_ror_desc;
+}
+
+
+function get_all_ops_person_name($mer_id) {
+	$ops_exe = db_query("select distinct nr.uid from {node_revisions} nr inner join {users_roles} ur on nr.uid=ur.uid inner join {role} r on ur.rid=r.rid where nr.nid = '".$mer_id."' and nr.uid != 0  and (r.name = 'y2cfoperations' or r.name = 'hoppertelecallingops' or  r.name = 'operationmngr' or r.name = 'operationhead' or  r.name = 'y2cfmanager' or r.name = 'y2cfproducts' or r.name='posbrand') ");
+    $ops_arr = array();
+  while($rs_exe = db_fetch_array($ops_exe)) {
+    $ops_arr[] = $rs_exe;
+  }
+
+
+  $ops_new_array = array();
+    foreach ($ops_arr as $result_num => $sub_array) {
+      $ops_new_array[$result_num] = get_salesperson_name($sub_array['uid']);
+    }
+    $ops_users_uid = implode(",", $ops_new_array);
+    $opspp = $ops_users_uid;
+    return $opspp;
+}
+function get_oename_for_outlet($mer_vid) {
+  $ops_exe = db_query("select distinct nr.uid from {node_revisions} nr inner join {users_roles} ur on nr.uid=ur.uid inner join {role} r on ur.rid=r.rid where nr.nid = '".$mer_vid."' and nr.uid != 0  and (r.name = 'y2cfoperations' or r.name = 'hoppertelecallingops' or r.name = 'operationhead') ");
+    $ops_arr = array();
+  while($rs_exe = db_fetch_array($ops_exe)) {
+    $ops_arr[] = $rs_exe;
+  }
+
+
+  $ops_new_array = array();
+    foreach ($ops_arr as $result_num => $sub_array) {
+      $ops_new_array[$result_num] = get_salesperson_name($sub_array['uid']);
+    }
+    $ops_users_uid = implode(",", $ops_new_array);
+    $opspp = $ops_users_uid;
+    return $opspp;
+}
+
+
+function get_hoppr_emp_name_for_golive($out_nid) {
+	$gl_min_vid = db_fetch_array(db_query("select min(nr.vid) as vid from {node_revisions} nr inner join {content_type_merchant_outlet} ctmo on nr.vid=ctmo.vid inner join {users_roles} ur on nr.uid=ur.uid inner join {role} r on ur.rid=r.rid where nr.nid = '".$out_nid."' and (ctmo.field_hop_ops_glivsts_mo_value='Done' or ctmo.field_hop_ops_glivsts_mo_value='Not Done' or ctmo.field_hop_ops_glivsts_mo_value='Rejected' or ctmo.field_hop_ops_glivsts_mo_value='Follow up' or ctmo.field_sales_hop_ops_glivsts_mo_value='Done' or ctmo.field_sales_hop_ops_glivsts_mo_value='Not Done' or ctmo.field_sales_hop_ops_glivsts_mo_value='Follow up' or ctmo.field_sales_hop_ops_glivsts_mo_value='Rejected') and nr.uid != 0  and (r.name = 'y2cfoperations' or r.name = 'hoppertelecallingops' or r.name = 'operationhead' or r.name = 'salesperson' or r.name = 'hopsales opsgolive' or r.name = 'operationmngr') "));
+	$gl_name = db_result(db_query("select uid from {node_revisions} where vid='".$gl_min_vid['vid']."' "));
+	$gl_hop_emp = get_salesperson_name($gl_name);	
+	return $gl_hop_emp;
+}
+function get_hoppr_emp_name_for_golive_from_first_phase($mer_nid) {
+	$gl_min_vid = db_fetch_array(db_query("select min(nr.vid) as vid from {node_revisions} nr inner join {content_type_offer_detail} ctmd on nr.vid=ctmd.vid inner join {users_roles} ur on nr.uid=ur.uid inner join {role} r on ur.rid=r.rid where nr.nid = '".$mer_nid."' and (ctmd.field_hop_ops_glivsts_value='Done' or ctmd.field_hop_ops_glivsts_value='Not Done' or ctmd.field_hop_ops_glivsts_value='Rejected') and nr.uid != 0  and (r.name = 'y2cfoperations' or r.name = 'hoppertelecallingops' or r.name = 'operationhead' or r.name = 'salesperson' or r.name = 'hopsales opsgolive' or r.name = 'operationmngr') "));
+	$gl_name = db_result(db_query("select uid from {node_revisions} where vid='".$gl_min_vid['vid']."' "));
+	$gl_hop_emp = get_salesperson_name($gl_name);
+	return $gl_hop_emp;
+}
+
+
+
+
+function get_mer_ops_by_posbrand_for_creative_recieved($merchant_nid) {
+  $sql_ror = db_query("select distinct field_hop_pos_cr_recd_value from {content_field_hop_pos_cr_recd} where nid = '" . $merchant_nid . "' and field_hop_pos_cr_recd_value != 'NULL'  ");
+  $ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+    $ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_hop_pos_cr_recd_value'];
+  }
+  $ops_ror_desc = implode(",", $new_array);
+  return $ops_ror_desc;
+}
+
+function get_golive_ror_notdone($merchant_nid) {
+  $sql_ror = db_query("select distinct field_hop_ops_rsn_fr_nd_mo_value from {content_field_hop_ops_rsn_fr_nd_mo} where nid = '" . $merchant_nid . "' and field_hop_ops_rsn_fr_nd_mo_value != 'NULL'  ");
+  $ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+    $ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_hop_ops_rsn_fr_nd_mo_value'];
+  }
+  $ops_ror_desc = implode(",", $new_array);
+  return $ops_ror_desc;
+}
+
+function get_revalidation_accepted_but_changes($merchant_nid) {
+	$sql_ror = db_query("select distinct field_hop_revalidation_awc_value from {content_field_hop_revalidation_awc} where vid = '" . $merchant_nid . "' and field_hop_revalidation_awc_value != 'NULL'  ");
+	
+	$ops_exe_ror_arr = array();
+	while($msd = db_fetch_array($sql_ror)) {
+		$ops_exe_ror_arr[] = $msd;
+	}
+	$new_array = array();
+	foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+		$new_array[$result_num] = $sub_array['field_hop_revalidation_awc_value'];
+	}
+	$ops_ror_desc = implode(",", $new_array);
+	return $ops_ror_desc;
+}
+
+
+function get_revalidation_not_accepted_outlet($merchant_nid) {
+	$sql_ror = db_query("select distinct field_hop_revalidation_onaao_value from {content_field_hop_revalidation_onaao} where vid = '" . $merchant_nid . "' and field_hop_revalidation_onaao_value != 'NULL'  ");
+	$ops_exe_ror_arr = array();
+	while($msd = db_fetch_array($sql_ror)) {
+		$ops_exe_ror_arr[] = $msd;
+	}
+	$new_array = array();
+	foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+		$new_array[$result_num] = $sub_array['field_hop_revalidation_onaao_value'];
+	}
+	$ops_ror_desc = implode(",", $new_array);
+	return $ops_ror_desc;
+}
+
+
+
+function get_golive_ror_notdone_for_salesoe($merchant_nid) {
+  $sql_ror = db_query("select distinct field_sales_hop_ops_rsn_fr_nd_mo_value from {content_field_sales_hop_ops_rsn_fr_nd_mo} where nid = '" . $merchant_nid . "' and field_sales_hop_ops_rsn_fr_nd_mo_value != 'NULL'  ");
+  $ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+    $ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_sales_hop_ops_rsn_fr_nd_mo_value'];
+  }
+  $ops_ror_desc = implode(",", $new_array);
+  return $ops_ror_desc;
+}
+
+function get_golive_for_salesoe_pos_deplyd($merchant_nid) {
+  $sql_ror = db_query("select distinct field_sales_gl_pos_sts_value from {content_field_sales_gl_pos_sts} where nid = '" . $merchant_nid . "' and field_sales_gl_pos_sts_value != 'NULL'  ");
+  $ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+    $ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_sales_gl_pos_sts_value'];
+  }
+  $ops_ror_desc = implode(",", $new_array);
+  return $ops_ror_desc;
+}
+
+function get_rorsts_by_opshexe($merchant_nid) {
+  $sql_ror = db_query("select distinct field_hop_ops_rfofrej_value from {content_field_hop_ops_rfofrej} where nid = '" . $merchant_nid . "' and field_hop_ops_rfofrej_value != 'NULL'  ");
+  $ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+    $ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_hop_ops_rfofrej_value'];
+  }
+  $ops_ror_desc = implode(",", $new_array);
+  return $ops_ror_desc;
+}
+
+function get_mer_go_live_ops_pos_for_not_done($merchant_nid) {
+  $sql_ror = db_query("select distinct field_hop_ops_rsn_fr_nd_value from {content_field_hop_ops_rsn_fr_nd} where nid = '" . $merchant_nid . "' and field_hop_ops_rsn_fr_nd_value != 'NULL'  ");
+  $ops_exe_ror_arr = array();
+  while($msd = db_fetch_array($sql_ror)) {
+    $ops_exe_ror_arr[] = $msd;
+  }
+  $new_array = array();
+  foreach($ops_exe_ror_arr as $result_num => $sub_array) {
+    $new_array[$result_num] = $sub_array['field_hop_ops_rsn_fr_nd_value'];
+  }
+  $ops_ror_desc = implode(",", $new_array);
+  return $ops_ror_desc;
+}
+
+//Sales person last modified date
+function get_sp_lst_mod_dt($merc_id) {
+    $role_sp_max_vid = db_fetch_array(db_query("Select max(vid) as cur_vid from {node_revisions} nr inner join {users_roles} ur on nr.uid=ur.uid inner join {role} r on ur.rid=r.rid where nr.nid='".$merc_id."' and (r.name='salesperson' || r.name='salesmanager' || r.name='reporting manager')  "));
+    $role_sp_mod_date = db_fetch_array(db_query("Select nr.timestamp as sp_mod_date from {node_revisions} nr inner join {users_roles} ur on nr.uid=ur.uid inner join {role} r on ur.rid=r.rid where nr.nid='".$merc_id."' and nr.vid = '".$role_sp_max_vid['cur_vid']."' and (r.name='salesperson' || r.name='salesmanager' || r.name='reporting manager') "));
+    $sp_mod_date = (!empty($role_sp_mod_date['sp_mod_date'])) ? $role_sp_mod_date['sp_mod_date'] : "-";
+    return $sp_mod_date;
+}
+
+//Ops Head Executive status....means when first time sales head makes an offer to be rejected/accepted Rejection.
+function get_frst_rej_acc_status($merc_id) {
+	$rsh_exe_minvid = db_fetch_array(db_query("Select min(nr.vid) as cur_vid from {node_revisions} nr inner join {content_type_offer_detail} ctod on ctod.vid = nr.vid inner join {users_roles} ur on nr.uid=ur.uid inner join {role} r on ur.rid=r.rid where nr.nid='".$merc_id."' and r.name='operationheadexec' and ctod.field_hop_ops_oh_ds_sts_value='Rejected'  "));
+	$min_vid = $rsh_exe_minvid['cur_vid'];
+	return $min_vid;
+}
+function get_shexe_rejection_dt($merc_id) {
+	 $rsh_exe_minvid = get_frst_rej_acc_status($merc_id);
+    $rshexe_rej_dt = db_fetch_array(db_query("Select nr.timestamp as off_rej_date from {node_revisions} nr inner join {content_type_offer_detail} ctod on ctod.vid = nr.vid inner join {users_roles} ur on nr.uid=ur.uid inner join {role} r on ur.rid=r.rid where nr.nid='".$merc_id."' and nr.vid='".$rsh_exe_minvid."' and r.name='operationheadexec' and ctod.field_hop_ops_oh_ds_sts_value='Rejected'  "));
+    $rshexe_rej_dt = (!empty($rshexe_rej_dt['off_rej_date'])) ? date('m/d/Y', $rshexe_rej_dt['off_rej_date']) : "-";
+    return $rshexe_rej_dt;
+}
+function get_shexe_acceptance_dt($merc_id) {
+    $rsh_exe_maxvid = get_frst_rej_acc_status($merc_id);
+    $rsh_exe_acc_dt = db_fetch_array(db_query("Select nr.timestamp as off_acc_date from {node_revisions} nr inner join {content_type_offer_detail} ctod on ctod.vid = nr.vid inner join {users_roles} ur on nr.uid=ur.uid inner join {role} r on ur.rid=r.rid where nr.nid='".$merc_id."' and nr.vid='".$rsh_exe_maxvid."' and r.name='operationheadexec' and ctod.field_hop_ops_oh_ds_sts_value='Accepted'  "));
+    $rsh_exe_acc_dt = (!empty($rsh_exe_acc_dt['off_acc_date'])) ? date('m/d/Y', $rsh_exe_acc_dt['off_acc_date']) : "-";
+    return $rsh_exe_acc_dt;
+}
+
+//OPS exe
+function get_ops_exe_modsts_dt($merc_id) {
+    $role_opsexe_max_vid = db_fetch_array(db_query("Select max(vid) as cur_vid from {node_revisions} nr inner join {users_roles} ur on nr.uid=ur.uid inner join {role} r on ur.rid=r.rid where nr.nid='".$merc_id."' and r.name='y2cfoperations'  "));
+    $role_opsexe_mod_date = db_fetch_array(db_query("Select nr.timestamp as ops_mod_date from {node_revisions} nr inner join {users_roles} ur on nr.uid=ur.uid inner join {role} r on ur.rid=r.rid where nr.nid='".$merc_id."' and nr.vid = '".$role_opsexe_max_vid['cur_vid']."' and r.name='y2cfoperations' "));
+    $opsexe_mod_date = (!empty($role_opsexe_mod_date['ops_mod_date'])) ? date('m/d/Y', $role_opsexe_mod_date['ops_mod_date']) : "-";
+    return $opsexe_mod_date;
+}
+//Docs sts
+function get_docs_exe_modsts_dt($merc_id) {
+	 $role_docssts_max_vid = db_fetch_array(db_query("Select max(vid) as cur_vid from {node_revisions} nr inner join {users_roles} ur on nr.uid=ur.uid inner join {role} r on ur.rid=r.rid where nr.nid='".$merc_id."' and r.name='operationmngr'  "));
+    $role_docssts_mod_date = db_fetch_array(db_query("Select nr.timestamp as ops_mod_date from {node_revisions} nr inner join {users_roles} ur on nr.uid=ur.uid inner join {role} r on ur.rid=r.rid where nr.nid='".$merc_id."' and nr.vid = '".$role_docssts_max_vid['cur_vid']."' and r.name='operationmngr' "));
+    $opsexe_docssts_date = (!empty($role_docssts_mod_date['ops_mod_date'])) ? date('m-d-Y', $role_docssts_mod_date['ops_mod_date']) : "-";
+    return $opsexe_docssts_date;
+}
+function get_docs_exe_modsts_month($merc_id) {
+	 $role_docssts_max_vid = db_fetch_array(db_query("Select max(vid) as cur_vid from {node_revisions} nr inner join {users_roles} ur on nr.uid=ur.uid inner join {role} r on ur.rid=r.rid where nr.nid='".$merc_id."' and r.name='operationmngr'  "));
+    $role_docssts_mod_date = db_fetch_array(db_query("Select nr.timestamp as ops_mod_date from {node_revisions} nr inner join {users_roles} ur on nr.uid=ur.uid inner join {role} r on ur.rid=r.rid where nr.nid='".$merc_id."' and nr.vid = '".$role_docssts_max_vid['cur_vid']."' and r.name='operationmngr' "));
+    $opsexe_docssts_date = (!empty($role_docssts_mod_date['ops_mod_date'])) ? date('F', $role_docssts_mod_date['ops_mod_date']) : "-";
+    return $opsexe_docssts_date;
+}
+//TC sts
+function get_tc_exe_modsts_dt($merc_id) {
+	 $role_tc_max_vid = db_fetch_array(db_query("Select max(vid) as cur_vid from {node_revisions} nr inner join {users_roles} ur on nr.uid=ur.uid inner join {role} r on ur.rid=r.rid where nr.nid='".$merc_id."' and r.name='hoppertelecallingops'  "));
+    $role_tc_mod_date = db_fetch_array(db_query("Select nr.timestamp as ops_mod_date from {node_revisions} nr inner join {users_roles} ur on nr.uid=ur.uid inner join {role} r on ur.rid=r.rid where nr.nid='".$merc_id."' and nr.vid = '".$role_tc_max_vid['cur_vid']."' and r.name='hoppertelecallingops' "));
+    $opsexe_tc_date = (!empty($role_tc_mod_date['ops_mod_date'])) ? date('m/d/Y', $role_tc_mod_date['ops_mod_date']) : "-";
+    return $opsexe_tc_date;
+}
+
+//Pro ops
+function get_proops_exe_modsts_dt($merc_id) {
+	 $role_pro_max_vid = db_fetch_array(db_query("Select max(vid) as cur_vid from {node_revisions} nr inner join {users_roles} ur on nr.uid=ur.uid inner join {role} r on ur.rid=r.rid where nr.nid='".$merc_id."' and r.name='y2cfproducts'  "));
+    $role_pro_mod_date = db_fetch_array(db_query("Select nr.timestamp as ops_mod_date from {node_revisions} nr inner join {users_roles} ur on nr.uid=ur.uid inner join {role} r on ur.rid=r.rid where nr.nid='".$merc_id."' and nr.vid = '".$role_pro_max_vid['cur_vid']."' and r.name='y2cfproducts' "));
+    $opsexe_pro_date = (!empty($role_pro_mod_date['ops_mod_date'])) ? date('m-d-Y', $role_pro_mod_date['ops_mod_date']) : "-";
+    return $opsexe_pro_date;
+}
+
+function get_proops_exe_modsts_dt_for_sr($merc_id) {
+   $role_pro_max_vid = db_fetch_array(db_query("Select max(vid) as cur_vid from {node_revisions} nr inner join {content_type_merchant_outlet} ctpd on nr.vid=ctpd.vid inner join {users_roles} ur on nr.uid=ur.uid inner join {role} r on ur.rid=r.rid where nr.nid='".$merc_id."' and r.name='y2cfproducts' and ctpd.field_hop_pro_eval_status_value='Approved' "));
+    $role_pro_mod_date = db_fetch_array(db_query("Select nr.timestamp as ops_mod_date from {node_revisions} nr inner join {content_type_merchant_outlet} ctpd on nr.vid=ctpd.vid inner join {users_roles} ur on nr.uid=ur.uid inner join {role} r on ur.rid=r.rid where nr.nid='".$merc_id."' and nr.vid = '".$role_pro_max_vid['cur_vid']."' and r.name='y2cfproducts' and ctpd.field_hop_pro_eval_status_value='Approved' "));
+    $opsexe_pro_date = (!empty($role_pro_mod_date['ops_mod_date'])) ? date('m/d/Y', $role_pro_mod_date['ops_mod_date']) : "-";
+    return $opsexe_pro_date;
+}
+
+//Offer upload
+function get_proops_exe_modsts_dt_hopprofferupload($merc_id) {
+   $role_pro_max_vid = db_fetch_array(db_query("Select max(vid) as cur_vid from {node_revisions} nr inner join {users_roles} ur on nr.uid=ur.uid inner join {role} r on ur.rid=r.rid where nr.nid='".$merc_id."' and r.name='y2cfproducts'  "));
+    $role_pro_mod_date = db_fetch_array(db_query("Select nr.timestamp as ops_mod_date from {node_revisions} nr inner join {users_roles} ur on nr.uid=ur.uid inner join {role} r on ur.rid=r.rid where nr.nid='".$merc_id."' and nr.vid = '".$role_pro_max_vid['cur_vid']."' and r.name='hopprofferupload' "));
+    $opsexe_pro_date = (!empty($role_pro_mod_date['ops_mod_date'])) ? date('m/d/Y', $role_pro_mod_date['ops_mod_date']) : "-";
+    return $opsexe_pro_date;
+}
+//offer testing
+function get_proops_exe_modsts_dt_hopproffertesting($merc_id) {
+   $role_pro_max_vid = db_fetch_array(db_query("Select max(vid) as cur_vid from {node_revisions} nr inner join {users_roles} ur on nr.uid=ur.uid inner join {role} r on ur.rid=r.rid where nr.nid='".$merc_id."' and r.name='y2cfproducts'  "));
+    $role_pro_mod_date = db_fetch_array(db_query("Select nr.timestamp as ops_mod_date from {node_revisions} nr inner join {users_roles} ur on nr.uid=ur.uid inner join {role} r on ur.rid=r.rid where nr.nid='".$merc_id."' and nr.vid = '".$role_pro_max_vid['cur_vid']."' and r.name='hopproffertesting' "));
+    $opsexe_pro_date = (!empty($role_pro_mod_date['ops_mod_date'])) ? date('m/d/Y', $role_pro_mod_date['ops_mod_date']) : "-";
+    return $opsexe_pro_date;
+}
+
+
+
+//POS status
+function get_pos_exe_modsts_dt($merc_id) {
+	$role_pos_max_vid = db_fetch_array(db_query("Select max(vid) as cur_vid from {node_revisions} nr inner join {users_roles} ur on nr.uid=ur.uid inner join {role} r on ur.rid=r.rid where nr.nid='".$merc_id."' and r.name='posbrand'  "));
+    $role_pos_mod_date = db_fetch_array(db_query("Select nr.timestamp as ops_mod_date from {node_revisions} nr inner join {users_roles} ur on nr.uid=ur.uid inner join {role} r on ur.rid=r.rid where nr.nid='".$merc_id."' and nr.vid = '".$role_pos_max_vid['cur_vid']."' and r.name='posbrand' "));
+    $opsexe_pos_date = (!empty($role_pos_mod_date['ops_mod_date'])) ? date('m/d/Y', $role_pos_mod_date['ops_mod_date']) : "-";
+    return $opsexe_pos_date;
+}
+
+//GO LIVE
+function get_ops_golive_exe_modsts_dt($merc_id) {
+	$role_pos_max_vid = db_fetch_array(db_query("Select max(vid) as cur_vid from {node_revisions} nr inner join {users_roles} ur on nr.uid=ur.uid inner join {role} r on ur.rid=r.rid where nr.nid='".$merc_id."' and r.name='posbrand'  "));
+    $role_pos_mod_date = db_fetch_array(db_query("Select nr.timestamp as ops_mod_date from {node_revisions} nr inner join {users_roles} ur on nr.uid=ur.uid inner join {role} r on ur.rid=r.rid where nr.nid='".$merc_id."' and nr.vid = '".$role_pos_max_vid['cur_vid']."' and r.name='posbrand' "));
+    $opsexe_pos_date = (!empty($role_pos_mod_date['ops_mod_date'])) ? date('m/d/Y', $role_pos_mod_date['ops_mod_date']) : "-";
+    return $opsexe_pos_date;
+}
+
+function hoppr_get_ysnolist_forfilter(){
+	  $myarr = array('1'=>'Yes', '0'=>'No');
+    $content = "";
+    $content .= "<option value=''>Select</option>";
+    foreach($myarr as $key => $value){
+      if (!empty($_GET['pros']) && $_GET['pros'] == $key) {
+        $sel = "selected";
+      }
+      else {
+        $sel = "";
+      }
+      $content .= "<option value=".$key." ".$sel.">".$value."</option>";
+    }
+    return $content;
+}

@@ -1,0 +1,115 @@
+<?php
+global $base_url;
+global $imgsrc;
+global $crossimgsrc;
+global $notmandatoryimgsrc;
+
+$imgsrc = $base_url.'/sites/all/themes/y2cfprod/images/OK.png';
+$crossimgsrc = $base_url.'/sites/all/themes/y2cfprod/images/delete.png';
+$notmandatoryimgsrc = $base_url.'/sites/all/themes/y2cfprod/images/alerts.png';
+function hoppr_keywordupdate_perm() {
+	return array('Administer keywordupdate csv Upload');
+}
+function hoppr_keywordupdate_menu() {
+	$items = array();
+	$items['hoppr/keywordupdate'] = array(
+    'title' => 'keywordupdate CSV Upload',
+    'page callback' => 'hoppr_keywordupdate',
+	'access arguments' => array('Administer keywordupdate csv Upload'),
+    'description' => 'Administer keywordupdate csv Upload.',
+    'weight' => -4,
+	'type' => MENU_LOCAL_TASK,
+
+	);
+	return $items;
+}
+function hoppr_keywordupdate_form_alter(&$form, $form_state, $form_id) {
+	global $base_url;
+	global $imgsrc;
+	global $crossimgsrc;
+	global $notmandatoryimgsrc;
+	global $user;
+	if($form_id=='keywordupdate_node_form') {
+		$form['path']['#access'] = FALSE;
+		$form['menu']['#access'] = FALSE;
+		$form['author']['#access'] = FALSE;
+		$form['options']['#access'] = FALSE;
+		$form['comment_settings']['#access'] = FALSE;
+		$form['revision_information']['#access'] = FALSE;
+		$form['title']['#access'] = FALSE;
+		
+		$form['hoppr_kwu'] = array(
+				'#type' => 'item',
+				'#weight' => -19,
+				'#description' => '<div>Keyword/Script CSV file format.<span style="color:red;">(Please don&rsquo;t change a single spelling of header row in csv file) </span>
+				<table border="1">
+					<tr style="color:red;">
+						<td>outlet_code</td>
+						<td>pos_delivery_date</td>
+						<td>pos_meterial_sent</td>
+						<td>pos_overall_status</td>
+						<td>pos_reason_for_not_delivered</td>
+					</tr>
+					<tr>
+						<td>22691</td>
+						<td>1/7/2013</td>
+						<td>Sticker,Tent Card</td>
+						<td>Delivered</td>
+						<td></td>
+					</tr>
+				<table>
+				</div>'
+		);
+		$form['myform_kwupd'] = array(
+				'#type' => 'item',
+				'#weight' => -19,
+				'#description' => '<div><span style="color:red;">Fields Mark with </span>(<span style="color:#FFAE00;">*</span>) <span style="color:red;"> is mandatory!</span></div>'
+		);
+		unset($form['buttons']['preview']);
+	}
+}
+function hoppr_keywordupdate_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
+	global $base_url;
+	global $user;
+//Merchants offers
+	if ($node->type == 'keywordupdate' && $op=='insert') {
+    	if (!ini_get('safe_mode')) {
+	   		set_time_limit(0);
+		}
+		ini_set('display_errors', 1);
+    	$path_module = drupal_get_path('module', 'y2cf_offer_csvupload');
+		require_once($path_module."/DataSource.php");
+		require_once($path_module."/fileread.php");
+    	$last_csv_upload_nid  = db_fetch_array(db_query("select max(nid) as nid from {node} where type='keywordupdate' and uid='".$user->uid."'"));
+    	$csv_file_name = db_fetch_array(db_query("select ff.filepath from {content_type_keywordupdate} ctcu inner join {files} ff on ctcu.field_hop_keywordupdate_fid = ff.fid where nid ='".$last_csv_upload_nid['nid']."' and uid='".$user->uid."' "));
+		$path= $base_url.'/'.$csv_file_name['filepath'];
+
+    	$csv = new File_CSV_DataSource;
+		$csv->load($csv_file_name['filepath']);
+		$data_array = $csv->connect();
+    	$merchant_errors = array();
+    	
+    	//print_r($data_array);die;
+    	foreach($data_array as $key => $offer_value) {
+    		if($rs_rid == 'y2cfproducts') {
+				$pro_kw_script = $offer_value['merchant_script'];
+    			$pro_keywords = $offer_value['keyword'];
+    			$sql_sts = "UPDATE {content_type_merchant_outlet} set field_pro_script_value='".$pro_kw_script."',field_hop_ops_pro_kwds_mo_value='".$pro_keywords."' where vid='".$mer_vid."' ";
+      			db_query($sql_sts);
+      			//Automated date
+      			$pro_act_date = db_result(db_query("select field_hop_pro_lmdate_value from {content_type_merchant_outlet} where vid= '".$mer_vid."' "));
+      			if(!empty($pro_keywords)) {
+        			if(empty($pro_act_date)) {
+            			$pro_sql_date_upd = "UPDATE {content_type_merchant_outlet} set field_hop_pro_lmdate_value='".$lmd."' where vid='".$mer_vid."' ";
+            			db_query($pro_sql_date_upd);
+        			}
+				}
+				$update_mer_scr = db_result(db_query("select title from {node} where vid='".$mer_vid."' "));
+    			drupal_set_message("Script edited for the merchant &nbsp;&nbsp; -> &nbsp;&nbsp;".$update_mer_scr);
+			}
+			drupal_flush_all_caches();
+			//Delete the file from the system
+  			unlink($path);
+    	}
+	}
+}

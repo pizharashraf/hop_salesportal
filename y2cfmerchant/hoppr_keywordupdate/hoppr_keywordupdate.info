@@ -1,0 +1,5 @@
+name = Hoppr keyword/script bulk csv  upload
+description = Hoppr keyword/script bulk csv bulk upload
+core = 6.x
+
+package = Y2CF
