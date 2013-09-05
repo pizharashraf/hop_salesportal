@@ -1,0 +1,5 @@
+name = homepage_i3feature
+description = HOme page for I3classes
+core = 6.x
+
+package = I3SC

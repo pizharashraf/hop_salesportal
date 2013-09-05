@@ -1,0 +1,772 @@
+<?php
+
+function homepage_i3feature_block($op = 'list', $delta = 0, $edit = array()) {
+  $blocks = array();
+  if ($op == 'list') {
+    $blocks[0] = array(
+      'info' => t('i3sc_homepage_slider'), 
+      );
+    $blocks[1] = array(
+      'info' => t('i3sc_homepage_i3feature'), 
+      );
+    $blocks[2] = array(
+      'info' => t('i3sc_homepage_headermiddle'), 
+      );
+    $blocks[3] = array(
+      'info' => t('i3sc_homepage_topheader'), 
+      );
+    $blocks[4] = array(
+      'info' => t('i3sc_footers'), 
+      );
+
+    return $blocks;
+  }
+  elseif ($op == 'view') {
+    switch ($delta) {
+      case 0:
+        $block = array(
+          'subject' => t(''), 
+          'content' => i3sc_homepage_slider(),
+        );
+      break;
+      case 1:
+        $block = array(
+          'subject' => t(''), 
+          'content' => i3sc_homepage_i3feature(),
+        );
+      break;
+
+    case 2:
+        $block = array(
+          'subject' => t(''), 
+          'content' => i3sc_homepage_headermiddle(),
+        );
+      break;
+    case 3:
+        $block = array(
+          'subject' => t(''), 
+          'content' => i3sc_homepage_topheader(),
+        );
+      break;
+
+    case 4:
+        $block = array(
+          'subject' => t(''), 
+          'content' => i3sc_footers(),
+        );
+      break;
+	  
+     
+    }
+    return $block;
+  }
+}
+
+
+function i3sc_footers(){
+  global $base_url;
+  $path_theme = $base_url.'/'.path_to_theme();
+  $contact_us_url = $base_url.'/contact';
+  $about_us_url = $base_url.'/node/33';
+  $check_requirements_url = $base_url.'/node/34';
+  $terms_ofuse_url = $base_url.'/node/35';
+  $help_url = $base_url.'/node/47440';
+  $privacy_policy = $base_url.'/node/47441';
+
+  $in_icon = $base_url.'/sites/all/themes/smartclass/images/in-icon.jpg';
+  $twitter_icon = $base_url.'/sites/all/themes/smartclass/images/twitter-icon.jpg';
+  $facebook_icon = $base_url.'/sites/all/themes/smartclass/images/facebook-icon.jpg';
+
+
+  $output = '';
+   $output .= '<div id="footer-linkset1" align="right">
+              <div id="footer-middlerow">
+            	<div class="footer-iconbox">
+		        <a href="#"><img src="'.$in_icon.'" width="16" height="16" border="0" /></a>
+		        <a href="#"><img src="'.$twitter_icon.'" width="16" height="16" border="0" /></a>
+		        <a href="#"><img src="'.$facebook_icon.'" width="16" height="16" border="0" /></a>                </div>
+		      <a href="'.$base_url.'">Home</a><span>|</span><a href="'.$about_us_url.'">About Us</a><span>|</span><a href="'.$terms_ofuse_url.'">Terms of Use</a><span>|</span><a href="'.$contact_us_url.'">Contact Us</a>
+	       </div>
+               </div>
+              <div class="clear"></div>
+
+              <div id="footer-middlerow">
+                <div id="footer-copyright" align="left">
+                  <div id="footer-leftrow">Copyright © 2011  Vertical Limit Consulting (P) Ltd. All rights reserved.</div> 
+                    <div id="footer-rightrow"></div>
+               </div>
+               </div>';
+  return $output;
+}
+
+
+function i3sc_homepage_slider(){
+  global $base_url;
+ $prev_img = $base_url . "/sites/all/themes/smartclass/images/prev.png";
+$next_img = $base_url . "/sites/all/themes/smartclass/images/next.png";
+
+
+  $sql_slider = db_query("select nn.nid, nn.title, nr.body,ff.filepath from {content_type_home_page_slider} cthps inner join {node} nn on cthps.nid=nn.nid inner join {files} ff on cthps.field_slider_image_fid=ff.fid inner join {node_revisions} nr on nn.nid=nr.nid");
+  $output = '';
+  $output .='<div class="NarrowCarouselContainer" id="oNarrowCarouselContainer">';
+  $output .='<div id="NarrowSlides">';
+  $output .='<div style="overflow: hidden; position: relative;" class="slides_container">';
+
+
+while($rslider = db_fetch_object($sql_slider)) {
+
+  $output .='<table class="slide" align="left" border="0" cellpadding="0" cellspacing="0" rel="0">';
+  $output .='<tbody style="display: block;">';
+
+  $output .='<tr style="width: 100%;" onmouseover="NarrowCarousel.TriggerTimerStart(0);" onmouseout="NarrowCarousel.TriggerTimerStop();" onclick="NarrowCarousel.TriggerAction(0);">';
+  $output .='<td class="NarrowCarouselImage"> ';
+  $output .='<img alt="Digital Textbooks Are Here" src="'.$base_url.'/'.$rslider->filepath.'" style="width: 240px; height: 98px;" />';
+  $output .='</td>';
+
+  $output .='<td class="NarrowCarouselContent">';
+  $output .='<div class="NarrowContentTitle">'.$rslider->title.'</div> ';
+  $output .='<div class="NarrowContentSummary">'.$rslider->body.'</div> ';
+  $output .=' </td></tr></tbody></table>';
+}
+$output .='</div>';
+
+$output .='<div class="NarrowCarouselPagination"> 
+                <table border="0" cellpadding="0" cellspacing="0"> 
+                    <tbody> 
+                        <tr> 
+                            <td> 
+                                <a href="javascript: void(0);" class="prev"><img src="'.$prev_img.'" alt="Arrow Prev"></a>                            </td> 
+                            <td> 
+                                <div id="oPaginationContainer"></div>                            </td> 
+                            <td> 
+                                <a href="javascript: void(0);" class="next"> 
+                                    <img src="'.$next_img.'" alt="Arrow Next">                                </a>                            </td> 
+                        </tr> 
+                    </tbody> 
+                </table> 
+           </div> ';
+
+$output .='<div class="ClearFloat DisplayNone"></div> 
+       </div> 
+    </div> ';
+
+
+
+
+
+
+	$sql_slider_detail = db_query("select nn.nid, nn.title, nr.body,ff.filepath from {content_type_home_page_slider} cthps inner join {node} nn on cthps.nid=nn.nid inner join {files} ff on cthps.field_big_image_fid=ff.fid inner join {node_revisions} nr on nn.nid=nr.nid");
+
+
+
+$output .='<div onmouseout="LargeCarousel.TriggerTimerStart();" onmouseover="LargeCarousel.TriggerTimerStop();" id="oLargeCarouselContainer" class="LargeCarouselContainer"> 
+        <div> 
+            <div class="LargeCarouselClose"> 
+                <span onclick="LargeCarousel.Close();">Close</span> 
+                <div class="ClearFloat DisplayNone"></div> 
+            </div> 
+    
+            <div> 
+                <div class="LargeCarouselPrevBtnContainer"> 
+                    <span id="oLargeCarouselPrevBtn" style=""></span>                </div> 
+            
+                <div align="center" id="oLargeCarouselFrame"> 
+                	<div id="oLargeCarouselInner"> ';
+                    
+while($rslider_det = db_fetch_object($sql_slider_detail)) { 
+                            $output .='<span class="LargeCarouselContentBlock" id="LargeSlide0"> 
+                                <div class="LargeCarouselContentImage"> 
+                                    <a href="#" target="_blank" title="Digital Textbooks Are Here"> 
+                                 <img alt="Digital Textbooks Are Here" src="'.$base_url.'/'.$rslider_det->filepath.'" style="width: 240px; height: 215px;">                                    </a>                                </div> 
+                                <div style="" class="LargeCarouselTextContent"> 
+                                    <div class="LargeCarouselContentTitle"> 
+                                    	<a href="#" target="_blank" title="Digital Textbooks Are Here "> 
+                                        	'.$rslider_det->title.'                                     </a>                                    </div> 
+                                    <div class="LargeCarouselContentSummary">'.$rslider_det->body.'</div> 
+                                </div> 
+                            </span>';
+ }
+$output .='</div> 
+                </div> ';
+ 
+                            
+                        
+$output .='
+                <div class="LargeCarouselNextBtnContainer"> 
+                    <span id="oLargeCarouselNextBtn" style=""></span>                </div> 
+                <div class="ClearFloat"></div> 
+            </div> 
+        </div> 
+    </div>
+'; 
+	
+$output .='<script type="text/javascript"> 
+        $(document).ready(function(){
+            CreateCarousel();
+        });
+    </script>';
+
+$output .='</div>
+      </div>';
+
+
+return $output;
+
+	
+}
+function i3sc_homepage_i3feature(){
+  global $base_url;
+  $sql_i3features = db_query("select nn.nid, nn.title, nr.body,ff.filepath from {content_type_home_page_i3_feature} cthps inner join {node} nn on cthps.nid=nn.nid inner join {files} ff on cthps.field_feature_image_fid=ff.fid inner join {node_revisions} nr on nn.nid=nr.nid");
+
+
+  $output = '';
+  while($rs = db_fetch_object($sql_i3features)) { 
+
+    $output .= '<div class="home-bottombox">';
+    $output .= '<h2>'.$rs->title.'</h2>';
+    $output .= '<div class="home-bottomimgbox"><img src="'.$base_url.'/'.$rs->filepath.'" height="145" width="290" /></div>';				
+    $output .= '<p>'.$rs->body.'</p>';				
+    $output .= '</div>';
+  } 
+  return $output;
+}
+function i3sc_homepage_headermiddle(){
+global $base_url;
+
+  $output = '<div id="shell"> 
+                                <div id="sc-logo"> <a href="'.$base_url.'" title="i3SmartClass"></a> ';
+                                 
+                           
+               $output .= '</div> 
+                        <div id="sc-navigation" style="position:absolute;" class="sect include www-header"> 
+                            <ul class="shadowNav"> 
+                                <li class="navEl" id="nav-first"> 
+                                    <a id="nav-first_link" class="nav-catcher" title="School" href="#"> 
+                                        Schools
+                                        <span class="aro"></span></a> 
+                                    <span class="aro"></span> 
+                                    <div id="nav-first_wrap" class="navWrapper" style="display:none;"> 
+                                        <div class="nav-inner"> 
+                                            <ul class="nav-list"> 
+                                                <li class="nav-subs" id="cont11">  <a href="#" title="Curricular Resources">Curricular Resources</a> </li> 
+                                                <li class="nav-subs" id="cont12">  <a href="#" title="Assessment Resources">Assessment Resources</a> </li> 
+                                                <li class="nav-subs" id="cont14">  <a href="#" title="Customer Success">Customer Success</a> </li> 
+                                                <li class="nav-subs" id="cont15">  <a href="#" title="Professional Development">Professional Development</a> </li> 
+												
+                                                <li class="nav-subs" id="cont17"> <a href="#" title="Hardware Solutions">Hardware Solutions</a>  </li> 
+                                            </ul> 
+                                            <div class="nav-contents" id="cont11_wrap" style="display:;"> 
+                                            	<div class="nav-content-top"> 
+                                                    <a href="#" class="nav-content-top-link" title="Curricular Resources"> 
+                                                        <span class="nav-content-top-head">Curricular Resources</span> 
+                                                        <span>View All</span> 
+                                                        <div class="clear"></div> 
+                                                    </a>
+                                                </div> 
+                                                <ul class="nav-contents-links"> 
+                                                	<li> <a href="#" title="Digital Curriculum"><b>Digital Curriculum</b></a> </li> 
+                                                    <li> <a href="#" title="Science Techbook"><b>Techbook</b></a> </li> 
+                                                    <li> <a href="#" title="Science"><b>Science</b></a></li> 
+                                                    <li> <a href="#" title="Health"><b>Health</b></a>  </li> 
+                                                    <li> <a href="#" title="MediaShare"><b>MediaShare</b></a></li> 
+                                                </ul> 
+                                                
+                                            </div> 
+                                            <div class="nav-contents" id="cont12_wrap" style="display:none;"> 
+                                            	<div class="nav-content-top"> 
+                                                    <a href="#" class="nav-content-top-link" title="Assessment Resources"> 
+                                                        <span class="nav-content-top-head">Assessment Resources</span> 
+                                                        <span>View All</span> 
+                                                        <div class="clear"></div> 
+                                                    </a> 
+                                                </div> 
+                                                <ul class="nav-contents-links"> 
+                                                	<li> <a href="#" title="Progress Zone"><b>Progress Zone</b></a> </li> 
+                                                    <li> <a href="#" title="Formative Assessment"><b>Formative Assessment </b></a> </li> 
+                                                </ul> 
+                                            	
+                                            </div> 
+                                            <div class="nav-contents" id="cont13_wrap" style="display:none;"> 
+                                            	<div class="nav-content-top"> 
+                                                    <a href="#" class="nav-content-top-link" title="Instructional Services"> 
+                                                        <span class="nav-content-top-head">Instructional Services</span> 
+                                                        <span>View All</span> 
+                                                        <div class="clear"></div> 
+                                                    </a>
+                                                </div> 
+                                                <ul class="nav-contents-links"> 
+                                                    <li> <a href="#" title="Curriculum Alignment Services"><b>Curriculum Alignment Services</b></a> </li> 
+                                                    <li> <a href="#" title="Meet Our Curriculum Team"><b>Meet Our Curriculum Team</b></a> </li> 
+                                                    <li> <a href="#" title="Our Approach"><b>Our Approach</b></a>  </li> 
+                                                </ul> 
+                                                
+                                            </div> 
+                                            <div class="nav-contents" id="cont14_wrap" style="display:none;"> 
+                                            	<div class="nav-content-top"> 
+                                                    <a href="#" class="nav-content-top-link" title="Customer Success"> 
+                                                        <span class="nav-content-top-head">Customer Success</span> 
+                                                        <span>View All</span> 
+                                                        <div class="clear"></div> 
+                                                    </a> 
+                                                </div> 
+                                                <ul class="nav-contents-links"> 
+                                                    <li> <a href="#" title="Research Results"><b>Research Results</b></a> </li> 
+                                                </ul> 
+                                                
+                                            </div> 
+                                            <div class="nav-contents" id="cont15_wrap" style="display:none;"> 
+                                                <div class="nav-content-top"> 
+                                                    <a href="#" class="nav-content-top-link" title="Professional Development"> 
+                                                        <span class="nav-content-top-head">Professional Development</span> 
+                                                        <span>View All</span> 
+                                                        <div class="clear"></div> 
+                                                    </a>  
+                                                </div> 
+                                                <ul class="nav-contents-links"> 
+                                                    <li> <a href="#" title="Our Approach"><b>Our Approach</b></a> </li> 
+                                                    <li> <a href="#" title="Courses"><b>Courses</b></a> </li> 
+                                                    <li> <a href="#" title="Case Studies"><b>Case Studies</b></a> </li> 
+                                                    <li>  <a href="#" title="Our Team"><b>Our Team</b></a> </li> 
+                                                    <li> <a href="#" title="Our Partners"><b>Our Partners</b></a> </li> 
+                                                </ul> 
+                                                
+                                            </div> 
+											<div class="nav-contents" id="cont16_wrap" style="display:none;"> 
+                                            	<div class="nav-content-top"> 
+                                                    <a href="#" class="nav-content-top-link" title="i3smart Educator Network"> 
+                                                        <span class="nav-content-top-head">i3smart Educator Network</span> 
+                                                        <span>View All</span> 
+                                                        <div class="clear"></div> 
+                                                    </a>  
+                                                </div> 
+                                                <ul class="nav-contents-links"> 
+                                                    <li> <a href="#" title="Educator Resources"><b>Educator Resources</b></a>  </li> 
+													<li> <a href="#" title="Blogs"><b>Blogs</b></a> </li> 
+													<li> <a href="#" title="Forums"><b>Forums</b></a> </li> 
+													<li> <a href="#" title="Event Gallery"><b>Event Gallery</b></a> </li> 
+													<li>  <a href="#" title="About the DEN"><b>About the DEN</b></a> </li> 
+                                                </ul> 
+                                               
+                                            </div> 
+                                            <div class="nav-contents" id="cont17_wrap" style="display:none;"> 
+                                            	<div class="nav-content-top"> 
+                                                    <a href="#" class="nav-content-top-link" title="Hardware Solutions"> 
+                                                        <span class="nav-content-top-head">Hardware Solutions</span> 
+                                                        <span>View All</span> 
+                                                        <div class="clear"></div> 
+                                                    </a> 
+                                                </div> 
+                                                <ul class="nav-contents-links"> 
+                                                    <li> 
+                                                        <a href="#" title="i3smart Media Server"><b>i3smart Media Server</b></a>  </li> 
+                                                    <li> 
+                                                        <a href="#" title="Local Host"><b>Local Host</b></a> </li> 
+                                                </ul> 
+                                               
+                                            </div> 
+                                            <div class="clear"></div> ';
+$output .= '</div> </div> </li> ';
+$output .= '<li class="navEl" id="nav-second"> 
+                                    <a id="nav-second_link" class="nav-catcher" href="#" title="Teachers"> 
+                                        Teachers
+                                        <span class="aro"></span> 
+                                    </a> 
+                                    <div id="nav-second_wrap" class="navWrapper" style="display:none;"> 
+                                        <div class="nav-inner"> 
+                                            <ul class="nav-list"> 
+                                                <li class="nav-subs" id="cont21"> <a href="#" title="Free K-5 Resources">K-5</a> </li> 
+                                                <li class="nav-subs" id="cont22"> <a href="#" title="Free 6-8 Resources">6-10</a>  </li> 
+                                                <li class="nav-subs" id="cont23"> <a href="#" title="Free 9-12 Resources">11-12</a> </li> 
+                                                <li class="nav-subs" id="cont24"> <a href="#" title="Free Lesson Plans">Lesson Plans</a>  </li> 
+                                                <li class="nav-subs" id="cont28"> <a href="#" title="Additional Resources">Additional Resources</a> </li> 
+                                            </ul> 
+                                            <div class="nav-contents" id="cont21_wrap" style="display:;"> 
+                                            	<div class="nav-content-top"> 
+                                                    <a href="#" class="nav-content-top-link" title="Free K-5 Resources"> 
+                                                        <span class="nav-content-top-head">Free K-5 Resources</span> 
+                                                        <span>View All</span> 
+                                                        <div class="clear"></div> 
+                                                    </a>
+                                                </div> 
+                                                <ul class="nav-contents-links"> 
+                                                    <li> <a href="#" title="Free K-5 Science Resources"><b>Science</b></a> </li> 
+                                                    <li> <a href="#" title="Free K-5 Math Resources"><b>Math</b></a> </li> 
+                                                    <li> <a href="#" title="Free K-5 English Resources"><b>English</b></a> </li> 
+                                                    <li> <a href="#" title="Free K-5 Social Studies Resources"><b>Social Studies</b></a></li> 
+                                                    <li> <a href="#" title="Free K-5 Health Resources"><b>Health</b></a> </li> 
+                                                </ul> 
+                                                
+                                            </div> 
+                                            <div class="nav-contents" id="cont22_wrap" style="display:none;"> 
+                                            	<div class="nav-content-top"> 
+                                                    <a href="#" class="nav-content-top-link" title="Free 6-8 Resources"> 
+                                                        <span class="nav-content-top-head">6-10 Resources</span> 
+                                                        <span>View All</span> 
+                                                        <div class="clear"></div> 
+                                                    </a>  
+                                                </div> 
+                                            
+                                                <ul class="nav-contents-links"> 
+                                                    <li> <a href="#" title="Free 6-8 Science Resources"><b>Science</b></a>  </li> 
+                                                    <li> <a href="#" title="Free 6-8 Math Resources"><b>Math</b></a>   </li> 
+                                                    <li> <a href="#" title="Free 6-8 English Resources"><b>English</b></a> </li> 
+                                                    <li> <a href="#" title="Free 6-8 Social Studies Resources"><b>Social Studies</b></a> </li> 
+                                                    <li> <a href="#" title="Free 6-8 Health Resources"><b>Health</b></a>  </li> 
+                                                </ul> 
+                                                
+                                            </div> 
+                                            <div class="nav-contents" id="cont23_wrap" style="display:none;"> 
+                                            	<div class="nav-content-top"> 
+                                                    <a href="#" class="nav-content-top-link" title="Free 11-12 Resources"> 
+                                                        <span class="nav-content-top-head"> 11-12 Resources</span> 
+                                                        <span>View All</span> 
+                                                        <div class="clear"></div> 
+                                                    </a>    
+                                                </div> 
+                                                <ul class="nav-contents-links"> 
+                                                    <li> <a href="#" title="Free 9-12 Science Resources"><b>Science</b></a> </li> 
+                                                    <li> <a href="#" title="Free 9-12 Math Resources"><b>Math</b></a> </li> 
+                                                    <li> <a href="#" title="Free 9-12 English Resources"><b>English</b></a> </li> 
+                                                    <li> <a href="#" title="Free 9-12 Social Studies Resources"><b>Social Studies</b></a> </li> 
+                                                    <li> <a href="#" title="Free 9-12 Health Resources"><b>Health</b></a> </li> 
+                                                </ul> 
+                                                
+                                            </div> 
+                                            <div class="nav-contents" id="cont24_wrap" style="display:none;"> 
+                                            	<div class="nav-content-top"> 
+                                                    <a href="#" class="nav-content-top-link" title="Free Lesson Plans"> <span class="nav-content-top-head">Free Lesson Plans</span> 
+                                                        <span>View All</span> 
+                                                        <div class="clear"></div> 
+                                                    </a> 
+                                                </div> 
+                                                <ul class="nav-contents-links"> 
+                                                    <li> <a href="#" title="Free Science Lesson Plans"><b>Science</b></a>  </li> 
+                                                    <li>  <a href="#" title="Free Math Lesson Plans"><b>Math</b></a>   </li> 
+                                                    <li>  <a href="#" title="Free English Lesson Plans"><b>English</b></a> </li> 
+                                                    <li>  <a href="#" title="Free Social Studies Lesson Plans"><b>Social Studies</b></a> </li> 
+                                                    <li> <a href="#" title="Free Health Lesson Plans"><b>Health</b></a> </li> 
+                                                </ul>
+                                                 
+                                            </div> 
+                                            <div class="nav-contents" id="cont25_wrap" style="display:none;"> 
+                                            	<div class="nav-content-top"> 
+                                                    <a href="#" class="nav-content-top-link" title="Free Puzzlemaker"> 
+                                                        <span class="nav-content-top-head">Free Puzzlemaker</span> 
+                                                        <span>View All</span> 
+                                                        <div class="clear"></div> 
+                                                    </a> 
+                                                </div> 
+                                                 
+                                            </div> 
+            
+                                            <div class="nav-contents" id="cont26_wrap" style="display:none;"> 
+                                            	<div class="nav-content-top"> 
+                                                    <a href="#" class="nav-content-top-link" title="Featured Programs &amp; Contests"> 
+                                                        <span class="nav-content-top-head">Featured Programs</span> 
+                                                        <span>View All</span> 
+                                                        <div class="clear"></div> 
+                                                    </a>                                                </div> 
+                                            
+                                                <ul class="nav-contents-links"> 
+                                                    <li> 
+                                                        <a href="#" title="i3smart Student Adventures"><b>i3smart Student Adventures</b></a>                                                    </li> 
+                                                    <li> 
+                                                        <a href="#" title="Siemens: We Can Change the World Challenge" style="font-size:10.5px;"><b>Siemens: We Can Change the World Challenge</b></a>                                                    </li> 
+                                                    <li> 
+                                                        <a href="#" title="Siemens Stem Academy"><b>Siemens Stem Academy</b></a>                                                    </li> 
+                                                    <li> 
+                                                        <a href="#"  title="Young Scientist Challenge"><b>Young Scientist Challenge</b></a>                                                    </li> 
+                                                    <li> 
+                                                        <a href="#" title="Read to Succeed"><b>Read to Succeed</b></a>                                                    </li> 
+                                                    <li> 
+                                                        <a href="#"  title="Science of Everyday Life"><b>Science of Everyday Life</b></a>                                                    </li> 
+                                                </ul> 
+                                                
+                                            </div> 
+                                            
+                                            
+                                            
+                                            <div class="nav-contents" id="cont27_wrap" style="display:none;"> 
+                                            	<div class="nav-content-top"> 
+                                                    <a href="#" class="nav-content-top-link" title="i3smart Student Adventures"> 
+                                                        <span class="nav-content-top-head">i3smart Student Adventures</span> 
+                                                        
+                                                        <div class="clear"></div> 
+                                                    </a>  
+                                                </div> 
+                                                <ul class="nav-contents-links"> 
+                                                    <li> <a href="#" target="_blank" title="Europe"><b>Europe</b></a> </li> 
+                                                    <li> <a href="#" target="_blank" title="Americas"><b>Americas</b></a> </li> 
+                                                    <li> <a href="#" target="_blank" title="Arctic"><b>Arctic</b></a> </li> 
+                                                    <li> <a href="#" target="_blank" title="Asia"><b>Asia</b></a> </li> 
+                                                    <li> <a href="#" target="_blank" title="Africa"><b>Africa</b></a> </li> 
+                                                    <li> <a href="#" target="_blank" title="South Pacific"><b>South Pacific</b></a> </li> 
+                                                </ul> 
+                                                
+                                            </div> 
+                                            <div class="nav-contents" id="cont28_wrap" style="display:none;"> 
+                                            	
+                                            
+                                                <ul class="nav-contents-links" style="height:240px;"> 
+                                                    <li> <a href="#" title="Brain Boosters"><b>Brain Boosters</b></a> </li> 
+                                                    <li> <a href="#" title="Worksheets to Go"><b>Worksheets to Go</b></a> </li> 
+                                                    <li> <a href="#" title="Learning Adventures"><b>Learning Adventures</b></a> </li> 
+                                                    <li> <a href="#" title="Clip Art"><b>Clip Art</b></a> </li> 
+                                                </ul> 
+                                                
+                                            </div>                                            
+                                            <div class="clear"></div>';
+$output .= ' </div> 
+                                    </div>
+                                </li> ';
+$output .= '<li class="navEl" id="nav-third"> 
+                                    <a id="nav-third_link" class="nav-catcher" href="#" title="Parents"> 
+                                        Parents
+                                        <span class="aro"></span>
+                                    </a> 
+                                    <div id="nav-third_wrap" class="navWrapper" style="display:none;"> 
+                                        <div class="nav-inner"> 
+                                            <ul class="nav-list"> 
+                                                <li class="nav-subs" id="cont31"> <a href="#" title="Motivation Station">Motivation </a> </li> 
+                                                <li class="nav-subs" id="cont32"> <a href="#" title="Homework Help">Homework Help</a> </li> 
+                                                <li class="nav-subs" id="cont35"> <a href="#">Additional Resources</a> </li> 
+                                            </ul> 
+                                            <div class="nav-contents" id="cont31_wrap" style="display:;"> 
+                                            	<div class="nav-content-top"> 
+                                                    <a href="#" class="nav-content-top-link" title="Free Motivation Station"> 
+                                                        <span class="nav-content-top-head">Motivation Station</span> 
+                                                        <span>View All</span> 
+                                                        <div class="clear"></div> 
+                                                    </a>   
+                                                </div> 
+                                                <ul class="nav-contents-links"> 
+                                                    <li> <a href="#" title="Motivation Matters"><b>Motivation Matters</b></a> </li> 
+                                                    <li> <a href="#" title="Create and Inspire"><b>Create and Inspire</b></a> </li> 
+                                                </ul> 
+                                                
+                                            </div> 
+                                            <div class="nav-contents" id="cont32_wrap" style="display:none;"> 
+                                            	<div class="nav-content-top"> 
+                                                    <a href="#" class="nav-content-top-link" title="Free Homework Help"> 
+                                                        <span class="nav-content-top-head">Homework Help</span> 
+                                                        <span>View All</span> 
+                                                        <div class="clear"></div> 
+                                                    </a>
+                                                </div> 
+                                                <ul class="nav-contents-links"> 
+                                                    <li> <a href="#" title="Math Homework Help"><b>Math</b></a> </li> 
+                                                    <li> <a href="#" title="Science Homework Help"><b>Science</b></a> </li> 
+                                                    <li> <a href="#" title="English Homework Help"><b>English</b></a> </li> 
+                                                    <li> <a href="#" title="Social Studies Homework Help"><b>Social Studies</b></a> </li> 
+                                                    <li><a href="#" title="Stories and Games Homework Help"><b>Stories &amp; Games</b></a></li> 
+                                                </ul> 
+                                                
+                                            </div> 
+                                            <div class="nav-contents" id="cont33_wrap" style="display:none;"> 
+                                            	
+                                                
+                                                
+                                            </div> 
+                                            <div class="nav-contents" id="cont34_wrap" style="display:none;"> 
+                                            	
+                                                <ul class="nav-contents-links"> 
+                                                    <li> <a href="#" title="i3smart Student Adventures"><b>i3smart Student Adventures</b></a> </li> 
+                                                    <li> <a href="#" target="_blank" title="Young Scientist Challenge"><b>Young Scientist Challenge</b></a> </li>                                                    
+                                                    <li> <a href="#" title="Explore the Blue"><b>Explore the Blue</b></a> </li> 
+                                                    <li> <a href="#" title="Read to Succeed"><b>Read to Succeed</b></a> </li> 
+                                                    <li> <a href="#" title="Energy Balance: 101"><b>Energy Balance: 101</b></a> </li> 
+                                                    <li> <a href="#" title="Toyota Teen Driver"><b>Toyota Teen Driver</b></a> </li> 
+                                                </ul> 
+                                                
+                                            </div> 
+                                            <div class="nav-contents" id="cont35_wrap" style="display:none;"> 
+                                                <ul class="nav-contents-links" style="height:240px;"> 
+                                                    <li> <a href="#" title="Clip Art"><b>Clip Art</b></a> </li> 
+                                                </ul> 
+                                                 
+                                            </div>               
+                                            <div class="clear"></div> ';
+$output .= '       </div>
+                                    </div>
+                                </li> ';
+
+$output .= ' <li class="navEl" id="nav-fourth"> 
+                                    <a id="nav-fourth_link" class="nav-catcher" href="#" title="Students"> Students <span class="aro"></span> </a> 
+                                    <div id="nav-fourth_wrap" class="navWrapper" style="display:none;"> 
+                                        <div class="nav-inner"> 
+                                            <ul class="nav-list"> 
+                                                <li class="nav-subs" id="cont41"> <a href="#" title="Homework Help">Homework Help</a ></li> 
+                                                <li class="nav-subs" id="cont43"> <a href="#" title="Featured Programs and Contests">Featured Programs</a> </li> 
+                                                <div class="clear"></div> 
+                                            </ul> 
+                                            <div class="nav-contents" id="cont41_wrap" style="display:;"> 
+                                            	<div class="nav-content-top"> 
+                                                    <a href="#" class="nav-content-top-link" title="Free Homework Help"> 
+                                                        <span class="nav-content-top-head">Free Homework Help</span> 
+                                                        <span>View All</span> 
+                                                        <div class="clear"></div> 
+                                                    </a>
+                                                </div> 
+                                                <ul class="nav-contents-links"> 
+                                                    <li> <a href="#" title="Math Homework Help"><b>Math</b></a> </li> 
+                                                    <li> <a href="#" title="Science Homework Help"><b>Science</b></a> </li> 
+                                                    <li> <a href="#" title="English Homework Help"><b>English</b></a> </li> 
+                                                    <li> <a href="#" title="Social Studies Homework Help"><b>Social Studies</b></a> </li> 
+                                                    <li> <a href="#" title="Stories and Games Homework Help"><b>Stories &amp; Games</b></a> </li> 
+                                                </ul> 
+                                                
+                                            </div> 
+                                            <div class="nav-contents" id="cont42_wrap" style="display:none;"> 
+                                            	
+                                               
+                                                 
+                                            </div> 
+                                            <div class="nav-contents" id="cont43_wrap" style="display:none;"> 
+                                            	<div class="nav-content-top"> 
+                                                    <a href="#" class="nav-content-top-link" title="Featured Programs &amp; Contests"> 
+                                                        <span class="nav-content-top-head">Featured Programs</span> 
+                                                        <span>View All</span> 
+                                                        <div class="clear"></div> 
+                                                    </a>
+                                                </div> 
+                                                <ul class="nav-contents-links"> 
+                                                    <li> <a href="#" title="i3smart Student Adventures"><b>i3smart Student Adventures</b></a> </li> 
+                                                    <li> <a href="#"  title="Science of Everyday Life"><b>Science of Everyday Life</b></a> </li> 
+                                                </ul> 
+                                                 
+                                            </div> 
+                                            <div class="clear"></div> 
+                                        </div>
+                                    </div>
+                                </li> 
+                            </ul> ';
+$output .= '<div class="clear"></div> 
+                            <div id="sc-navigation-left"></div> 
+                            <div id="tde-navigation-right"></div> 
+                        </div>                       
+                                <div id="de-search" align="left" onMouseOver="observeMoreOptions(1)" onMouseOut="observeMoreOptions(0)" style="display:none;"> 
+                                    <form id="de-search-form" method="post" action="" onSubmit="deSearchSubmit(); return false;"> 
+                                        <input type="hidden" name="N" value="0"> 
+                                        <input type="Hidden" name="Nty" value="1"> 
+                                        <input type="Hidden" name="Ntk" value="all-prelogin"> 
+                                        <input type="Hidden" name="blnSearchInit" value="true"> 
+                                        <input type="Hidden" name="selAssetType" value=""> 
+                                        <div id="de-search-input"> 
+                                            <label for="ntt">Search</label> 
+                                            <input id="Ntt" name="Ntt" type="text" value="search free resources" onfocus="searchMoreOptions(1); deSearchVal(this,0)" onblur="searchMoreOptions(0); deSearchVal(this,1)"/> 
+                                        </div> 
+                                        <a href="#" class="search-btn" onclick="deSearchSubmit(); return false;" title="GO"><b>GO</b></a> 
+                                        <div class="clear"></div> 
+                                        <div id="de-search-options-wrap" style="display:none;"> 
+                                            <a href="#" class="close" onclick="searchMoreOptions("x"); return false;" title="close these options">Close these options</a> 
+                                            <div id="de-search-options"> 
+                                                <label for="grade-checks">Grade(s):</label> 
+                                                <div id="grade-checks"> 
+                                                        	<label for="K-5"> 
+						    		<input name="selPreLoginGrade" type="checkbox" id="K-5" value="N=31">K-5 &nbsp;</label> 
+                                                        	<label for="6-8"> 
+						    		<input name="selPreLoginGrade" type="checkbox" id="6-8" value="N=33">6-8 &nbsp;</label> 
+                                                        	<label for="9-12"> 
+						    		<input name="selPreLoginGrade" type="checkbox" id="9-12" value="N=34">9-12 &nbsp;</label> 
+                                                        <label for="checkAll"> 
+                                                        <input name="selPreLoginGrade" type="checkbox" id="checkAll" value=""> 
+                                                        All &nbsp;</label> 
+                                                    <div class="clear"></div> 
+                                                </div> 
+                                                <label for="subject-head-dd">Subject:</label> 
+                                                <select id="subject-head-dd" name="selPreLoginSubject"> 
+                                                	<option value="" selected>Show All</option> 
+                                                    	<option value="N=4294967293">English/Language Arts</option> <option value="N=4294967288">Fine Arts</option> <option value="N=4294967285">Health</option> <option value="N=4294967281">Mathematics</option> <option value="N=4294967275">Science</option> <option value="N=4294967269">Social Studies</option> <option value="N=4294967263">World Languages</option> 
+                                                </select> 
+                                                <label for="type-head-dd">Resource Type:</label> 
+                                                <select id="type-head-dd" name="selResType"> 
+                                                	<option value="" selected>Show All</option>	
+                                                    	<option value="N=4294967200">Brain Booster</option> <option value="N=4294967203">Clip Art</option> <option value="N=4294967192">General</option> <option value="N=4294967197">Homework Help</option> <option value="N=4294967187">Learning Adventures</option> <option value="N=4294967201">Lesson Plan</option> <option value="N=4294967193">Marketing Page</option> <option value="N=4294967188">Puzzlemaker</option> <option value="N=4294967198">Science Curriculum Center</option> <option value="N=4294967199">Worksheets</option> 
+                                                </select> ';
+
+$output .= '</div> 
+                                        </div>
+                                    </form> 
+                                </div>
+                            </div>
+                             
+  </div> 
+  ';
+return $output;
+}
+
+
+function i3sc_homepage_topheader(){
+    $output = '';
+    $output .= '<div id="headerbox-top"> 
+      <div onmouseout="observeLogin(0)" onmouseover="observeLogin(1)" id="shell-top-links"> 
+       	  <ul> 
+          	<li class="top-links-divide"></li> 
+             <li> <a onclick="showLoginDisplay("www-passcode");return false;" title="Passcode/New Users" class="drop-aro" id="www-passcode-link" href="#">Passcode/New Users <span></span></a> </li> 
+        	 <li class="top-links-divide"></li> 
+             <li> <a onclick="showLoginDisplay("www-subscriber");return false;" title="Subscriber Login" class="drop-aro" id="www-subscriber-link" href="#">Subscriber Login <span></span></a> </li> 
+             
+           	 <div class="clear"></div> 
+          </ul> 
+          <div class="clear"></div> 
+              <form name="topEducatorLoginForm" id="topEducatorLoginForm" method="post" action="dasboard.html"> 
+                      <div style="display: none;" id="www-subscriber" class="login-bg"> 
+                          <div class="www-login-wrap"> 
+                              <input type="hidden" value="HUB" name="strProductCode"> 
+                              <input type="hidden" value="login" name="type"> 
+                              <div class="login-fields"> 
+                                  <label for="username-header">Username</label> 
+                                  <div id="login-user" class="inputWrap"> 
+                                      <input type="text" onblur="focusOutLogin("login-user");" onfocus="focusInLogin("login-user");" class="www-input" id="username-header" name="username"> 
+                                  </div> 
+                                  <label style="margin-top: 10px;" for="password-header">Password</label> 
+                                  <div id="login-pass" class="inputWrap"> 
+                                      <input type="password" onblur="focusOutLogin("login-pass");" onfocus="focusInLogin("login-pass");" class="www-input" id="password-header" name="password"> 
+                                  </div> 
+                              </div>';
+
+
+$output .= ' <div class="under-login-fields"> 
+                                  <div class="forgot-links"> 
+                                      <a href="#">Forgot password?</a> 
+                                      <a href="#">Forgot username?</a>
+                                  </div> 
+                                  <div class="login-btn"> 
+                                      <a onclick="document.topEducatorLoginForm.submit(); return false;" title="Login to DE" class="login-top-btn"></a>
+                                  </div> 
+                                  <div class="clear"></div> 
+                              </div> 
+                          </div> 
+                      </div>';
+$output .= ' <div style="display: none;" id="www-passcode" class="login-bg"> 
+                          <div class="www-login-wrap"> 
+                                  <div class="login-fields"> 
+                                      <label for="passcode-header">Enter Your Passcode (ex: 1234-ABCD)</label> 
+                                      <div id="login-passcode-1" class="inputWrapPasscode"> 
+                                          <input type="text" maxlength="4" onblur="focusOutPasscode("login-passcode-1");" onfocus="focusInPasscode("login-passcode-1");" class="www-input" id="passcode-header" name="txtPasscode1" title="Enter passcode 1"> 
+                                      </div> 
+                                      <div id="login-passcode-2" class="inputWrapPasscode"> 
+                                          <input type="text" maxlength="4" onblur="focusOutPasscode("login-passcode-2");" onfocus="focusInPasscode("login-passcode-2");" class="www-input" name="txtPasscode2" title="Enter passcode 2"> 
+                                      </div> 
+                                      <div class="clear"></div> 
+                                  </div>';
+$output .= '<div class="under-login-fields"> 
+                                      <div class="forgot-links"> 
+                                          <a href="register.html"><br>Register</a>                                      </div> 
+                                      <div class="login-btn"> 
+                                          <a onclick="document.topEducatorLoginForm.submit(); return false;" title="login" class="login-top-btn"></a>                                      </div> 
+                                      <div class="clear"></div> 
+                                  </div> 
+                          </div>
+                      </div>
+               	  
+              </form> 
+      </div>
+
+  </div>';
+return $output;
+}
+
+
+
+

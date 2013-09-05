@@ -1,0 +1,4 @@
+name = Add To My Content
+description = Add to my favorite content for I3classes
+core = 6.x
+package = I3SC

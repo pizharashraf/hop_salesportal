@@ -1,0 +1,727 @@
+<?php
+
+//**************************  ADD TO MY CONTENTS FUNCTIONALITY  **************************//
+
+/**************************  start from node page  **************************/
+
+
+function addtomycontent_menu() {
+  $items = array();
+  $items['add_to_my_content'] = array(
+    'title' => (''),
+    'description' => 'Add to my content' , 
+    'page callback' => 'add_to_my_content_page', 
+    'access arguments' => array('access content'), 
+    'type' => MENU_CALLBACK,
+  );
+	
+	
+	$items['add_teacher_content'] = array(
+    'title' => (''),
+    'description' => 'Add to my content' , 
+    'page callback' => 'add_to_teacher_content_page', 
+    'access arguments' => array('access content'), 
+    'type' => MENU_CALLBACK,
+  );
+  
+  $items['staffproject/autocomplete'] = array(
+      'page callback' => 'staffproject_autocomplete',
+      'access arguments' => array('access content'),
+    );
+  return $items;
+}
+
+/**************************  intermediate page  **************************/
+function addtomycontent_theme() {
+$path = drupal_get_path('module', 'addtomycontent');
+  return array(
+    'add_content' => array(
+    'arguments' => array('hello' => NULL),
+    'template' => 'add-content',
+    'path' => $path,
+    ),
+    'teacher_content' => array(
+    'arguments' => array('hello' => NULL),
+    'template' => 'teacher-content',
+    'path' => $path,
+    )
+   
+  );
+}
+
+
+function add_to_my_content_page() {
+$output = '';
+$output .= theme('add_content', 'hello');
+//$output .= drupal_get_form('teacher_content_form');
+  
+  return $output;
+}
+
+function add_to_teacher_content_page() {
+$output = '';
+$output .= theme('teacher_content', 'hello');
+//$output .= drupal_get_form('teacher_add_file_content_form');
+  
+  return $output;
+}
+
+
+function teacher_add_file_content_form($form_state) {
+  
+  $form = array(
+    '#attributes' => array('enctype' => "multipart/form-data"),
+  );
+
+  $form['file'] = array(
+    '#type' => 'file',
+    '#title' => t('File Upload'),
+    
+    
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Submit'),
+    '#attributes' => array("onclick" => "javascript: return confirm('Are you sure');this.value='Please Wait...'; this.disabled = true;"),
+  );
+
+  return $form;
+}
+function teacher_add_file_content_form_validate($form, &$form_state) { 
+
+
+
+   $file = file_save_upload('file', array(
+    'file_validate_extensions' => array('swf'),
+    
+  ));
+
+  // If the file passed validation:
+  if (isset($file->filename)) {
+    // Move the file, into the Drupal file system
+     $directory = $base_url.'/'.file_directory_path().'/fonts/';
+    //$success = file_move($file, $directory, $replace = FILE_EXISTS_REPLACE);
+    
+    if (file_move($file, $file->filename)) {
+
+
+   // These will be the types of file that will pass the validation.
+   $allowed_filetypes = array('.jpg', '.JPG', '.gif','.GIF','.bmp','.BMP','.png','.PNG','.ppt','.PPT','.pdf','.PDF','.jpeg','.JPEG','.doc','.DOC','.xls','.XLS','.csv','.CSV');
+   // Maximum filesize in BYTES (currently 0.5MB). 
+      $max_filesize = 524288; 
+   // The place the files will be uploaded to (currently a 'files' directory).
+      $upload_path = './files/';
+   // Get the name of the file (including file extension).
+   $filename = $file->filename; 
+   $ext = substr($filename, strpos($filename,'.'), strlen($filename)-1); // Get the extension from the filename.
+ 
+   // Check if the filetype is allowed, if not DIE and inform the user.
+   if(!in_array($ext,$allowed_filetypes))
+      form_set_error('file', t('Invalid file, only file with extension png, gif, jpg, jpeg, bmp, pdf, ppt, doc, xls, csv are allowed'));
+ 
+   // Now check the filesize, if it is too large then DIE and inform the user.
+   if(filesize($_FILES['userfile']['tmp_name']) > $max_filesize)
+     form_set_error('file', t('Too much size...not greather than 0.5 MB'));
+
+
+		$form_state['storage']['file'] = $file;
+      
+    }
+    else {
+      form_set_error('file', t('Failed to write the uploaded file the site\'s file folder.'));
+    }
+  }
+  else {
+    form_set_error('file', t('Invalid file, only file with extension png, gif, jpg, jpeg, bmp, pdf, ppt, doc, xls, csv are allowed'));
+  }
+  
+}
+
+function teacher_add_file_content_form_submit($form, &$form_state) {
+
+global $base_url;
+global $user;
+
+$validators = array();
+  $dest = 'fonts';
+  $file = file_save_upload('file', $validators, $dest);
+  //$file will be 0 if the upload doesn't exist, or the $dest directory
+  //isn't writable
+  if ($file != 0) {
+    $dest_path = 'fonts';
+    $result = file_copy($file, $dest_path, FILE_EXISTS_RENAME);
+    if ($result == 1) {
+      //Success, $file object will contain a different (renamed)
+      //filename and filepath if the destination existed
+      drupal_set_message("File uploaded successfully");
+    }
+    else {
+      //Failure
+    }
+  }
+  else {
+    form_set_error('file', t("Failed to save the file."));
+  }
+  
+  
+  $file_name = $file->filename;
+  
+  if(!empty($file_name)) {
+  $created_on = date("Y-m-d H:i:s");
+  
+  $data_url = $base_url.'/'.file_directory_path().'/'.$file_name;
+  $selected_fid = arg(1);
+  if(!empty($selected_fid)) {
+    $fid = arg(1);
+  }else {
+    $fid = 1;
+  }
+ //source_in_out.....1 for in ...2 for out file
+  db_query("INSERT INTO `aa_i3sc_folder_content` (`data_url` ,`source_in_out` ,`folder_id` ,`uid` ,`deleted`, `created_on`) VALUES ('".$data_url."', '2', '".$fid."', '".$user->uid."', '0', '".$created_on."')");
+  }
+  
+  $rs_url = $base_url.'/add_teacher_content/'.$fid;
+  drupal_goto($rs_url);
+  
+} 
+
+//ADD FOLDER
+
+
+
+function intermediate_content_form() {
+  global $user;
+  $form = array();
+  $form['folder_name'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Create Folder'),
+
+  );
+//    '#autocomplete_path' => 'staffproject/autocomplete',
+
+  
+  $form['int_user_name'] = array(
+    '#type' => 'hidden',
+    '#title' => t(''),
+    '#value' => $user->uid,
+  );
+  
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Create'),
+    '#attributes' => array("onclick" => "javascript: return confirm('Are you sure');this.value='Please Wait...'; this.disabled = true;"),
+  );
+   
+   return $form;
+}
+
+/**************************  autocomplete text field functionality  **************************/
+function staffproject_autocomplete($string) {
+
+  $matches = array();
+
+
+  $result = db_query_range("SELECT folder_name  FROM {aa_i3sc_folder_manager} WHERE LOWER(folder_name) LIKE LOWER('%s%%')  ", $string, 0, 10);
+  while ($user = db_fetch_object($result)) {
+    $matches[$user->folder_name] = check_plain($user->folder_name);
+  }
+  print drupal_to_js($matches);
+  exit();
+}
+/**************************  form validation  **************************/
+
+function intermediate_content_form_validate($form, &$form_state) {
+  $folder_name = $form_state['values']['folder_name'];
+  if (empty($folder_name)) {
+    form_set_error("folder_name", "Folder name should not be empty");
+  }
+}
+/**************************  form submission  **************************/
+function intermediate_content_form_submit($form, &$form_state) {
+  $parent_folder = arg(2);
+     $user_id = $form_state['values']['int_user_name'];
+
+  $folder_name = $form_state['values']['folder_name'];
+  db_query("INSERT INTO {aa_i3sc_folder_manager} (`folder_name` ,`parent_folder` ,`uid` ,`status`) VALUES ('".$folder_name."', '".$parent_folder."', '".$user_id."', '1');");
+  drupal_set_message("Folder created successfully");
+  
+  //unset($_SESSION['user_id']);
+}
+
+/**************************  ADD TO SELECTED FOLDERS  **************************/
+
+
+
+/**************************  EDIT FOLDER  **************************/
+function intermediate_edit_content_form() {
+  global $user;
+  $folder_id = arg(2);
+  $folder_name = get_only_one_folder_name($folder_id);
+  $form = array();
+  $form['edit_folder_name'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Edit Folder'),
+		'#default_value' => $folder_name 
+  );
+//    '#autocomplete_path' => 'staffproject/autocomplete',
+
+  
+  $form['int_user_name'] = array(
+    '#type' => 'hidden',
+    '#title' => t(''),
+    '#value' => $user->uid,
+  );
+  
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Edit Folder'),
+    '#attributes' => array("onclick" => "javascript: return confirm('Are you sure');this.value='Please Wait...'; this.disabled = true;"),
+  );
+   
+   return $form;
+}
+function intermediate_edit_content_form_validate($form, &$form_state) { 
+
+}
+function intermediate_edit_content_form_submit($form, &$form_state) {
+	global $base_url;
+   $folder_id = arg(2);
+   $node_nid = arg(3);
+   
+
+         
+         
+  $user_id = $form_state['values']['int_user_name'];
+
+ $folder_name = $form_state['values']['edit_folder_name'];
+
+
+  db_query("UPDATE `aa_i3sc_folder_manager` SET `folder_name` = '".$folder_name."' WHERE `id` = '".$folder_id."' AND uid = '".$user_id."' ");
+  
+  drupal_set_message("Folder Edited successfully");
+  $rs_url = $base_url.'/add_to_my_content/edf/'.$folder_id.'/'.$node_nid;
+  drupal_goto($rs_url);
+  //unset($_SESSION['user_id']);
+} 
+/**************************END  EDIT FOLDER  **************************/
+
+function final_submission_form() {
+  global $user;
+  $form = array();
+  
+   $content_id = arg(1);
+        $new_content_id = arg(2);
+        
+  if(is_numeric($content_id)) { 
+    $par_id = $content_id;
+  }else if($content_id == 'cnf' || $content_id == 'edf') { 
+        $par_id = $new_content_id;
+  }
+
+
+
+$arrayCategories = get_all_fav_folders($par_id);
+
+$fol_name = get_only_one_folder_name($par_id);
+
+if(!empty($arrayCategories)) {
+$form['folderentry'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('<h2>Add Content to Folder:</h2>'),
+    '#tree' => TRUE,
+  );
+  
+
+
+$form['folderentry']['selected_folder'] = array(
+                           '#type' => 'radios',
+
+                           '#default_value' => 0,
+                           '#options' => $arrayCategories,
+
+                         );
+
+$form['folderentry']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Add to Selected Folder'),
+		'#attributes' => array("onclick" => "javascript: return confirm('Are you sure');this.value='Please Wait...'; this.disabled = true;"),
+  );
+ }else {
+ 
+ $folder_name = get_only_one_folder_name($par_id);
+ 
+ $form['folderentry']['directory_name'] = array(
+  '#type' => 'item',
+  '#title' => t('Folder Name'),
+  '#value' => ucwords($folder_name),
+);
+
+$form['folderentry']['from'] = array(
+  '#type' => 'item',
+  '#title' => t(''),
+  '#value' => '<h3>No Sub-folder in this folder</h3>',
+);
+
+
+$form['folderentry']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Add to Folder'),
+    '#attributes' => array("onclick" => "javascript: return confirm('Are you sure');this.value='Please Wait...'; this.disabled = true;"),
+  );
+ }
+ 
+   
+   
+   return $form;
+}
+
+
+function final_submission_form_validate($form, &$form_state) {
+  $selected_fid = $form_state['values']['folderentry']['selected_folder'];
+  //if(empty($selected_fid)) {
+    //form_set_error("please select any one folder");
+  //}
+
+}
+
+
+function final_submission_form_submit($form, &$form_state) {
+
+//source_in_out ----1 for inside and 2 for outside
+	global $base_url;
+	global $user;
+	$fidurl = arg(1);
+	
+//	$content_id = arg(1);
+       
+       if(is_numeric($fidurl)) {
+          $node_nid = arg(2);
+        }else if($fidurl == 'cnf') {
+           
+             $node_nid = arg(3);
+        } else if ($fidurl == 'edf') {
+           
+           $node_nid = arg(3);
+         }
+         
+         
+  //$node_nid = arg(2);
+	$selected_fid = $form_state['values']['folderentry']['selected_folder'];
+	$data_url = $base_url.'/node/'.$_SESSION['node_nid'];
+	
+	//check this content is already added or not by the same user on the same directory.........nid---------uid-----------folder_id
+	if(!empty($selected_fid)){
+	    $existfolder_content = db_result(db_query("SELECT id from {aa_i3sc_folder_content}  WHERE nid = '".$node_nid."' AND uid = '".$user->uid."' AND folder_id = '".$selected_fid."' "));
+	}else{
+	     $existfolder_content = db_result(db_query("SELECT id from {aa_i3sc_folder_content}  WHERE nid = '".$node_nid."' AND uid = '".$user->uid."' AND folder_id = '".$fidurl."' "));
+	     
+	}
+	
+	 $created_on = date("Y-m-d H:i:s");
+	if(!$existfolder_content) {
+	  if(!empty($selected_fid)){
+	    db_query("INSERT INTO `aa_i3sc_folder_content` (`nid` ,`data_url` ,`source_in_out` ,`folder_id` ,`uid` ,`deleted`, `created_on`) VALUES ('".$node_nid."', '".$data_url."', '1', '".$selected_fid."', '".$user->uid."', '0', '".$created_on."')");
+	  }else{
+	      db_query("INSERT INTO `aa_i3sc_folder_content` (`nid` ,`data_url` ,`source_in_out` ,`folder_id` ,`uid` ,`deleted`, `created_on`) VALUES ('".$node_nid."', '".$data_url."', '1', '".$fidurl."', '".$user->uid."', '0', '".$created_on."')");
+	  }
+	  
+	  
+drupal_set_message("Content added Sucessfully");
+	} else {
+	  drupal_set_message("This content added already in the respective folder");
+	}
+	
+	//unset($_SESSION['node_nid']);	
+	
+	$redirect_to_db = $base_url.'/node/'.$node_nid;
+	drupal_goto($redirect_to_db);
+	
+}
+
+
+/**************************  parent child heirarchy  **************************/
+function count_number_of_content_ina_folder($folder_id) {
+global $user;
+
+   $count_sql = db_fetch_array(db_query("SELECT count(aifc.id) as file_count FROM {aa_i3sc_folder_content} aifc  WHERE aifc.uid = '".$user->uid."' AND aifc.deleted = 0 AND aifc.folder_id = '".$folder_id."' "));
+  
+	return $count_sql['file_count'];
+}
+
+/*
+function count_number_of_content_ina_folder($folder_id) {
+global $user;
+print "SELECT count(aifc.id) as file_count FROM {aa_i3sc_folder_content} aifc INNER JOIN {node} nn ON aifc.nid = nn.nid WHERE aifc.uid = '".$user->uid."' AND aifc.deleted = 0 AND aifc.folder_id = '".$folder_id."' ";
+   $count_sql = db_fetch_array(db_query("SELECT count(aifc.id) as file_count FROM {aa_i3sc_folder_content} aifc INNER JOIN {node} nn ON aifc.nid = nn.nid WHERE aifc.uid = '".$user->uid."' AND aifc.deleted = 0 AND aifc.folder_id = '".$folder_id."' "));
+  
+	return $count_sql['file_count'];
+}
+
+*/
+
+function createTree($array, $currentParent, $currLevel = 0, $prevLevel = -1) {
+ global $base_url;
+
+	foreach ($array as $categoryId => $category) {
+ 
+		if ($currentParent == $category['parent_id']) {						
+ 
+			if ($currLevel > $prevLevel) echo " <ul> "; 
+ 
+			if ($currLevel == $prevLevel) echo " </li> ";
+			
+			
+			$content_id = arg(1);
+       
+       if(is_numeric($content_id)) {
+          $node_nid = arg(2);
+        }else if($content_id == 'cnf') {
+            $new_content_id = arg(2);
+             $node_nid = arg(3);
+        } else if ($content_id == 'edf') {
+           $new_content_id = arg(2);
+           $node_nid = arg(3);
+         }
+         
+         
+ $add_to_con_url = $base_url.'/add_to_my_content/'.$categoryId.'/'.$node_nid; 
+ 
+  $tot_files = count_number_of_content_ina_folder($categoryId);
+ $folder_id = arg(1);
+ $mod_folder_id = arg(2);
+ if($categoryId == $folder_id || $categoryId == $mod_folder_id) {
+   $color = 'style="color:#13b00a;font-weight:bold;"';
+ }else{
+   $color = 'style="color:#157DEC;"';
+ }
+ 
+			echo '<li ><span><a '.$color.' href="'.$add_to_con_url.'">'.ucwords($category['name']).'(<span style="color:#ff0000;">'.$tot_files.'</span>)</a></span>';
+ 
+			if ($currLevel > $prevLevel) { $prevLevel = $currLevel; }
+ 
+			$currLevel++; 
+ 
+		 	createTree ($array, $categoryId, $currLevel, $prevLevel);
+ 
+		 	$currLevel--;	 		 	
+		}	
+ 
+	}
+ 
+	if ($currLevel == $prevLevel) echo " </li>  </ul> ";
+ 
+}
+
+function createTreeForTeachers($array, $currentParent, $currLevel = 0, $prevLevel = -1) {
+ global $base_url;
+
+	foreach ($array as $categoryId => $category) {
+ 
+		if ($currentParent == $category['parent_id']) {						
+ 
+			if ($currLevel > $prevLevel) echo " <ul> "; 
+ 
+			if ($currLevel == $prevLevel) echo " </li> ";
+			
+			
+			$content_id = arg(1);
+       
+       if(is_numeric($content_id)) {
+          $node_nid = arg(2);
+        }else if($content_id == 'cnf') {
+            $new_content_id = arg(2);
+             $node_nid = arg(3);
+        } else if ($content_id == 'edf') {
+           $new_content_id = arg(2);
+           $node_nid = arg(3);
+         }
+         
+         
+ $add_to_con_url = $base_url.'/add_teacher_content/'.$categoryId.'/'.$node_nid; 
+  $folder_id = arg(1);
+ $mod_folder_id = arg(2);
+  $tot_files = count_number_of_content_ina_folder($categoryId);
+
+ if($categoryId == $folder_id || $categoryId == $mod_folder_id) {
+   $color = 'style="color:#13b00a;font-weight:bold;"';
+ }else{
+   $color = 'style="color:#157DEC;"';
+ }
+ 
+			echo '<li ><span><a '.$color.' href="'.$add_to_con_url.'">'.ucwords($category['name']).'(<span style="color:#ff0000;">'.$tot_files.'</span>)</a></span>';
+ 
+			if ($currLevel > $prevLevel) { $prevLevel = $currLevel; }
+ 
+			$currLevel++; 
+ 
+		 	createTreeForTeachers ($array, $categoryId, $currLevel, $prevLevel);
+ 
+		 	$currLevel--;	 		 	
+		}	
+ 
+	}
+ 
+	if ($currLevel == $prevLevel) echo " </li>  </ul> ";
+ 
+}
+
+
+function createTreeForDashboard($array, $currentParent, $currLevel = 0, $prevLevel = -1) {
+ global $base_url;
+ global $user;
+ 
+
+	
+	
+	foreach ($array as $categoryId => $category) {
+ 
+		if ($currentParent == $category['parent_id']) {						
+ 
+			if ($currLevel > $prevLevel) echo " <ul> "; 
+ 
+			if ($currLevel == $prevLevel) echo " </li> ";
+ $add_to_con_url = $base_url.'/user/'.$user->uid.'/dashboard/'.$categoryId; 
+ $tot_files = count_number_of_content_ina_folder($categoryId);
+ $folder_id = arg(3);
+ if($categoryId == $folder_id) {
+   $color = 'style="color:#13b00a;font-weight:bold;"';
+ }else{
+   $color = 'style="color:#157DEC;"';
+ }
+			echo '<li ><span><a '.$color.' href="'.$add_to_con_url.'">'.ucwords($category['name']).'(<span style="color:#ff0000;">'.$tot_files.'</span>)</a></span>';
+ 
+			if ($currLevel > $prevLevel) { $prevLevel = $currLevel; }
+ 
+			$currLevel++; 
+ 
+		 	createTreeForDashboard ($array, $categoryId, $currLevel, $prevLevel);
+ 
+		 	$currLevel--;	 		 	
+		}	
+ 
+	}
+ 
+	if ($currLevel == $prevLevel) echo " </li>  </ul> ";
+ 
+}
+
+
+function get_all_child_folders($content_id) {
+
+	$sql_main_term = db_query("SELECT * from {aa_i3sc_folder_manager}  WHERE parent_folder = '".$content_id."' ");
+	$ch_arr = array();
+	while($main_term = db_fetch_array($sql_main_term)) { 
+		$ch_arr[] = $main_term;
+		//$ch_arr[$main_term['id']] = array("parent_id" => $row['parent_folder'], "name" => $row['folder_name']);	
+	}
+	
+  return $ch_arr;
+}
+
+function get_only_one_folder_name($folder_id) {
+  global $user;
+  $folder_name = db_result(db_query("SELECT folder_name from {aa_i3sc_folder_manager}  WHERE id = '".$folder_id."' AND uid= '".$user->uid."' " ));
+  return $folder_name;
+
+}
+
+
+function get_all_add_to_my_contents_within_folder($folder_id) {
+global $user;
+	$sql_main_term = db_query("SELECT * from {aa_i3sc_folder_content}  WHERE folder_id = '".$folder_id."' AND uid = '".$user->uid."' ");
+	$ch_arr = array();
+	while($main_term = db_fetch_array($sql_main_term)) { 
+		$ch_arr[] = $main_term;
+		//$ch_arr[$main_term['id']] = array("parent_id" => $row['parent_folder'], "name" => $row['folder_name']);	
+	}
+	
+  return $ch_arr;
+}
+
+function get_node_data_using_nid($node_id) {
+  $title = db_result(db_query("SELECT title from {node}  WHERE nid = '%d' ", $node_id ));
+  return $title;
+
+}
+
+function get_all_fav_folders($fol_id) {
+global $base_url;
+
+       $content_id = arg(1);
+       
+       if(is_numeric($content_id)) {
+          $node_nid = arg(2);
+        }else if($content_id == 'cnf') {
+            $new_content_id = arg(2);
+             $node_nid = arg(3);
+        } else if ($content_id == 'edf') {
+           $new_content_id = arg(2);
+           $node_nid = arg(3);
+         }
+        
+        
+        
+  $rsCategories = db_query("SELECT * from {aa_i3sc_folder_manager}  WHERE parent_folder = '".$fol_id."' ");
+
+// create the empty array
+$arrayCategories = array();
+
+while($row = db_fetch_array($rsCategories)){ 
+$add_to_con_url = $base_url.'/add_to_my_content/'.$row['id'].'/'.$node_nid;
+	$arrayCategories[$row['id']] = l($row['folder_name'], $add_to_con_url);	
+}
+return $arrayCategories;
+}
+
+
+function get_classname_term_id_for_using_node_id($node_id) {
+
+  $node_type  = db_result(db_query("SELECT type from {node} WHERE nid = '%d' ", $node_id ));
+  
+  if($node_type == 'read') {
+    $sub_node_id  = db_result(db_query("SELECT nid from {content_field_gr_read} WHERE field_gr_read_nid = '%d' ", $node_id ));
+  }else if($node_type == 'interect') {
+    $sub_node_id  = db_result(db_query("SELECT nid from {content_field_gr_interect} WHERE field_gr_interect_nid = '%d' ", $node_id ));
+  }else if($node_type == 'demonstrate') {
+    $sub_node_id  = db_result(db_query("SELECT nid from {content_field_gr_demonstrate} WHERE field_gr_demonstrate_nid = '%d' ", $node_id ));
+  }else if($node_type == 'extend') {
+    $sub_node_id  = db_result(db_query("SELECT nid from {content_field_gr_extend} WHERE field_gr_extend_nid = '%d' ", $node_id ));
+  }
+  
+  $term_id  = db_result(db_query("SELECT field_section_value from {content_type_submitted} WHERE nid = '%d' ", $sub_node_id ));
+  $parent_visibility = check_any_level_children($term_id);
+  $P_rs_parent = check_any_level_children($parent_visibility);
+  $pp_rs_parent = check_any_level_children($P_rs_parent);
+  $ss_pp_rs_parent = check_any_level_children($pp_rs_parent);////not zero
+  $i3sc_class_name = db_result(db_query("SELECT name from {term_data}  WHERE tid = '%d' ", $ss_pp_rs_parent ));
+  
+  return $i3sc_class_name;
+ }
+ 
+ function get_subjectname_term_id_for_using_node_id($node_id) {
+
+  $node_type  = db_result(db_query("SELECT type from {node} WHERE nid = '%d' ", $node_id ));
+  
+  if($node_type == 'read') {
+    $sub_node_id  = db_result(db_query("SELECT nid from {content_field_gr_read} WHERE field_gr_read_nid = '%d' ", $node_id ));
+  }else if($node_type == 'interect') {
+    $sub_node_id  = db_result(db_query("SELECT nid from {content_field_gr_interect} WHERE field_gr_interect_nid = '%d' ", $node_id ));
+  }else if($node_type == 'demonstrate') {
+    $sub_node_id  = db_result(db_query("SELECT nid from {content_field_gr_demonstrate} WHERE field_gr_demonstrate_nid = '%d' ", $node_id ));
+  }else if($node_type == 'extend') {
+    $sub_node_id  = db_result(db_query("SELECT nid from {content_field_gr_extend} WHERE field_gr_extend_nid = '%d' ", $node_id ));
+  }
+  
+  $term_id  = db_result(db_query("SELECT field_section_value from {content_type_submitted} WHERE nid = '%d' ", $sub_node_id ));
+  $parent_visibility = check_any_level_children($term_id);
+  $P_rs_parent = check_any_level_children($parent_visibility);
+  $pp_rs_parent = check_any_level_children($P_rs_parent);
+  $subject_name = db_result(db_query("SELECT name from {term_data}  WHERE tid = '%d' ", $pp_rs_parent ));
+  
+  return $subject_name;
+ }
+ 
+ 
+ 
+

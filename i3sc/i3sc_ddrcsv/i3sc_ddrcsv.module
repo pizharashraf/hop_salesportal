@@ -1,0 +1,781 @@
+<?php
+function i3sc_ddrcsv_menu() {
+  $items = array();
+  $items['admin/csvddr'] = array(
+    'title' => 'CSV IMPORT',
+    'description' => "Manage your site's ddr based content.",
+    'position' => 'left',
+    'page callback' => 'system_admin_menu_block_page',
+    'access arguments' => array('access pages'),
+    'file' => 'system.admin.inc',
+    'file path' => drupal_get_path('module', 'system'),
+  ); 
+
+   $items['admin/csvddr/read_csvupload_all'] = array(
+    'title' => 'READ section Upload Using CSV',
+    'page callback' => 'read_csvupload_all',
+    'access arguments' => array('access pages'),
+    'description' => 'Manage site Read Section.',
+    'weight' => -5,
+  );
+   $items['admin/csvddr/interect_csvupload_all'] = array(
+    'title' => 'INTERECT section Upload Using CSV',
+    'page callback' => 'interect_csvupload_all',
+    'access arguments' => array('administer site configuration'),
+    'description' => 'Manage site INTERECT section.',
+    'weight' => -4,
+  );
+
+$items['admin/csvddr/extend_csvupload_all'] = array(
+    'title' => 'EXTEND section Upload Using CSV',
+    'page callback' => 'extend_csvupload_all',
+    'access arguments' => array('administer site configuration'),
+    'description' => 'Manage site EXTEND section.',
+    'weight' => -4,
+  );
+
+$items['admin/csvddr/demonstrate_csvupload_all'] = array(
+    'title' => 'DEMONSTRATE section Upload Using CSV',
+    'page callback' => 'demonstrate_csvupload_all',
+    'access arguments' => array('administer site configuration'),
+    'description' => 'Manage site DEMONSTRATE section.',
+    'weight' => -4,
+  );
+
+
+
+
+	return $items;
+}
+
+
+
+
+function read_csvupload_all(){
+if (!ini_get('safe_mode')) {
+  set_time_limit(0);
+ }
+ ini_set('display_errors', 1);
+
+//require_once './includes/bootstrap.inc';
+//drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
+
+
+require_once 'ddrcsv/DataSource.php';
+require_once 'ddrcsv/fileread.php';
+
+$foo = getFilesFromDir('csvfiles/read/');
+$csv = new File_CSV_DataSource;
+
+
+
+foreach($foo as $value){
+
+  $csv->load($value);
+  $data_array = $csv->connect();
+  
+	
+	
+	
+  //insert all data in respective table and apply all business logic
+
+
+  //fetch section term id.......
+  //fetch classname term id....
+  //fetch subject term id.....
+  //fetch topic term id......
+  //fetch subtopic term id....
+
+  $csv_serial_number = explode("/", $value);
+  $serial_no = explode("-", $csv_serial_number[1]);
+  $csv_serial = $serial_no[0];
+
+	$rs_csv_serial_no = db_result(db_query("SELECT nid from {content_type_submitted} where field_csv_unique_number_value = '".$csv_serial."' "));
+
+ if ($rs_csv_serial_no) {
+	  $node = node_load($rs_csv_serial_no);
+	  $node->is_new = 0;
+ }else{
+
+    $node = new stdClass();
+    $node->is_new = 1;
+    $node->type = "read";
+    $node->uid = 1;
+    $node->name = 'admin';
+    $node->status = 1;
+    $node->created = time();
+    $node->changed = time();
+ }
+
+$count=0;
+
+foreach($data_array as $mmmmmm){
+	
+	$node->field_my_select[0]['value'] = 1;	
+	$node->field_my_select[1]['value'] = 2;	
+	$node->field_my_select[2]['value'] = 3;	
+	$node->field_my_select[3]['value'] = 4;	
+
+
+	$node->field_csv_unique_number[0]['value'] = $csv_serial;
+    $node->title = $mmmmmm['Title'];
+    $node->body = $mmmmmm['Body'];
+
+
+    $node->field_read_title[$count]['value'] = $mmmmmm['Read_tilte'];
+    $node->field_read_description[$count]['value'] = $mmmmmm['Read_description'];
+    $node->field_read_categorytype[$count]['value'] = $mmmmmm['Read_category'];
+
+
+
+
+
+/*********	FILE UPLOAD PROCESS	********************************/
+	if (!$node->field_read_image['file']->fid) {
+		$filename = $mmmmmm['Read_file'];
+		$tempdir = file_directory_path() . '/tempimage/';
+		$imagefile = $tempdir . $filename; 
+
+
+
+		// Where do we store the files?
+		$field = content_fields('field_read_image', 'read');
+		$files_path = filefield_widget_file_path($field);
+
+		// Load up the CCK field
+		// Load up the appropriate validators
+		$fid = db_result(db_query("SELECT fid FROM {files} WHERE `files`.`filename` LIKE '%s'", $filename));
+
+
+		if((!$fid) && file_exists($files_path . '/' . $filename)) {
+			unlink($files_path . '/' . $filename);
+
+		}
+
+		if (!file_exists($files_path . '/' . $filename)) {
+			//print $files_path . '/' . $filename;die;			
+			$validators = array_merge(filefield_widget_upload_validators($field), filefield_widget_upload_validators($field));
+			// Create the file object, replace existing file with new file as source and dest are the same
+			$file = field_file_save_file($imagefile, $validators, $files_path . '/' . $filename, FILE_EXISTS_REPLACE);
+
+			$node->field_read_image[$count] = $file;
+			$node->field_read_image[$count]['data']['alt'] = "FILE-ALT";
+			$node->field_read_image[$count]['data']['title'] = "FILE TITLE";
+		}
+
+		else {
+			$fid = db_result(db_query("SELECT fid FROM {files} WHERE `files`.`filename` LIKE '%s'", $filename));
+
+			$node->field_read_image[$count]['fid'] = $fid;
+			$node->field_read_image[$count]['data']['alt'] = "FILE-ALT";
+			$node->field_read_image[$count]['data']['title'] = "FILE TITLE";
+		}
+
+		//unlink($imagefile);
+	}
+		
+/****************************************/
+
+
+	$node = node_submit($node);
+    node_save($node);
+	cache_clear_all();
+
+    
+	$i3_sections = taxonomy_get_term_by_name($mmmmmm['Section']);
+    $i3_classname = taxonomy_get_term_by_name($mmmmmm['classname']);
+	$i3_subjects = taxonomy_get_term_by_name($mmmmmm['subject']);
+	$i3_topics = taxonomy_get_term_by_name($mmmmmm['Topic']);
+	$i3_subtopics = taxonomy_get_term_by_name($mmmmmm['subtopic']);
+	$i3_sub_sub_topic = taxonomy_get_term_by_name($mmmmmm['sub_sub_topic']);
+
+
+
+	$secttins = $i3_sections[0]->tid;
+	$classname = $i3_classname[0]->tid;
+	$subjects = $i3_subjects[0]->tid;
+	$chapters = $i3_topics[0]->tid;
+	$topics = $i3_subtopics[0]->tid;
+	$sub_sub_topic = $i3_sub_sub_topic[0]->tid;
+
+	$sql_term = db_result(db_query("SELECT tid from {term_node} where nid = '".$node->nid."' AND tid in('".$secttins."', '".$classname."', '".$subjects."', '".$chapters."', '".$topics."', '".$sub_sub_topic."') "));
+
+  if(!$sql_term) {
+	if(!empty($secttins)){
+		db_query('INSERT INTO {term_node} (nid, vid, tid) VALUES (%d, %d, %d)', $node->nid, $node->vid, $secttins);
+	}
+	if(!empty($classname)){
+		db_query('INSERT INTO {term_node} (nid, vid, tid) VALUES (%d, %d, %d)', $node->nid, $node->vid, $classname);
+	}
+	if(!empty($subjects)){
+		db_query('INSERT INTO {term_node} (nid, vid, tid) VALUES (%d, %d, %d)', $node->nid, $node->vid, $subjects);
+	}
+	if(!empty($chapters)){
+		db_query('INSERT INTO {term_node} (nid, vid, tid) VALUES (%d, %d, %d)', $node->nid, $node->vid, $chapters);
+	}
+	if(!empty($topics)){
+		db_query('INSERT INTO {term_node} (nid, vid, tid) VALUES (%d, %d, %d)', $node->nid, $node->vid, $topics);
+	}
+	if(!empty($sub_sub_topic)){
+		db_query('INSERT INTO {term_node} (nid, vid, tid) VALUES (%d, %d, %d)', $node->nid, $node->vid, $sub_sub_topic);
+	}
+  }
+
+
+
+    $count++;	
+  }
+  
+  
+ }
+return "Read CSV files uploaded successfully";
+
+}
+
+
+
+function interect_csvupload_all(){
+
+if (!ini_get('safe_mode')) {
+  set_time_limit(0);
+ }
+ ini_set('display_errors', 1);
+
+//require_once './includes/bootstrap.inc';
+//drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
+
+
+require_once 'ddrcsv/DataSource.php';
+require_once 'ddrcsv/fileread.php';
+
+$foo = getFilesFromDir('csvfiles/interect/');
+$csv = new File_CSV_DataSource;
+
+
+
+foreach($foo as $value){
+
+  $csv->load($value);
+  $data_array = $csv->connect();
+  
+	
+	
+	
+  //insert all data in respective table and apply all business logic
+
+
+  //fetch section term id.......
+  //fetch classname term id....
+  //fetch subject term id.....
+  //fetch topic term id......
+  //fetch subtopic term id....
+
+  $csv_serial_number = explode("/", $value);
+  $serial_no = explode("-", $csv_serial_number[1]);
+  $csv_serial = $serial_no[0];
+
+	$rs_csv_serial_no = db_result(db_query("SELECT nid from {content_type_submitted} where field_csv_unique_number_value = '".$csv_serial."' "));
+
+ if ($rs_csv_serial_no) {
+	  $node = node_load($rs_csv_serial_no);
+	  $node->is_new = 0;
+ }else{
+
+    $node = new stdClass();
+    $node->is_new = 1;
+    $node->type = "interect";
+    $node->uid = 1;
+    $node->name = 'admin';
+    $node->status = 1;
+    $node->created = time();
+    $node->changed = time();
+ }
+
+$count=0;
+
+foreach($data_array as $mmmmmm){
+	
+	$node->field_my_select[0]['value'] = 1;	
+	$node->field_my_select[1]['value'] = 2;	
+	$node->field_my_select[2]['value'] = 3;	
+	$node->field_my_select[3]['value'] = 4;	
+
+
+	$node->field_csv_unique_number[0]['value'] = $csv_serial;
+    $node->title = $mmmmmm['Title'];
+    $node->body = $mmmmmm['Body'];
+
+
+    $node->field_in_title[$count]['value'] = $mmmmmm['Interect_Title'];
+    $node->field_in_description[$count]['value'] = $mmmmmm['Interect_description'];
+    $node->field_in_categorytype[$count]['value'] = $mmmmmm['Interect_category'];
+
+
+
+
+
+/*********	FILE UPLOAD PROCESS	********************************/
+	if (!$node->field_in_image['file']->fid) {
+		$filename = $mmmmmm['Interect_filepath'];
+		$tempdir = file_directory_path() . '/tempimage/';
+		$imagefile = $tempdir . $filename; 
+
+
+
+		// Where do we store the files?
+		$field = content_fields('field_in_image', 'interect');
+		$files_path = filefield_widget_file_path($field);
+
+		// Load up the CCK field
+		// Load up the appropriate validators
+		$fid = db_result(db_query("SELECT fid FROM {files} WHERE `files`.`filename` LIKE '%s'", $filename));
+
+
+		if((!$fid) && file_exists($files_path . '/' . $filename)) {
+			unlink($files_path . '/' . $filename);
+
+		}
+
+		if (!file_exists($files_path . '/' . $filename)) {
+			//print $files_path . '/' . $filename;die;			
+			$validators = array_merge(filefield_widget_upload_validators($field), filefield_widget_upload_validators($field));
+			// Create the file object, replace existing file with new file as source and dest are the same
+			$file = field_file_save_file($imagefile, $validators, $files_path . '/' . $filename, FILE_EXISTS_REPLACE);
+
+			$node->field_in_image[$count] = $file;
+			$node->field_in_image[$count]['data']['alt'] = "FILE-ALT";
+			$node->field_in_image[$count]['data']['title'] = "FILE TITLE";
+		}
+
+		else {
+			$fid = db_result(db_query("SELECT fid FROM {files} WHERE `files`.`filename` LIKE '%s'", $filename));
+
+			$node->field_in_image[$count]['fid'] = $fid;
+			$node->field_in_image[$count]['data']['alt'] = "FILE-ALT";
+			$node->field_in_image[$count]['data']['title'] = "FILE TITLE";
+		}
+
+		//unlink($imagefile);
+	}
+		
+/****************************************/
+
+
+	$node = node_submit($node);
+    node_save($node);
+	cache_clear_all();
+
+    
+	$i3_sections = taxonomy_get_term_by_name($mmmmmm['Section']);
+    $i3_classname = taxonomy_get_term_by_name($mmmmmm['classname']);
+	$i3_subjects = taxonomy_get_term_by_name($mmmmmm['subject']);
+	$i3_topics = taxonomy_get_term_by_name($mmmmmm['Topic']);
+	$i3_subtopics = taxonomy_get_term_by_name($mmmmmm['subtopic']);
+	$i3_sub_sub_topic = taxonomy_get_term_by_name($mmmmmm['sub_sub_topic']);
+
+
+
+	$secttins = $i3_sections[0]->tid;
+	$classname = $i3_classname[0]->tid;
+	$subjects = $i3_subjects[0]->tid;
+	$chapters = $i3_topics[0]->tid;
+	$topics = $i3_subtopics[0]->tid;
+	$sub_sub_topic = $i3_sub_sub_topic[0]->tid;
+
+	$sql_term = db_result(db_query("SELECT tid from {term_node} where nid = '".$node->nid."' AND tid in('".$secttins."', '".$classname."', '".$subjects."', '".$chapters."', '".$topics."', '".$sub_sub_topic."') "));
+
+  if(!$sql_term) {
+	if(!empty($secttins)){
+		db_query('INSERT INTO {term_node} (nid, vid, tid) VALUES (%d, %d, %d)', $node->nid, $node->vid, $secttins);
+	}
+	if(!empty($classname)){
+		db_query('INSERT INTO {term_node} (nid, vid, tid) VALUES (%d, %d, %d)', $node->nid, $node->vid, $classname);
+	}
+	if(!empty($subjects)){
+		db_query('INSERT INTO {term_node} (nid, vid, tid) VALUES (%d, %d, %d)', $node->nid, $node->vid, $subjects);
+	}
+	if(!empty($chapters)){
+		db_query('INSERT INTO {term_node} (nid, vid, tid) VALUES (%d, %d, %d)', $node->nid, $node->vid, $chapters);
+	}
+	if(!empty($topics)){
+		db_query('INSERT INTO {term_node} (nid, vid, tid) VALUES (%d, %d, %d)', $node->nid, $node->vid, $topics);
+	}
+	if(!empty($sub_sub_topic)){
+		db_query('INSERT INTO {term_node} (nid, vid, tid) VALUES (%d, %d, %d)', $node->nid, $node->vid, $sub_sub_topic);
+	}
+  }
+
+
+
+    $count++;	
+  }
+  
+  
+ }
+return "Interect CSV files uploaded successfully";
+
+}
+
+
+function extend_csvupload_all() {
+if (!ini_get('safe_mode')) {
+  set_time_limit(0);
+ }
+ ini_set('display_errors', 1);
+
+//require_once './includes/bootstrap.inc';
+//drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
+
+
+require_once 'ddrcsv/DataSource.php';
+require_once 'ddrcsv/fileread.php';
+
+$foo = getFilesFromDir('csvfiles/extend/');
+$csv = new File_CSV_DataSource;
+
+
+
+foreach($foo as $value){
+
+  $csv->load($value);
+  $data_array = $csv->connect();
+  
+	
+	
+	
+  //insert all data in respective table and apply all business logic
+
+
+  //fetch section term id.......
+  //fetch classname term id....
+  //fetch subject term id.....
+  //fetch topic term id......
+  //fetch subtopic term id....
+
+  $csv_serial_number = explode("/", $value);
+  $serial_no = explode("-", $csv_serial_number[1]);
+  $csv_serial = $serial_no[0];
+
+	$rs_csv_serial_no = db_result(db_query("SELECT nid from {content_type_submitted} where field_csv_unique_number_value = '".$csv_serial."' "));
+
+ if ($rs_csv_serial_no) {
+	  $node = node_load($rs_csv_serial_no);
+	  $node->is_new = 0;
+ }else{
+
+    $node = new stdClass();
+    $node->is_new = 1;
+    $node->type = "extend";
+    $node->uid = 1;
+    $node->name = 'admin';
+    $node->status = 1;
+    $node->created = time();
+    $node->changed = time();
+ }
+
+$count=0;
+
+foreach($data_array as $mmmmmm){
+	
+	$node->field_my_select[0]['value'] = 1;	
+	$node->field_my_select[1]['value'] = 2;	
+	$node->field_my_select[2]['value'] = 3;	
+	$node->field_my_select[3]['value'] = 4;	
+
+
+	$node->field_csv_unique_number[0]['value'] = $csv_serial;
+    $node->title = $mmmmmm['Title'];
+    $node->body = $mmmmmm['Body'];
+
+
+    $node->field_ext_title[$count]['value'] = $mmmmmm['Extend_title'];
+    $node->field_ext_description[$count]['value'] = $mmmmmm['Extend_desc'];
+    $node->field_ext_categorytype[$count]['value'] = $mmmmmm['extend_cate'];
+
+
+
+
+/*********	FILE UPLOAD PROCESS	********************************/
+	if (!$node->field_ext_image['file']->fid) {
+		$filename = $mmmmmm['extend_file'];
+		$tempdir = file_directory_path() . '/tempimage/';
+		$imagefile = $tempdir . $filename; 
+
+
+
+		// Where do we store the files?
+		$field = content_fields('field_ext_image', 'extend');
+		$files_path = filefield_widget_file_path($field);
+
+		// Load up the CCK field
+		// Load up the appropriate validators
+		$fid = db_result(db_query("SELECT fid FROM {files} WHERE `files`.`filename` LIKE '%s'", $filename));
+
+
+		if((!$fid) && file_exists($files_path . '/' . $filename)) {
+			unlink($files_path . '/' . $filename);
+
+		}
+
+		if (!file_exists($files_path . '/' . $filename)) {
+			//print $files_path . '/' . $filename;die;			
+			$validators = array_merge(filefield_widget_upload_validators($field), filefield_widget_upload_validators($field));
+			// Create the file object, replace existing file with new file as source and dest are the same
+			$file = field_file_save_file($imagefile, $validators, $files_path . '/' . $filename, FILE_EXISTS_REPLACE);
+
+			$node->field_ext_image[$count] = $file;
+			$node->field_ext_image[$count]['data']['alt'] = "FILE-ALT";
+			$node->field_ext_image[$count]['data']['title'] = "FILE TITLE";
+		}
+
+		else {
+			$fid = db_result(db_query("SELECT fid FROM {files} WHERE `files`.`filename` LIKE '%s'", $filename));
+
+			$node->field_ext_image[$count]['fid'] = $fid;
+			$node->field_ext_image[$count]['data']['alt'] = "FILE-ALT";
+			$node->field_ext_image[$count]['data']['title'] = "FILE TITLE";
+		}
+
+		//unlink($imagefile);
+	}
+		
+/****************************************/
+
+
+	$node = node_submit($node);
+    node_save($node);
+	cache_clear_all();
+
+    
+	$i3_sections = taxonomy_get_term_by_name($mmmmmm['Section']);
+    $i3_classname = taxonomy_get_term_by_name($mmmmmm['classname']);
+	$i3_subjects = taxonomy_get_term_by_name($mmmmmm['subject']);
+	$i3_topics = taxonomy_get_term_by_name($mmmmmm['Topic']);
+	$i3_subtopics = taxonomy_get_term_by_name($mmmmmm['subtopic']);
+	$i3_sub_sub_topic = taxonomy_get_term_by_name($mmmmmm['sub_sub_topic']);
+
+
+
+	$secttins = $i3_sections[0]->tid;
+	$classname = $i3_classname[0]->tid;
+	$subjects = $i3_subjects[0]->tid;
+	$chapters = $i3_topics[0]->tid;
+	$topics = $i3_subtopics[0]->tid;
+	$sub_sub_topic = $i3_sub_sub_topic[0]->tid;
+
+	$sql_term = db_result(db_query("SELECT tid from {term_node} where nid = '".$node->nid."' AND tid in('".$secttins."', '".$classname."', '".$subjects."', '".$chapters."', '".$topics."', '".$sub_sub_topic."') "));
+
+  if(!$sql_term) {
+	if(!empty($secttins)){
+		db_query('INSERT INTO {term_node} (nid, vid, tid) VALUES (%d, %d, %d)', $node->nid, $node->vid, $secttins);
+	}
+	if(!empty($classname)){
+		db_query('INSERT INTO {term_node} (nid, vid, tid) VALUES (%d, %d, %d)', $node->nid, $node->vid, $classname);
+	}
+	if(!empty($subjects)){
+		db_query('INSERT INTO {term_node} (nid, vid, tid) VALUES (%d, %d, %d)', $node->nid, $node->vid, $subjects);
+	}
+	if(!empty($chapters)){
+		db_query('INSERT INTO {term_node} (nid, vid, tid) VALUES (%d, %d, %d)', $node->nid, $node->vid, $chapters);
+	}
+	if(!empty($topics)){
+		db_query('INSERT INTO {term_node} (nid, vid, tid) VALUES (%d, %d, %d)', $node->nid, $node->vid, $topics);
+	}
+	if(!empty($sub_sub_topic)){
+		db_query('INSERT INTO {term_node} (nid, vid, tid) VALUES (%d, %d, %d)', $node->nid, $node->vid, $sub_sub_topic);
+	}
+  }
+
+
+
+    $count++;	
+  }
+  
+  
+ }
+return "Interect CSV files uploaded successfully";
+
+}
+
+
+function demonstrate_csvupload_all() {
+
+	if (!ini_get('safe_mode')) {
+	  set_time_limit(0);
+	 }
+	 ini_set('display_errors', 1);
+
+//require_once './includes/bootstrap.inc';
+//drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
+
+
+require_once 'ddrcsv/DataSource.php';
+require_once 'ddrcsv/fileread.php';
+
+$foo = getFilesFromDir('csvfiles/demonstrate/');
+$csv = new File_CSV_DataSource;
+
+
+
+foreach($foo as $value){
+
+  $csv->load($value);
+  $data_array = $csv->connect();
+  
+	
+	
+	
+  //insert all data in respective table and apply all business logic
+
+
+  //fetch section term id.......
+  //fetch classname term id....
+  //fetch subject term id.....
+  //fetch topic term id......
+  //fetch subtopic term id....
+
+  $csv_serial_number = explode("/", $value);
+  $serial_no = explode("-", $csv_serial_number[1]);
+  $csv_serial = $serial_no[0];
+
+	$rs_csv_serial_no = db_result(db_query("SELECT nid from {content_type_submitted} where field_csv_unique_number_value = '".$csv_serial."' "));
+
+ if ($rs_csv_serial_no) {
+	  $node = node_load($rs_csv_serial_no);
+	  $node->is_new = 0;
+ }else{
+
+    $node = new stdClass();
+    $node->is_new = 1;
+    $node->type = "demonstrate";
+    $node->uid = 1;
+    $node->name = 'admin';
+    $node->status = 1;
+    $node->created = time();
+    $node->changed = time();
+ }
+
+$count=0;
+
+foreach($data_array as $mmmmmm){
+	
+	$node->field_my_select[0]['value'] = 1;	
+	$node->field_my_select[1]['value'] = 2;	
+	$node->field_my_select[2]['value'] = 3;	
+	$node->field_my_select[3]['value'] = 4;	
+
+
+	$node->field_csv_unique_number[0]['value'] = $csv_serial;
+    $node->title = $mmmmmm['Title'];
+    $node->body = $mmmmmm['Body'];
+
+
+    $node->field_demns_title[$count]['value'] = $mmmmmm['Demons-title'];
+    $node->field_demns_description[$count]['value'] = $mmmmmm['demons-desc'];
+    $node->field_demns_categorytype[$count]['value'] = $mmmmmm['demons-cate'];
+
+
+
+
+
+/*********	FILE UPLOAD PROCESS	********************************/
+	if (!$node->field_demns_image['file']->fid) {
+		$filename = $mmmmmm['demons-file'];
+		$tempdir = file_directory_path() . '/tempimage/';
+		$imagefile = $tempdir . $filename; 
+
+
+
+		// Where do we store the files?
+		$field = content_fields('field_demns_image', 'demonstrate');
+		$files_path = filefield_widget_file_path($field);
+
+		// Load up the CCK field
+		// Load up the appropriate validators
+		$fid = db_result(db_query("SELECT fid FROM {files} WHERE `files`.`filename` LIKE '%s'", $filename));
+
+
+		if((!$fid) && file_exists($files_path . '/' . $filename)) {
+			unlink($files_path . '/' . $filename);
+
+		}
+
+		if (!file_exists($files_path . '/' . $filename)) {
+			//print $files_path . '/' . $filename;die;			
+			$validators = array_merge(filefield_widget_upload_validators($field), filefield_widget_upload_validators($field));
+			// Create the file object, replace existing file with new file as source and dest are the same
+			$file = field_file_save_file($imagefile, $validators, $files_path . '/' . $filename, FILE_EXISTS_REPLACE);
+
+			$node->field_demns_image[$count] = $file;
+			$node->field_demns_image[$count]['data']['alt'] = "FILE-ALT";
+			$node->field_demns_image[$count]['data']['title'] = "FILE TITLE";
+		}
+
+		else {
+			$fid = db_result(db_query("SELECT fid FROM {files} WHERE `files`.`filename` LIKE '%s'", $filename));
+
+			$node->field_demns_image[$count]['fid'] = $fid;
+			$node->field_demns_image[$count]['data']['alt'] = "FILE-ALT";
+			$node->field_demns_image[$count]['data']['title'] = "FILE TITLE";
+		}
+
+		//unlink($imagefile);
+	}
+		
+/****************************************/
+
+
+	$node = node_submit($node);
+    node_save($node);
+	cache_clear_all();
+
+    
+	$i3_sections = taxonomy_get_term_by_name($mmmmmm['Section']);
+    $i3_classname = taxonomy_get_term_by_name($mmmmmm['classname']);
+	$i3_subjects = taxonomy_get_term_by_name($mmmmmm['subject']);
+	$i3_topics = taxonomy_get_term_by_name($mmmmmm['Topic']);
+	$i3_subtopics = taxonomy_get_term_by_name($mmmmmm['subtopic']);
+	$i3_sub_sub_topic = taxonomy_get_term_by_name($mmmmmm['sub_sub_topic']);
+
+
+
+	$secttins = $i3_sections[0]->tid;
+	$classname = $i3_classname[0]->tid;
+	$subjects = $i3_subjects[0]->tid;
+	$chapters = $i3_topics[0]->tid;
+	$topics = $i3_subtopics[0]->tid;
+	$sub_sub_topic = $i3_sub_sub_topic[0]->tid;
+
+	$sql_term = db_result(db_query("SELECT tid from {term_node} where nid = '".$node->nid."' AND tid in('".$secttins."', '".$classname."', '".$subjects."', '".$chapters."', '".$topics."', '".$sub_sub_topic."') "));
+
+  if(!$sql_term) {
+	if(!empty($secttins)){
+		db_query('INSERT INTO {term_node} (nid, vid, tid) VALUES (%d, %d, %d)', $node->nid, $node->vid, $secttins);
+	}
+	if(!empty($classname)){
+		db_query('INSERT INTO {term_node} (nid, vid, tid) VALUES (%d, %d, %d)', $node->nid, $node->vid, $classname);
+	}
+	if(!empty($subjects)){
+		db_query('INSERT INTO {term_node} (nid, vid, tid) VALUES (%d, %d, %d)', $node->nid, $node->vid, $subjects);
+	}
+	if(!empty($chapters)){
+		db_query('INSERT INTO {term_node} (nid, vid, tid) VALUES (%d, %d, %d)', $node->nid, $node->vid, $chapters);
+	}
+	if(!empty($topics)){
+		db_query('INSERT INTO {term_node} (nid, vid, tid) VALUES (%d, %d, %d)', $node->nid, $node->vid, $topics);
+	}
+	if(!empty($sub_sub_topic)){
+		db_query('INSERT INTO {term_node} (nid, vid, tid) VALUES (%d, %d, %d)', $node->nid, $node->vid, $sub_sub_topic);
+	}
+  }
+
+
+
+    $count++;	
+  }
+  
+  
+ }
+return "Interect CSV files uploaded successfully";
+
+}

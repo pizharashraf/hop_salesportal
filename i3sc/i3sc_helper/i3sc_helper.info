@@ -1,0 +1,5 @@
+name = I3SC HELPER
+description = Custom module for I3classes for library functions
+core = 6.x
+
+package = I3SC

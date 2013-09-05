@@ -1,0 +1,4 @@
+name = Drupalcons2010
+description = Custom module for I3classes
+core = 6.x
+package = I3SC

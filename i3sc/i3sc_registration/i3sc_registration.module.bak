@@ -1,0 +1,34 @@
+<?php
+//I#SC registration validation
+
+
+	$node = new stdClass();
+	$node->is_new = 1;
+	$node->type = "user_profile";
+	$node->uid = 1;
+
+	$node->status = 1;
+	$node->created = time();
+	$node->changed = time();
+//print $node->form_id;die;
+/*********
+	if($node->mail == '') {
+	  form_set_error('mail', "E-mail address field is required. Please enter valid Email ID");
+	}
+
+	if($node->body== '') {
+		form_set_error('body','some Description required');
+	}
+
+
+	*********/
+
+	$day = 15;
+	$month = 7;
+	$year = 1980;
+	$nnnn = mktime(0,0,0,$month,$day,$year);
+	$age= ((int)($nnnn/86400)* -1 );
+	//print ("My age in days is ".$age);
+
+
+

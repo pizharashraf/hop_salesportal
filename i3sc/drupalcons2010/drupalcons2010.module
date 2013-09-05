@@ -1,0 +1,22 @@
+<?php
+function drupalcons2010_token_list($type = 'all'){
+  if($type == 'node' || $type=='all') {
+    $tokens['node']['first_letter'] = t('The first letter of the title');
+  }
+  return $tokens;
+}
+
+function drupalcons2010_token_values($type, $object= NULL){
+  $values = array();
+  switch($type) {
+    case 'node':
+    //first letter of node title
+    if(!empty($object)){
+      $values = array(
+        'first_letter' => substr($object->title, 0, 1),
+      );
+    }
+    break;
+  }
+    return $values;
+}

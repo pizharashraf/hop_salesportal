@@ -1,0 +1,5 @@
+name = "I3SC_DDR"
+description = "i3sc_ddrcsv developed by Izhar ashraf
+package = I3SC
+core = 6.x
+

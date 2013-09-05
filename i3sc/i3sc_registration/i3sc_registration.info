@@ -1,0 +1,4 @@
+name = I3SC REGISTRATION
+description = I3SC REGISTRATION for validation and added functionality
+core = 6.x
+package = I3SC

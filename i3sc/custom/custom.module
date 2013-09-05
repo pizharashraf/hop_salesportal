@@ -1,0 +1,365 @@
+<?php
+/**************************  Left and Right penal (Taxonomy pages) implementations  **************************/
+function custom_block($op = 'list', $delta = 0, $edit = array()) {
+  $blocks = array();
+  if ($op == 'list') {
+    $blocks[0] = array(
+      'info' => t('Todays thought'), 
+      );
+    $blocks[1] = array(
+      'info' => t('New Content'), 
+      );
+	$blocks[2] = array(
+      'info' => t('Subjects'), 
+      );
+      $blocks[3] = array(
+      'info' => t('Add to my content'), 
+      );
+    
+   
+    
+    return $blocks;
+  }
+  elseif ($op == 'view') {
+    switch ($delta) {
+      case 0:
+        $block = array(
+          'subject' => t(''), 
+          'content' => custom_fetch_todays_thought(),
+        );
+      break;
+      case 1:
+        $block = array(
+          'subject' => t(''), 
+          'content' => custom_fetch_new_content(),
+        );
+      break;
+	  case 2:
+        $block = array(
+          'subject' => t(''), 
+          'content' => custom_fetch_subjects(),
+        );
+      break;
+     case 3:
+        $block = array(
+          'subject' => t(''), 
+          'content' => custom_add_to_my_favorite_content(),
+        );
+      break;
+    }
+    return $block;
+  }
+}
+
+
+function custom_fetch_new_content(){
+  global $base_url;
+  $path_theme = $base_url.'/'.path_to_theme();
+  $new_content = base_path() . "sites/all/themes/smartclass/images/new-content.jpg";
+  //todays thoughts
+  $today_thought = base_path() . "sites/all/themes/smartclass/images/today-thought.jpg";
+  $rs_today_thought = db_fetch_array(db_query("SELECT ctdt.nid, nn.title, nr.body, ff.filepath, nn.created FROM {content_type_todays_thought} ctdt inner join {node} nn on ctdt.nid=nn.nid inner join {node_revisions} nr on nn.nid=nr.nid inner join {files} ff on ctdt.field_thought_image_fid=ff.fid where nn.type='todays_thought' ORDER BY nn.created DESC LIMIT 1 "));
+  
+  $todayspics = $base_url.'/'.$rs_today_thought['filepath'];
+  //New contents
+  $rs_new_contents = db_fetch_array(db_query("SELECT nn.nid, nn.title, nr.body,  nn.created FROM {node} nn inner join {node_revisions} nr on nn.nid=nr.nid where nn.type='new_content_for_sections' ORDER BY nn.created DESC LIMIT 1"));
+  
+  //$todayspics = base_path() . "sites/all/themes/smartclass/images/today-pics.jpg";
+  $mathematics = base_path() . "sites/all/themes/smartclass/images/mathematics.png";
+  $science = base_path() . "sites/all/themes/smartclass/images/science.png";
+  $s_science = base_path() . "sites/all/themes/smartclass/images/social-science.png";
+  $english = base_path() . "sites/all/themes/smartclass/images/english.png";
+  $hindi = base_path() . "sites/all/themes/smartclass/images/hindi.png";
+
+  $term_id = arg(2);
+  $parent_visibility = check_any_level_children($term_id);
+  $P_rs_parent = check_any_level_children($parent_visibility);
+  $pp_rs_parent = check_any_level_children($P_rs_parent);
+  $more_childs = check_further_children($term_id);
+  $st_rs_parent = check_any_level_children($pp_rs_parent);
+  $n_level = chech_nterm_level($term_id);
+ 
+  
+  /**************************  taxonomy image  **************************/
+  if(arg(3)){
+    $taxo_path = get_taxonomy_image_path(arg(3));
+    $abs_path = $base_url.'/sites/default/files/category_pictures/'.$taxo_path;
+  }else{
+    $taxo_path = get_taxonomy_image_path(arg(2));
+    $abs_path = $base_url.'/sites/default/files/category_pictures/'.$taxo_path;
+  }
+  
+
+  $output = '';
+
+
+$todays_thought = db_fetch_object(db_query("SELECT cttt.nid, nn.title, nr.body, ff.filepath from {content_type_todays_thought} cttt LEFT JOIN node nn ON cttt.nid = nn.nid LEFT JOIN {node_revisions} nr ON nr.nid = nn.nid LEFT JOIN {files} ff ON cttt.field_thought_image_fid = ff.fid "));
+
+
+  if ($parent_visibility == 0) {  /**************************  I3 sections page  **************************/
+    $rs_parent = db_result(db_query("SELECT th.parent from {term_hierarchy} th INNER JOIN {term_data} td ON th.tid = td.tid WHERE td.tid = '%d' ", $tid ));
+   
+
+    $output .='<div class="incontent-boxrow">
+	  <div class="innerbox-content">
+            	<div class="in-leftboxrow">
+                	<div class="in-lefttopbox"></div>
+                    <div class="in-leftmiddlebox">
+                    	<div class="in-contentrow">
+                    		<div class="in-subheadbox"><img src="'.$new_content.'" height="41" width="194" /></div>
+                            <div class="in-textrow">"'.$rs_new_contents['body'].'"</div>
+                        </div>
+                        <div class="in-contentrow">
+                    		<div class="in-subheadbox"><img src="'.$today_thought.'" height="41" width="194" /></div>
+                            <div class="in-imgbox"><img src="'.$todayspics.'" height="103" width="171" /></div>
+                            <div class="in-textrow">"'.substr($rs_today_thought['body'], 0, 105).'"</div>
+                        </div>
+                    </div>
+                    <div class="in-leftbottombox"></div>
+                </div>
+                <div class="in-rightbox"><img width="727" height="416" id="imgtitle" name="imgtitle" src="'.$abs_path.'" /></div>
+            </div>
+        </div>';
+	}elseif ($P_rs_parent == 0) {  /**************************  I3 Class page  **************************/
+            $output .= '<div class="incontent-boxrow">
+			<div class="middlesub-content">
+            	<div class="middlesub-leftboxrow">
+                	<div class="middlesub-lefttbox"></div>
+                    <div class="middlesub-leftmbox">
+                    	<div class="msub-contentrow">
+                        	<h2>Subject</h2>';
+          $term_id = arg(2);
+          $ch_arr = get_child_term_name($term_id);
+          foreach($ch_arr as $main_term) {
+            $link = $base_url."/taxonomy/term/".$main_term['tid'];
+                    		$output .='<div class="msub-buttonbox" ><a href="'.$link.'" class="'.$main_term['name'].'" >'.$main_term['name'].'</a></div>';
+          }
+//'.taxonomy_image_display(arg(2)).'
+          $output .='</div>
+                    </div>
+                    <div class="middlesub-leftbbox"></div>
+                </div>
+                <div class="in-rightbox"><img width="727" height="416" id="imgtitle" name="imgtitle" src="'.$abs_path.'" /></div>
+            </div>
+        </div>    
+     </div>';
+
+	}elseif($pp_rs_parent == 0) {  /**************************  I3 Subjects page  **************************/
+
+	$term_id = arg(2);
+	//if file is not available....make default image of the site
+	$sm_img = get_taxonomy_image_path($term_id);
+	if(!empty($sm_img)) {
+      $small_img = 'sites/default/files/category_pictures/'.get_taxonomy_image_path($term_id);
+	 }else {
+				$small_img = 'sites/default/files/logo_i3pdf.jpg';
+		}
+  
+	
+	$ch_arr = get_child_term_name($term_id);
+		$output .= '<div class="mdchap-row">
+            	<div class="mdchap-rowtop"></div>
+                <div class="mdchap-rowmiddle">
+                	<div class="mdchap-leftrow">
+                    	<div class="mdchap-topimg">'.theme('imagecache', 'smallimage', $small_img, '', '').'</div>
+                    	<div class="mdchap-lefttop"></div>
+						<div class="mdchap-leftmiddle">
+                        	<h2>Select Chapter</h2>
+                        </div>
+                        <div class="mdchap-leftmiddle">';
+	$i=1;
+	$output .='<ul id="main_menu_units">';
+	foreach($ch_arr as $main_term) {
+          
+$output .='				<li id="unitMenuItem'.$main_term['tid'].'"><a href="javascript: activateMenuItem('.$main_term['tid'].');" OnMouseOver="window.status=""; return true;" OnMouseOut="window.status=""; return true;"><span>'.$main_term['name'].'</span></a>
+					<ul id="main_menu_topics">';
+						$parent_id = $main_term['tid'];
+						$parent_arr = get_child_term_name($parent_id);
+						$j=2;
+						foreach($parent_arr as $par_term) {
+							$child_link = $base_url."/taxonomy/term/".$par_term['tid'];
+							$output .='<li id="topicMenuItem'.$j.'"><a href="'.$child_link.'" OnMouseOver="window.status=""; return true;" OnMouseOut="window.status=""; return true;">'.$par_term['name'].'</a>
+												<ul id="main_menu_concepts">
+													<li id="conceptMenuItem'.$i.'">
+		                         <a href="../../sound-drivers.html" OnMouseOver="window.status=""; return true;" OnMouseOut="window.status=""; return true;" class="active">Sound Driver</a>
+                         </li>
+                      </ul>
+                   </li>';
+						$j++;
+						}
+		      $output .='</ul>';
+		      
+  $bach_term_id = arg(3);
+  $output .='<SCRIPT LANGUAGE = "JavaScript">addEvent("window", "load", activateMenuItem('.$bach_term_id.')); </SCRIPT>';
+  $output .='</li>';
+			
+  $i++;
+}
+
+  $output .='</ul>';
+  
+  $output .='</div>';
+                  $output .='<div class="mdchap-leftbottom"></div>
+                    </div>
+                    <div class="mdchap-rightrow"><img width="698" height="665" id="imgtitle" name="imgtitle" src="'.$abs_path.'" /></div>
+              </div>
+                <div class="mdchap-rowbottom"></div>
+            </div>
+            
+        </div>    
+    </div>';
+
+}
+	elseif($more_childs == 0 && $pp_rs_parent != 0) {  /**************************  I3 Topics page  **************************/
+	
+		if(arg(3)){
+		 $term_id = arg(3);
+		}else{
+		$term_id = arg(2);
+		}
+    $pp_img_ch = get_parent_tid_by_tid($term_id);
+  
+  
+		//if file is not available....make default image of the site
+	$sm_img = get_taxonomy_image_path($pp_img_ch);
+	if(!empty($sm_img)) {
+      $small_img = 'sites/default/files/category_pictures/'.get_taxonomy_image_path($pp_img_ch);
+	 }else {
+				$small_img = 'sites/default/files/logo_i3pdf.jpg';
+		}
+		
+	$pid = db_result(db_query("SELECT parent FROM term_hierarchy WHERE tid='".$term_id."' "));
+	$p_pid = db_result(db_query("SELECT parent FROM term_hierarchy WHERE tid='".$pid."' "));
+
+	$ch_arr = get_child_term_name($p_pid);
+	$output .= '<div class="mdchap-topimg">'.theme('imagecache', 'smallimage', $small_img, '', '').'</div>
+                    	<div class="mdchap-lefttop"></div>
+						   <div class="mdchap-leftmiddle">
+                 <h2>Select Chapter</h2>
+               </div>
+               
+             <div class="mdchap-leftmiddle">';
+  $i=1;
+  $output .='<ul id="main_menu_units">';
+foreach($ch_arr as $main_term) {
+
+	$back_cur_par = get_parent_tid_by_tid($term_id);
+	$bb_back_cur_par = get_parent_tid_by_tid($back_cur_par);
+	$back_url = $base_url.'/taxonomy/term/'.$bb_back_cur_par.'/'.$main_term['tid'];
+	
+	$output .='<li id="unitMenuItem'.$main_term['tid'].'"><a href="'.$back_url.'" OnMouseOver="window.status=""; return true;" OnMouseOut="window.status=""; return true;"><span>'.$main_term['name'].'</span></a>
+					<ul id="main_menu_topics">';
+						$parent_id = $main_term['tid'];
+						$parent_arr = get_child_term_name($parent_id);
+						$j=2;
+						foreach($parent_arr as $par_term) {
+							$child_link = $base_url."/taxonomy/term/".$par_term['tid'];
+							$output .='<li id="topicMenuItem'.$par_term['tid'].'"><a href="'.$child_link.'" OnMouseOver="window.status=""; return true;" OnMouseOut="window.status=""; return true;">'.$par_term['name'].'</a>';
+
+
+  $last_parent_arr = get_child_term_name($par_term['tid']);
+	$output .='<ul id="main_menu_concepts">';
+     foreach($last_parent_arr as $last_par_term) {
+					$last_child_link = $base_url."/taxonomy/term/".$last_par_term['tid'].'/'.$par_term['tid'];
+					$new_term_id = arg(2);
+					 if($last_par_term['tid'] == $new_term_id) {
+					 $active = 'active';
+					}else{
+					$active = '';
+					}
+				$output .='<li id="conceptMenuItem'.$par_term['tid'].'">
+											<a href="'.$last_child_link.'" OnMouseOver="window.status=""; return true;" OnMouseOut="window.status=""; return true;" class="'.$active.'">'.$last_par_term['name'].'</a>
+								   </li>';
+    }
+		  $output .='</ul>';						
+		  $output .=' </li>';
+			$j++;
+			}
+		  $output .='</ul></li>';
+
+			$i++;
+}
+	$current_parent = $term_id;
+	$cur_par = get_parent_tid_by_tid($term_id);
+	$output .='<SCRIPT LANGUAGE = "JavaScript">addEvent("window", "load", activateMenuItem('.$cur_par.','.$term_id.')); </SCRIPT></ul>';
+
+
+	}elseif($more_childs != 0 && $st_rs_parent != 0) {  /**************************  I3 Sub-Topics page  **************************/
+	if(arg(3)){
+	 $term_id = arg(3);
+	}else{
+	$term_id = arg(2);
+	}
+  $pp_img_ch = get_parent_tid_by_tid($term_id);
+  
+
+  //if file is not available....make default image of the site
+	$sm_img = get_taxonomy_image_path($pp_img_ch);
+	if(!empty($sm_img)) {
+      $small_img = 'sites/default/files/category_pictures/'.get_taxonomy_image_path($pp_img_ch);
+	 }else {
+				$small_img = 'sites/default/files/logo_i3pdf.jpg';
+		}
+		
+		
+	$pid = db_result(db_query("SELECT parent FROM term_hierarchy WHERE tid='".$term_id."' "));
+	$p_pid = db_result(db_query("SELECT parent FROM term_hierarchy WHERE tid='".$pid."' "));
+
+	$ch_arr = get_child_term_name($p_pid);
+		$output .= '<div class="mdchap-topimg">'.theme('imagecache', 'smallimage', $small_img, '', '').'</div>
+                    	<div class="mdchap-lefttop"></div>
+						<div class="mdchap-leftmiddle">
+                        	<h2>Select Chapter</h2>
+                        </div>
+
+                        <div class="mdchap-leftmiddle">';
+	$i=1;
+  $output .='<ul id="main_menu_units">';
+	foreach($ch_arr as $main_term) {
+		$back_cur_par = get_parent_tid_by_tid($term_id);
+		$bb_back_cur_par = get_parent_tid_by_tid($back_cur_par);
+		$back_url = $base_url.'/taxonomy/term/'.$bb_back_cur_par.'/'.$main_term['tid'];
+		
+		$output .='<li id="unitMenuItem'.$main_term['tid'].'"><a href="'.$back_url.'" OnMouseOver="window.status=""; return true;" OnMouseOut="window.status=""; return true;"><span>'.$main_term['name'].'</span></a>
+					<ul id="main_menu_topics">';
+						$parent_id = $main_term['tid'];
+						$parent_arr = get_child_term_name($parent_id);
+						$j=2;
+						foreach($parent_arr as $par_term) {
+							$child_link = $base_url."/taxonomy/term/".$par_term['tid'];
+							$output .='<li id="topicMenuItem'.$par_term['tid'].'"><a href="'.$child_link.'" OnMouseOver="window.status=""; return true;" OnMouseOut="window.status=""; return true;">'.$par_term['name'].'</a>';
+
+
+     $last_parent_arr = get_child_term_name($par_term['tid']);
+				$output .='<ul id="main_menu_concepts">';
+     foreach($last_parent_arr as $last_par_term) {
+					$last_child_link = $base_url."/taxonomy/term/".$last_par_term['tid'].'/'.$par_term['tid'];
+					$new_term_id = arg(2);
+					if($last_par_term['tid'] == $new_term_id) {
+					 $active = 'active';
+					}else{
+					$active = '';
+					}
+				$output .='<li id="conceptMenuItem'.$par_term['tid'].'">
+												<a href="'.$last_child_link.'" OnMouseOver="window.status=""; return true;" OnMouseOut="window.status=""; return true;" class="'.$active.'">'.$last_par_term['name'].'</a></li>';
+    }
+    		$output .='</ul>';
+    		$output .=' </li>';
+				$j++;
+						}
+		    $output .='</ul></li>';
+        $i++;
+	}
+	$current_parent = $term_id;
+	$cur_par = get_parent_tid_by_tid($term_id);
+	$output .='<SCRIPT LANGUAGE = "JavaScript">addEvent("window", "load", activateMenuItem('.$cur_par.','.$term_id.')); </SCRIPT></ul>';
+ }
+
+  return $output;
+
+}
+
+
+
+
+
